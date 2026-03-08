@@ -1,0 +1,136 @@
+# AIMeter
+
+AIMeter - это self-hosted панель для отслеживания использования, квот и истории нескольких AI-провайдеров в одном интерфейсе.
+
+<div align="center">
+
+[English](../../README.md) | [简体中文](README-zh-CN.md) | [繁體中文](README-zh-TW.md) | [日本語](README-ja.md) | [Français](README-fr.md) | [Deutsch](README-de.md) | [Español](README-es.md) | [Português](README-pt.md) | [**Русский**](README-ru.md) | [한국어](README-ko.md)
+
+</div>
+
+<div align="center">
+  <img src="../img/dashboard.png" alt="AIMeter dashboard" width="100%" />
+</div>
+
+## Возможности
+
+- Единая панель для нескольких провайдеров
+- Настройка провайдеров и управление учетными данными
+- История использования и графики
+- Страницы, связанные с endpoint и widget
+- Автоматическое плановое обновление в режиме `node`
+- Mock-режим для локальной разработки и демо
+- Хранилища: SQLite, PostgreSQL, MySQL
+- Модель конфигурации с приоритетом переменных окружения
+
+## Поддерживаемые Provider
+
+Текущие адаптеры включают:
+
+- Aliyun
+- Claude
+- Codex
+- Kimi
+- MiniMax
+- z.ai
+- Copilot
+- OpenRouter
+- Ollama
+- OpenCode
+- Cursor
+
+## Технологический стек
+
+- Frontend: React 18, TypeScript, Vite, Tailwind CSS
+- Backend: Node.js, Express, TypeScript
+- База данных: better-sqlite3, pg, mysql2
+
+## Структура проекта
+
+```text
+.
+├─ src/                 # Frontend-приложение
+├─ server/              # Backend API, auth, jobs, storage
+├─ doc/                 # Дизайн-заметки, примеры provider, переводы
+├─ config.example.yaml  # Полный шаблон конфигурации
+└─ .env.example         # Шаблон переменных окружения
+```
+
+## Быстрый старт
+
+### 1. Установите зависимости
+
+```bash
+npm install
+```
+
+### 2. Подготовьте конфигурацию
+
+```bash
+cp .env.example .env
+cp config.example.yaml config.yaml
+```
+
+Измените `config.yaml` и/или `.env` под ваше окружение.
+
+### 3. Запустите frontend + backend
+
+```bash
+npm run dev:all
+```
+
+Локальные адреса по умолчанию:
+
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:3001`
+
+## Основные скрипты
+
+```bash
+npm run dev            # только frontend
+npm run start:server   # только backend
+npm run dev:all        # frontend + backend
+npm run dev:mock:all   # frontend + backend в mock-режиме
+npm run build          # проверка типов + сборка frontend
+npm run preview        # просмотр production-сборки
+```
+
+## Модель конфигурации
+
+Приоритет:
+
+1. Переменные окружения (`.env`)
+2. `config.yaml`
+3. Встроенные значения по умолчанию
+
+Ключевые разделы:
+
+- `server`: API URL, порты frontend/backend, CORS, trust proxy
+- `runtime`: `node` или `serverless`, переключатель mock
+- `database`: движок, DSN/путь, ключи шифрования
+- `auth`: session secret, настройки cookie, rate limits, bootstrap/admin secrets
+- `providers`: список provider (используется при отключенном режиме базы данных)
+
+## Режимы выполнения
+
+- `node`: запускает встроенный планировщик для периодического обновления.
+- `serverless`: планировщик отключен, обновление по запросу.
+
+## Движки базы данных
+
+AIMeter поддерживает:
+
+- SQLite (по умолчанию)
+- PostgreSQL
+- MySQL
+
+
+
+## Примечания по безопасности
+
+Для production-развертывания:
+
+- Используйте сильные значения для session и encryption secrets.
+- Включайте secure cookies за HTTPS.
+- Ограничивайте CORS origins.
+- Защищайте bootstrap/admin/cron secrets.

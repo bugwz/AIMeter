@@ -1,0 +1,26 @@
+{
+    "userId": "7401938265047712",
+    "instance": {
+        "codingPlanQuotaInfo": {
+            "perBillMonthUsedQuota": 0,
+            "per5HourUsedQuota": 0,
+            "perBillMonthTotalQuota": 18000,
+            "per5HourTotalQuota": 1200,
+            "perWeekTotalQuota": 9000,
+            "perBillMonthQuotaNextRefreshTime": 1773158400000,
+            "per5HourQuotaNextRefreshTime": 1772955528000,
+            "perWeekUsedQuota": 0,
+            "perWeekQuotaNextRefreshTime": 1772985600000
+        },
+        "instanceId": "sfm_codingplan_public_cn-abcdef12345",
+        "instanceEndTime": 1773158400000,
+        "instanceName": "Coding Plan Lite",
+        "instanceType": "lite",
+        "remainingDays": 2,
+        "chargeType": "MONTH",
+        "chargeAmount": 40,
+        "autoRenewFlag": false,
+        "instanceStartTime": 1770691489000,
+        "status": "VALID"
+    }
+}

@@ -1,0 +1,96 @@
+{
+    "subscription": {
+        "goods": {
+            "id": "abcxyz12-1234-5678-9876-cc1234567890",
+            "title": "Adagio",
+            "durationDays": 30,
+            "useRegion": "REGION_CN",
+            "createTime": "2025-09-03T09:26:48.609Z",
+            "updateTime": "2025-09-03T09:26:48.609Z",
+            "membershipLevel": "LEVEL_FREE",
+            "amounts": [
+                {
+                    "currency": "CNY",
+                    "priceInCents": "0"
+                }
+            ],
+            "billingCycle": {
+                "duration": 1,
+                "timeUnit": "TIME_UNIT_MONTH"
+            }
+        },
+        "subscriptionTime": "2025-11-29T15:39:19.323299Z",
+        "currentStartTime": "2025-11-29T15:39:19.323299Z",
+        "currentEndTime": "2099-12-31T23:59:59Z",
+        "status": "SUBSCRIPTION_STATUS_ACTIVE",
+        "type": "TYPE_PURCHASE"
+    },
+    "memberships": [
+        {
+            "id": "abcxyz12-xxxx-yyyy-1200-330abcc26a6d3",
+            "userId": "k7m2p9xq4t8v1z3n5r6y",
+            "feature": "FEATURE_DEEP_RESEARCH",
+            "leftCount": 1,
+            "totalCount": 1,
+            "level": "LEVEL_FREE",
+            "startTime": "2025-11-29T15:39:19.323299Z",
+            "endTime": "2026-03-31T15:59:59Z",
+            "deepResearch": {
+                "parallelNum": 1
+            }
+        },
+        {
+            "id": "abcxyz15-xxxx-4444-9000-1203331bb38v",
+            "userId": "k7m2p9xq4t8v1z3n5r6y",
+            "feature": "FEATURE_OK_COMPUTER",
+            "leftCount": 3,
+            "totalCount": 3,
+            "level": "LEVEL_FREE",
+            "startTime": "2025-11-29T15:39:19.323301Z",
+            "endTime": "2026-03-31T15:59:59Z",
+            "okComputer": {
+                "parallelNum": 1
+            }
+        },
+        {
+            "id": "abcxyz15-1234-b34c-3333-1203331bb38v",
+            "userId": "k7m2p9xq4t8v1z3n5r6y",
+            "feature": "FEATURE_NORMAL_SLIDES",
+            "leftCount": 3,
+            "totalCount": 3,
+            "level": "LEVEL_FREE",
+            "startTime": "2025-11-29T15:39:19.323299Z",
+            "endTime": "2026-03-31T15:59:59Z",
+            "normalSlides": {
+                "parallelNum": 1
+            }
+        }
+    ],
+    "subscribed": true,
+    "purchaseSubscription": {
+        "goods": {
+            "id": "abcxyz15-ebc6-9987-abcd-e33234599891",
+            "title": "Adagio",
+            "durationDays": 30,
+            "useRegion": "REGION_CN",
+            "createTime": "2025-09-03T09:26:48.609Z",
+            "updateTime": "2025-09-03T09:26:48.609Z",
+            "membershipLevel": "LEVEL_FREE",
+            "amounts": [
+                {
+                    "currency": "CNY",
+                    "priceInCents": "0"
+                }
+            ],
+            "billingCycle": {
+                "duration": 1,
+                "timeUnit": "TIME_UNIT_MONTH"
+            }
+        },
+        "subscriptionTime": "2025-11-29T15:39:19.323299Z",
+        "currentStartTime": "2025-11-29T15:39:19.323299Z",
+        "currentEndTime": "2099-12-31T23:59:59Z",
+        "status": "SUBSCRIPTION_STATUS_ACTIVE",
+        "type": "TYPE_PURCHASE"
+    }
+}

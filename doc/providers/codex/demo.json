@@ -1,0 +1,69 @@
+{
+    "user_id": "user-Q7nL2pX4mV8sK1dR5tY9cH3b",
+    "account_id": "user-Q7nL2pX4mV8sK1dR5tY9cH3b",
+    "email": "demo@gmail.com",
+    "plan_type": "plus",
+    "rate_limit": {
+        "allowed": true,
+        "limit_reached": false,
+        "primary_window": {
+            "used_percent": 4,
+            "limit_window_seconds": 18000,
+            "reset_after_seconds": 14331,
+            "reset_at": 1772962692
+        },
+        "secondary_window": {
+            "used_percent": 1,
+            "limit_window_seconds": 604800,
+            "reset_after_seconds": 601131,
+            "reset_at": 1773549492
+        }
+    },
+    "code_review_rate_limit": {
+        "allowed": true,
+        "limit_reached": false,
+        "primary_window": {
+            "used_percent": 0,
+            "limit_window_seconds": 604800,
+            "reset_after_seconds": 604800,
+            "reset_at": 1773553161
+        },
+        "secondary_window": null
+    },
+    "additional_rate_limits": [
+        {
+            "limit_name": "GPT-5.3-Codex-Spark",
+            "metered_feature": "codex_bengalfox",
+            "rate_limit": {
+                "allowed": true,
+                "limit_reached": false,
+                "primary_window": {
+                    "used_percent": 0,
+                    "limit_window_seconds": 18000,
+                    "reset_after_seconds": 18000,
+                    "reset_at": 1772966361
+                },
+                "secondary_window": {
+                    "used_percent": 0,
+                    "limit_window_seconds": 604800,
+                    "reset_after_seconds": 604800,
+                    "reset_at": 1773553161
+                }
+            }
+        }
+    ],
+    "credits": {
+        "has_credits": false,
+        "unlimited": false,
+        "balance": "0",
+        "approx_local_messages": [
+            0,
+            0
+        ],
+        "approx_cloud_messages": [
+            0,
+            0
+        ]
+    },
+    "promo": null
+}

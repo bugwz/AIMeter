@@ -1,0 +1,32 @@
+{
+    "model_remains": [
+        {
+            "start_time": 1772935200000,
+            "end_time": 1772953200000,
+            "remains_time": 2874631,
+            "current_interval_total_count": 1500,
+            "current_interval_usage_count": 1492,
+            "model_name": "MiniMax-M2"
+        },
+        {
+            "start_time": 1772935200000,
+            "end_time": 1772953200000,
+            "remains_time": 2874631,
+            "current_interval_total_count": 1500,
+            "current_interval_usage_count": 1492,
+            "model_name": "MiniMax-M2.1"
+        },
+        {
+            "start_time": 1772935200000,
+            "end_time": 1772953200000,
+            "remains_time": 2874631,
+            "current_interval_total_count": 1500,
+            "current_interval_usage_count": 1492,
+            "model_name": "MiniMax-M2.5"
+        }
+    ],
+    "base_resp": {
+        "status_code": 0,
+        "status_msg": "success"
+    }
+}

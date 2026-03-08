@@ -1,0 +1,237 @@
+# AIMeter main configuration file example
+# Priority: environment variables > this file > built-in defaults
+
+server:
+  # API base path or absolute API URL.
+  # Allowed:
+  # - URL path, for example /api: use the same host as the frontend
+  # - absolute URL, for example https://api.example.com: call a separate backend origin
+  # Built-in default when unset in both env and this file: /api
+  apiUrl: /api
+  # Frontend dev server port for local development.
+  # Allowed:
+  # - any positive integer port, for example 3000
+  # Built-in default when unset in both env and this file: 3000
+  frontendPort: 3000
+  # Backend HTTP server listen port.
+  # Allowed:
+  # - any positive integer port, for example 3001
+  # Built-in default when unset in both env and this file: 3001
+  backendPort: 3001
+  # Allowed CORS origins for browser requests.
+  # Allowed:
+  # - single origin, for example http://localhost:3000
+  # - YAML string list, for example [http://localhost:3000, https://your-domain.com]
+  # Built-in default when unset in both env and this file: empty (no custom CORS middleware)
+  corsOrigins:
+    - http://localhost:3000
+  # Whether to trust reverse-proxy forwarded headers (x-forwarded-for/proto).
+  # Allowed:
+  # - true: trust proxy headers (recommended for production behind nginx/ingress)
+  # - false: do not trust proxy headers
+  # Built-in default when unset in both env and this file: true in production, false otherwise
+  trustProxy: false
+
+runtime:
+  # Switch all provider data fetching to mock mode.
+  # Allowed:
+  # - true: all provider usage comes from mock data
+  # - false: all provider usage comes from live adapters
+  # Built-in default when unset in both env and this file: false
+  mockEnabled: false
+  # Select the process runtime model.
+  # Allowed:
+  # - node: enable in-process scheduler (node-cron)
+  # - serverless: disable in-process scheduler; refresh is request-triggered only
+  # Built-in default when unset in both env and this file: node
+  mode: node
+
+database:
+  # Enable or disable database-backed mode.
+  # Allowed:
+  # - true: provider config comes from database; history is persisted
+  # - false: provider config comes from this file or provider env vars; history is disabled
+  # Built-in default when unset in both env and this file: true
+  enabled: true
+  # Select database engine.
+  # Allowed:
+  # - sqlite: use a local SQLite database file
+  # - postgres: use a PostgreSQL database via DSN connection string
+  # - mysql: use a MySQL database via DSN connection string
+  # Built-in default when unset in both env and this file: sqlite
+  engine: sqlite
+  # Main database connection string.
+  # Allowed:
+  # - sqlite file path, for example ./data/aimeter.db: store data in a local SQLite file
+  # - postgres DSN, for example postgres://user:pass@127.0.0.1:5432/aimeter
+  # - mysql DSN, for example mysql://user:pass@127.0.0.1:3306/aimeter
+  # Built-in default when unset in both env and this file: ./data/aimeter.db
+  connection: ./data/aimeter.db
+  # Examples by engine:
+  # - sqlite: ./data/aimeter.db
+  # - mysql: mysql://root:password@127.0.0.1:3306/aimeter
+  # - postgres: postgresql://postgres:password@127.0.0.1:5432/aimeter
+  # Separate database connection used when mock mode is enabled.
+  # Allowed:
+  # - sqlite file path, for example ./data/aimeter-mock.db: store mock-mode data in a separate SQLite file
+  # Default behavior when unset in both env and this file:
+  # - the app derives a mock DB path from database.connection
+  mockConnection: ./data/aimeter-mock.db
+  # Encrypt provider credentials stored in the main database.
+  # Allowed:
+  # - any non-empty string: used as the encryption secret
+  # Built-in default when unset in both env and this file: legacy fallback key (not recommended)
+  encryptionKey: replace-with-strong-random-encryption-key
+  # Encrypt provider credentials stored in mock database state.
+  # Allowed:
+  # - any non-empty string: used as the mock encryption secret
+  # Built-in default when unset in both env and this file: legacy mock fallback key (not recommended)
+  mockEncryptionKey: replace-with-strong-random-mock-encryption-key
+
+auth:
+  # Sign authentication session cookies.
+  # Allowed:
+  # - any non-empty string: used to sign session cookies
+  # Default when unset in both env and this file: unset
+  sessionSecret: replace-with-strong-random-session-secret
+  # Session cookie lifetime in seconds.
+  # Allowed:
+  # - any positive integer: session lifetime in seconds
+  # Built-in default when unset in both env and this file: 43200 (12 hours)
+  sessionTtlSeconds: 43200
+  # Mark auth cookies as Secure.
+  # Allowed:
+  # - true: send auth cookies only over HTTPS
+  # - false: allow auth cookies over HTTP for local development
+  # Built-in default when unset in both env and this file:
+  # - true in production
+  # - false in non-production
+  secureCookie: true
+  # Read-only normal-entry password source when database mode is disabled.
+  # Allowed:
+  # - PBKDF2 hash string in format pbkdf2_sha256$<iterations>$<salt>$<digest>: enable normal-entry password verification from env/config
+  # Default when unset in both env and this file: unset
+  # normalPasswordHash: pbkdf2_sha256$210000$replace-salt$replace-digest
+  # Read-only admin-entry password source when database mode is disabled.
+  # Allowed:
+  # - PBKDF2 hash string in format pbkdf2_sha256$<iterations>$<salt>$<digest>: enable admin-entry password verification from env/config
+  # Default when unset in both env and this file: unset
+  # adminPasswordHash: pbkdf2_sha256$210000$replace-salt$replace-digest
+  # Admin route secret used for the management entry URL.
+  # Allowed:
+  # - exactly 64 random characters: admin UI is served from http://host:3000/<secret>
+  # Default when unset in both env and this file: unset
+  # adminRouteSecret: replace-with-64-char-random-secret
+  # Shared secret for external cron/webhook refresh in serverless deployments.
+  # Allowed:
+  # - any non-empty string: caller must send this value in X-AIMETER-CRON-SECRET
+  # Default when unset in both env and this file: unset (cron endpoint disabled)
+  # cronSecret: replace-with-strong-random-cron-secret
+  # One-time secret required for /api/auth/bootstrap while initial setup is not complete.
+  # Allowed:
+  # - any non-empty strong random string
+  # Default when unset in both env and this file: unset
+  # bootstrapToken: replace-with-strong-bootstrap-token
+  rateLimit:
+    # Rate-limit evaluation window length.
+    # Allowed:
+    # - any positive integer: window length in milliseconds
+    # Built-in default when unset in both env and this file: 60000
+    windowMs: 60000
+    # Maximum allowed failed attempts within the rate-limit window.
+    # Allowed:
+    # - any positive integer: maximum failed attempts before blocking
+    # Built-in default when unset in both env and this file: 5
+    maxAttempts: 5
+    # Temporary block duration after exceeding rate limit.
+    # Allowed:
+    # - any positive integer: block duration in milliseconds
+    # Built-in default when unset in both env and this file: 300000
+    blockMs: 300000
+
+# Provider list used only when database.enabled = false.
+# When database.enabled = true, runtime provider data is loaded from the database.
+# In that case, this list is ignored for runtime provider loading and is not merged with database providers.
+# Allowed:
+# - YAML object list; each item defines one provider instance
+# Default when unset: empty provider list
+# If AIMETER_PROVIDER_IDS is set in env, it replaces this list entirely.
+# Provider item template:
+# - id: stable provider instance ID
+#   Allowed:
+#   - lowercase snake_case string; should be unique within this list
+# - type: provider type
+#   Allowed:
+#   - cursor | openrouter | copilot | minimax | zai | kimi | ollama
+# - name: display name shown in the UI
+#   Allowed:
+#   - any string
+# - authType: credential type
+#   Allowed:
+#   - cookie | api_key | oauth | jwt
+# - credential: raw credential payload
+#   Allowed:
+#   - any non-empty string
+# - refreshInterval: auto-refresh interval in minutes
+#   Allowed:
+#   - 0: disable scheduled refresh
+#   - any integer greater than 0: refresh interval in minutes
+# - region: provider-specific region selector (optional)
+#   Allowed:
+#   - any provider-defined string, for example minimax_cn
+# - claudeAuthMode: Claude-specific auth mode (optional)
+#   Allowed:
+#   - cookie | oauth
+# - opencodeWorkspaceId: OpenCode-specific workspace ID (optional)
+#   Allowed:
+#   - any string
+providers:
+  - id: minimax_domestic
+    type: minimax
+    name: 国内
+    authType: api_key
+    credential: replace-with-minimax-api-key
+    refreshInterval: 5
+    region: minimax_cn
+
+  - id: openrouter_test
+    type: openrouter
+    name: 测试号
+    authType: api_key
+    credential: replace-with-openrouter-api-key
+    refreshInterval: 5
+
+  - id: kimi_test
+    type: kimi
+    name: 测试
+    authType: api_key
+    credential: replace-with-kimi-api-key
+    refreshInterval: 5
+
+  - id: codex_test
+    type: codex
+    name: 测试
+    authType: api_key
+    credential: replace-with-codex-api-key-or-token
+    refreshInterval: 5
+
+  - id: copilot_test
+    type: copilot
+    name: 测试
+    authType: oauth
+    credential: replace-with-copilot-access-token
+    refreshInterval: 5
+
+  - id: ollama_test
+    type: ollama
+    name: 测试
+    authType: cookie
+    credential: replace-with-ollama-base-url-or-cookie
+    refreshInterval: 5
+
+  - id: cursor_self
+    type: cursor
+    name: 自己
+    authType: cookie
+    credential: replace-with-cursor-cookie
+    refreshInterval: 5

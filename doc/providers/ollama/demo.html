@@ -1,0 +1,452 @@
+<!doctype html>
+<html class="h-full overflow-y-scroll">
+
+<head>
+    <title>Usage · Settings</title>
+    <meta charset="utf-8" />
+    <meta name="description" content="Get up and running with large language models." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta property="og:title" content="Usage · Settings" />
+    <meta property="og:description" content="Get up and running with large language models." />
+    <meta property="og:url" content="https://ollama.com/settings" />
+    <meta property="og:image" content="https://ollama.com/public/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="628" />
+    <meta property="og:type" content="website" />
+    <meta name="robots" content="index, follow" />
+    <meta property="twitter:card" content="summary" />
+    <meta property="twitter:title" content="Settings" />
+    <meta property="twitter:description" content="Get up and running with large language models." />
+    <meta property="twitter:site" content="ollama" />
+    <meta property="twitter:image:src" content="https://ollama.com/public/og-twitter.png" />
+    <meta property="twitter:image:width" content="1200" />
+    <meta property="twitter:image:height" content="628" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="icon" type="image/png" sizes="16x16" href="/public/icon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/public/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/public/icon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/public/icon-64x64.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/public/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/public/android-chrome-icon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/public/android-chrome-icon-512x512.png" />
+    <link href="/public/tailwind.css?v=88b3b6e48c1ce7a148675d1fa4c6b409" rel="stylesheet" />
+    <link href="/public/vendor/prism/prism.css?v=88b3b6e48c1ce7a148675d1fa4c6b409" rel="stylesheet" />
+    <script
+        type="application/ld+json"> { "@context": "https://schema.org", "@type": "WebSite", "name": "Ollama", "url": "https://ollama.com" } </script>
+    <script type="text/javascript">
+        function copyToClipboard(element) {
+            let commandElement = null; const preElement = element.closest('pre'); const languageNoneElement = element.closest('.language-none'); if (preElement) { commandElement = preElement.querySelector('code'); } else if (languageNoneElement) { commandElement = languageNoneElement.querySelector('.command'); } else { const parent = element.parentElement; if (parent) { commandElement = parent.querySelector('.command'); } } if (!commandElement) { console.error('No code or command element found'); return; } const code = commandElement.textContent ? commandElement.textContent.trim() : commandElement.value; navigator.clipboard.writeText(code).then(() => {
+                const copyIcon = element.querySelector('.copy-icon');
+                const checkIcon = element.querySelector('.check-icon');
+                copyIcon.classList.add('hidden');
+                checkIcon.classList.remove('hidden');
+                setTimeout(() => {
+                    copyIcon.classList.remove('hidden');
+                    checkIcon.classList.add('hidden')
+                }, 2000)
+            })
+        }
+    </script>
+    <script>
+        function getIcon(url) {
+            url = url.toLowerCase();
+            if (url.includes('x.com') || url.includes('twitter.com')) return 'x';
+            if (url.includes('github.com')) return 'github';
+            if (url.includes('linkedin.com')) return 'linkedin';
+            if (url.includes('youtube.com')) return 'youtube';
+            if (url.includes('hf.co') || url.includes('huggingface.co') || url.includes('huggingface.com')) return 'hugging-face';
+            return 'default';
+        }
+        function setInputIcon(input) {
+            const icon = getIcon(input.value);
+            const img = input.previousElementSibling.querySelector('img');
+            img.src = `/public/social/${icon}.svg`;
+            img.alt = `${icon} icon`;
+        }
+        function setDisplayIcon(imgElement, url) {
+            const icon = getIcon(url);
+            imgElement.src = `/public/social/${icon}.svg`;
+            imgElement.alt = `${icon} icon`;
+        }
+    </script>
+    <script src="/public/vendor/htmx/bundle.js"></script>
+</head>
+
+<body class=" antialiased min-h-screen w-full m-0 flex flex-col "
+    hx-on:keydown=" if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') { // Ignore key events in input fields. return; } if ((event.metaKey && event.key === 'k') || event.key === '/') { event.preventDefault(); const sp = htmx.find('#search') || htmx.find('#navbar-input'); sp.focus(); } ">
+    <header class="sticky top-0 z-40 bg-white underline-offset-4 lg:static">
+        <nav class="flex w-full items-center justify-between px-6 py-[9px]"> <a href="/" class="z-50"> <img
+                    src="/public/ollama.png" class="w-8" alt="Ollama" /> </a>
+            <div class="hidden lg:flex xl:flex-1 items-center space-x-6 ml-6 mr-6 xl:mr-0 text-lg"> <a
+                    class="hover:underline focus:underline focus:outline-none focus:ring-0" href="/search">Models</a> <a
+                    class="hover:underline focus:underline focus:outline-none focus:ring-0" href="/docs">Docs</a> <a
+                    class="hover:underline focus:underline focus:outline-none focus:ring-0" href="/pricing">Pricing</a>
+            </div>
+            <div class="flex-grow justify-center items-center hidden lg:flex">
+                <div class="relative w-full xl:max-w-[28rem]">
+                    <form action="/search" autocomplete="off">
+                        <div class="relative flex w-full appearance-none bg-black/5 border border-neutral-100 items-center rounded-full"
+                            hx-on:focusout=" if (!this.contains(event.relatedTarget)) { const searchPreview = document.querySelector('#searchpreview'); if (searchPreview) { htmx.addClass('#searchpreview', 'hidden'); } } ">
+                            <span id="searchIcon" class="pl-2 text-2xl text-neutral-500"> <svg
+                                    class="mt-0.25 ml-1.5 h-5 w-5 fill-current" viewBox="0 0 20 20"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="m8.5 3c3.0375661 0 5.5 2.46243388 5.5 5.5 0 1.24832096-.4158777 2.3995085-1.1166416 3.3225711l4.1469717 4.1470988c.2928932.2928932.2928932.767767 0 1.0606602-.2662666.2662665-.6829303.2904726-.9765418.0726181l-.0841184-.0726181-4.1470988-4.1469717c-.9230626.7007639-2.07425014 1.1166416-3.3225711 1.1166416-3.03756612 0-5.5-2.4624339-5.5-5.5 0-3.03756612 2.46243388-5.5 5.5-5.5zm0 1.5c-2.209139 0-4 1.790861-4 4s1.790861 4 4 4 4-1.790861 4-4-1.790861-4-4-4z" />
+                                </svg> </span> <input id="search" hx-get="/search"
+                                hx-trigger="keyup changed delay:100ms, focus" hx-target="#searchpreview"
+                                hx-swap="innerHTML" name="q"
+                                class="resize-none rounded-full border-0 py-2.5 bg-transparent text-sm w-full placeholder:text-neutral-500 focus:outline-none focus:ring-0"
+                                placeholder="Search models" autocomplete="off"
+                                hx-on:keydown=" if (event.key === 'Enter') { event.preventDefault(); window.location.href = '/search?q=' + encodeURIComponent(this.value); return; } if (event.key === 'Escape') { event.preventDefault(); this.value = ''; this.blur(); htmx.addClass('#searchpreview', 'hidden'); return; } if (event.key === 'Tab') { htmx.addClass('#searchpreview', 'hidden'); return; } if (event.key === 'ArrowDown') { let first = document.querySelector('#search-preview-list a:first-of-type'); first?.focus(); event.preventDefault(); } if (event.key === 'ArrowUp') { let last = document.querySelector('#view-all-link'); last?.focus(); event.preventDefault(); } htmx.removeClass('#searchpreview', 'hidden'); "
+                                hx-on:focus=" htmx.removeClass('#searchpreview', 'hidden') " />
+                    </form>
+                    <div id="searchpreview" class="hidden absolute left-0 right-0 top-12 z-50"
+                        style="width: calc(100% + 2px); margin-left: -1px;"></div>
+                </div>
+            </div>
+            </div>
+            <div class="hidden lg:flex xl:flex-1 items-center space-x-2 justify-end ml-6 xl:ml-0">
+                <div class="relative"
+                    hx-on:focusout=" if (!this.contains(event.relatedTarget)) { htmx.addClass('#user-nav', 'hidden'); } ">
+                    <div class="group relative">
+                        <div class="flex items-center"> <button type="menu"
+                                hx-on:keydown="if (event.key === 'Escape') { htmx.addClass('#user-nav', 'hidden'); }"
+                                hx-on:click="htmx.toggleClass('#user-nav', 'hidden')"
+                                class="relative cursor-pointer group flex items-center rounded-full"> <img
+                                    id="headerProfileImg" src="/public/assets/00000000-0000-2000-8000-000000000000.png"
+                                    alt="profile"
+                                    class="h-10 w-10 rounded-full border-[1.5px] border-neutral-100 object-cover hover:border-black" />
+                                <div
+                                    class="absolute bottom-0 right-0 z-10 h-4 w-4 bg-white rounded-full border-2 border-white flex items-center justify-center translate-x-1/4 translate-y-1/4 text-black">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                        class="w-8 h-8">
+                                        <path fill-rule="evenodd"
+                                            d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                            </button> </div>
+                        <nav id="user-nav"
+                            class="absolute hidden mt-2 right-0 w-52 rounded-2xl border border-neutral-200 bg-white shadow-xl shadow-black/5">
+                            <div class="py-2">
+                                <div class="flex flex-col px-4">
+                                    <div class="flex justify-between items-center gap-x-2 mb-1"> <a href="/settings"
+                                            class="font-medium text-xl hover:underline break-words focus:outline-none focus:ring-0 focus:underline truncate">demo</a>
+                                    </div>
+                                    <div class="text-sm text-neutral-500 break-words">demo@gmail.com</div>
+                                </div>
+                                <div class="border-t border-neutral-200 my-2"></div>
+                                <div class="space-y-2 px-4"> <a href="/demo"
+                                        class="text-lg flex items-center whitespace-nowrap hover:underline focus:outline-none focus:ring-0 focus:underline">My
+                                        models</a> <a href="/settings"
+                                        class="text-lg flex items-center whitespace-nowrap hover:underline focus:outline-none focus:ring-0 focus:underline">Settings</a>
+                                    <a href="/download"
+                                        class="text-lg flex items-center whitespace-nowrap hover:underline focus:outline-none focus:ring-0 focus:underline">Download</a>
+                                    <form action="/signout" method="post" hx-post="/signout"> <input
+                                            class="cursor-pointer hover:underline w-full text-left text-lg focus:outline-none focus:ring-0 focus:underline"
+                                            type="submit" value="Sign out" /> </form>
+                                </div>
+                            </div>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            <div class="lg:hidden flex items-center"> <input type="checkbox" id="menu" class="peer hidden" /> <label
+                    for="menu" class="z-50 cursor-pointer peer-checked:hidden block"> <svg class="h-8 w-8" fill="none"
+                        viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg> </label> <label for="menu"
+                    class="z-50 cursor-pointer hidden peer-checked:block fixed top-4 right-6"> <svg class="h-8 w-8"
+                        fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg> </label>
+                <div class="fixed inset-0 bg-white z-40 hidden peer-checked:block overflow-y-auto">
+                    <div class="flex flex-col space-y-5 pt-[5.5rem] text-3xl">
+                        <div class="flex items-center space-x-4 px-6"> <img id="headerProfileImg"
+                                src="/public/assets/00000000-0000-2000-8000-000000000000.png" alt="mobile profile"
+                                class="h-12 w-12 rounded-full object-cover" />
+                            <div class="flex flex-col">
+                                <div class="hover:underline text-2xl font-medium"> <a href="/settings">demo</a> </div>
+                                <div class="text-base text-neutral-500">demo@gmail.com</div>
+                            </div>
+                        </div>
+                        <div class="border-t border-neutral-200"></div> <a class="px-6" href="/demo">My models</a> <a
+                            class="px-6" href="/settings">Settings</a> <a class="px-6" href="/search">Models</a> <a
+                            class="px-6" href="/download">Download</a> <a class="px-6" href="/docs">Docs</a> <a
+                            class="px-6" href="/pricing">Pricing</a> <a href="/signout" hx-post="/signout"
+                            class="block px-6">Sign out</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="flex flex-1 justify-center">
+        <div class="mx-auto max-w-[50rem] w-full px-6 py-10 md:py-12 lg:px-8">
+            <div class="flex items-center lg:px-1 pb-5 md:pb-12">
+                <div class="flex flex-col truncate underline-offset-4 w-full">
+                    <div class="space-x-2 items-center flex"> <a href="/demo"
+                            class="font-medium text-lg hover:underline focus:outline-none focus:ring-0 focus:underline">
+                            demo </a> </div>
+                    <h2 id="header-email" class="text-neutral-800 text-sm truncate"> demo@gmail.com </h2>
+                </div>
+            </div>
+            <section class="flex flex-col lg:flex-row lg:space-x-2">
+                <aside class="flex overflow-x-auto lg:px-1 lg:block lg:w-56 lg:flex-none">
+                    <nav class="flex-none py-5 lg:py-1">
+                        <ul role="list" class="flex gap-x-3 gap-y-1 whitespace-nowrap underline-offset-4 lg:flex-col">
+                            <li> <a href="/settings"
+                                    class="flex gap-x-3 rounded-md py-2 lg:pt-0 text-base leading-6 hover:underline focus:outline-none focus:ring-0 focus:underline">
+                                    Usage </a> </li>
+                            <li> <a href="/settings/keys"
+                                    class="flex gap-x-3 rounded-md py-2 text-base leading-6 hover:underline focus:outline-none focus:ring-0 focus:underline">
+                                    Keys </a> </li>
+                            <li> <a href="/settings/billing"
+                                    class="flex gap-x-3 rounded-md py-2 text-base leading-6 hover:underline focus:outline-none focus:ring-0 focus:underline">
+                                    Billing </a> </li>
+                            <li> <a href="/settings/profile"
+                                    class="flex gap-x-3 rounded-md py-2 text-base leading-6 hover:underline focus:outline-none focus:ring-0 focus:underline">
+                                    Profile </a> </li>
+                        </ul>
+                    </nav>
+                </aside>
+                <div class="space-y-5 w-full">
+                    <div class="flex flex-col space-y-6">
+                        <h2 class="text-xl font-medium mb-4">Quickstart</h2>
+                        <div class="md:hidden bg-neutral-100 rounded-lg px-4 py-3 mb-4">
+                            <p class="text-sm text-neutral-600 mb-3"> Visit on a desktop computer to download Ollama and
+                                get started. </p> <a href="/search" class="text-sm font-medium hover:underline"> Browse
+                                models → </a>
+                        </div>
+                        <div class="hidden md:block space-y-2">
+                            <div class="space-y-1">
+                                <h3>Download</h3>
+                                <p class="text-xs text-neutral-500"> Download Ollama to run models on your local machine
+                                    or in the cloud. </p>
+                            </div>
+                            <div>
+                                <div class="flex items-center bg-white rounded-lg border border-neutral-200 px-4 py-3">
+                                    <code
+                                        class="command flex-1 font-mono text-sm">curl -fsSL https://ollama.com/install.sh | sh</code>
+                                    <button type="button" onclick="copyToClipboard(this)"
+                                        class="text-neutral-400 hover:text-neutral-600 ml-3" aria-label="Copy command">
+                                        <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M16.5 8.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v8.25A2.25 2.25 0 006 16.5h2.25m8.25-8.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-7.5A2.25 2.25 0 018.25 18v-1.5m8.25-8.25h-6a2.25 2.25 0 00-2.25 2.25v6">
+                                            </path>
+                                        </svg> <svg class="w-4 h-4 check-icon hidden" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M4.5 12.75l6 6 9-13.5"></path>
+                                        </svg> </button>
+                                </div>
+                                <div class="flex text-xs space-x-1 text-neutral-500 mt-2 underline-offset-4">
+                                    <span>Or</span> <a class="underline hover:text-neutral-700"
+                                        href="/download/Ollama.dmg"> download manually </a>
+                                </div>
+                            </div>
+                        </div>
+                        <hr class="hidden md:block my-4" />
+                        <div class="space-y-3">
+                            <div class="space-y-1">
+                                <h3>Get started</h3>
+                                <p class="text-xs text-neutral-500"> Start coding, chatting, and automating by launching
+                                    the Ollama terminal UI. </p>
+                            </div>
+                            <div>
+                                <div class="flex items-center bg-white rounded-lg border border-neutral-200 px-4 py-3">
+                                    <code class="command flex-1 font-mono text-sm">ollama</code> <button type="button"
+                                        onclick="copyToClipboard(this)"
+                                        class="text-neutral-400 hover:text-neutral-600 ml-3" aria-label="Copy command">
+                                        <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M16.5 8.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v8.25A2.25 2.25 0 006 16.5h2.25m8.25-8.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-7.5A2.25 2.25 0 018.25 18v-1.5m8.25-8.25h-6a2.25 2.25 0 00-2.25 2.25v6">
+                                            </path>
+                                        </svg> <svg class="w-4 h-4 check-icon hidden" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M4.5 12.75l6 6 9-13.5"></path>
+                                        </svg> </button>
+                                </div>
+                                <div class="mt-3 text-xs text-neutral-500 space-y-2">
+                                    <p> Navigate with <kbd
+                                            class="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200 rounded text-[11px] font-mono">↑</kbd>/<kbd
+                                            class="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200 rounded text-[11px] font-mono">↓</kbd>,
+                                        press <kbd
+                                            class="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200 rounded text-[11px] font-mono">enter</kbd>
+                                        to launch, <kbd
+                                            class="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200 rounded text-[11px] font-mono">→</kbd>
+                                        to change model, and <kbd
+                                            class="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200 rounded text-[11px] font-mono">esc</kbd>
+                                        to quit. </p>
+                                    <p> The menu provides quick access to run a model, launch tools, and more. </p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 py-3">
+                                <div class="flex-1 border-t border-neutral-200"></div> <span
+                                    class="text-xs text-neutral-400">or launch directly</span>
+                                <div class="flex-1 border-t border-neutral-200"></div>
+                            </div>
+                            <div class="flex gap-2" id="model-tabs" role="tablist"> <button type="button"
+                                    data-tab="code" role="tab" aria-selected="true" aria-controls="content-code"
+                                    class="tab-btn flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors bg-neutral-200 text-neutral-800 border-neutral-200">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                                    </svg> Coding </button> <button type="button" data-tab="assistant" role="tab"
+                                    aria-selected="false" aria-controls="content-assistant"
+                                    class="tab-btn flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                                        </path>
+                                    </svg> AI Assistant </button> <button type="button" data-tab="chat" role="tab"
+                                    aria-selected="false" aria-controls="content-chat"
+                                    class="tab-btn flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
+                                        </path>
+                                    </svg> Chat </button> </div>
+                            <div id="tab-content">
+                                <div id="content-code" class="tab-content">
+                                    <div
+                                        class="flex items-center bg-white rounded-lg border border-neutral-200 px-4 py-3 mb-2">
+                                        <code class="command flex-1 font-mono text-xs">ollama launch claude</code>
+                                        <button type="button" onclick="copyToClipboard(this)"
+                                            class="hidden md:block text-neutral-400 hover:text-neutral-600"
+                                            aria-label="Copy command"> <svg class="w-4 h-4 copy-icon" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                    d="M16.5 8.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v8.25A2.25 2.25 0 006 16.5h2.25m8.25-8.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-7.5A2.25 2.25 0 018.25 18v-1.5m8.25-8.25h-6a2.25 2.25 0 00-2.25 2.25v6">
+                                                </path>
+                                            </svg> <svg class="w-4 h-4 check-icon hidden" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                    d="M4.5 12.75l6 6 9-13.5"></path>
+                                            </svg> </button>
+                                    </div> <a href="https://docs.ollama.com/integrations" target="_blank"
+                                        class="text-xs hover:underline text-neutral-500">View all coding
+                                        integrations →</a>
+                                </div>
+                                <div id="content-chat" class="tab-content hidden">
+                                    <div
+                                        class="flex items-center bg-white rounded-lg border border-neutral-200 px-4 py-3 mb-2">
+                                        <code class="command flex-1 font-mono text-xs">ollama run gemma3</code> <button
+                                            type="button" onclick="copyToClipboard(this)"
+                                            class="hidden md:block text-neutral-400 hover:text-neutral-600"
+                                            aria-label="Copy command"> <svg class="w-4 h-4 copy-icon" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                    d="M16.5 8.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v8.25A2.25 2.25 0 006 16.5h2.25m8.25-8.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-7.5A2.25 2.25 0 018.25 18v-1.5m8.25-8.25h-6a2.25 2.25 0 00-2.25 2.25v6">
+                                                </path>
+                                            </svg> <svg class="w-4 h-4 check-icon hidden" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                    d="M4.5 12.75l6 6 9-13.5"></path>
+                                            </svg> </button>
+                                    </div> <a href="/search" class="text-xs hover:underline text-neutral-500">Browse all
+                                        models →</a>
+                                </div>
+                                <div id="content-assistant" class="tab-content hidden">
+                                    <div
+                                        class="flex items-center bg-white rounded-lg border border-neutral-200 px-4 py-3 mb-2">
+                                        <code class="command flex-1 font-mono text-xs">ollama launch openclaw</code>
+                                        <button type="button" onclick="copyToClipboard(this)"
+                                            class="hidden md:block text-neutral-400 hover:text-neutral-600"
+                                            aria-label="Copy command"> <svg class="w-4 h-4 copy-icon" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                    d="M16.5 8.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v8.25A2.25 2.25 0 006 16.5h2.25m8.25-8.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-7.5A2.25 2.25 0 018.25 18v-1.5m8.25-8.25h-6a2.25 2.25 0 00-2.25 2.25v6">
+                                                </path>
+                                            </svg> <svg class="w-4 h-4 check-icon hidden" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                    d="M4.5 12.75l6 6 9-13.5"></path>
+                                            </svg> </button>
+                                    </div> <a href="https://docs.ollama.com/integrations/openclaw" target="_blank"
+                                        class="text-xs hover:underline text-neutral-500">Learn more about OpenClaw →</a>
+                                </div>
+                            </div>
+                        </div>
+                        <hr class="my-4" />
+                        <div class="flex justify-between space-x-2">
+                            <div class="space-y-1">
+                                <h3>Cloud API access</h3>
+                                <p class="text-xs text-neutral-500 max-w-xs"> Create an API key to easily access
+                                    powerful models via the Ollama API, no setup required. Build apps or integrate with
+                                    your favorite tools. </p>
+                            </div> <a
+                                class="flex-none rounded-full bg-white px-4 py-2 text-sm text-neutral-800 border border-neutral-300 hover:bg-neutral-100 self-center"
+                                href="/settings/keys"> Create API key </a>
+                        </div>
+                        <hr class="my-4" />
+                        <script> document.querySelectorAll(".tab-btn").forEach((btn) => btn.addEventListener("click", function () { document.querySelectorAll(".tab-btn").forEach((b) => { b.classList.remove("bg-neutral-200", "text-neutral-800", "border-neutral-200",); b.classList.add("bg-white", "text-neutral-700", "border-neutral-300", "hover:bg-neutral-50",); }); this.classList.remove("bg-white", "text-neutral-700", "border-neutral-300", "hover:bg-neutral-50",); this.classList.add("bg-neutral-200", "text-neutral-800", "border-neutral-200",); document.querySelectorAll(".tab-content").forEach((c) => c.classList.add("hidden")); document.getElementById("content-" + this.dataset.tab).classList.remove("hidden"); }),); </script>
+                        <h2 class="text-xl font-medium mb-4 flex items-center space-x-2"> <span>Cloud Usage</span> <span
+                                class="text-xs font-normal px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 capitalize">free</span>
+                        </h2>
+                        <p class="text-xs text-neutral-500 mb-4"> Cloud models and capabilities such as web search
+                            contribute to session and weekly limits. <a href="/cloud"
+                                class="text-blue-600 hover:underline">Upgrade</a> for higher limits. </p>
+                        <div>
+                            <div class="flex justify-between mb-2"> <span class="text-sm">Session usage</span> <span
+                                    class="text-sm">0% used</span> </div>
+                            <div class="w-full border border-1 border-neutral-200 rounded-full h-2 overflow-hidden">
+                                <div class="h-full rounded-full bg-neutral-300" style="width: 0%"></div>
+                            </div>
+                            <div class="text-xs text-neutral-500 mt-1 local-time" data-time="2026-03-08T10:00:00Z">
+                                Resets in 3 hours </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2"> <span class="text-sm">Weekly usage</span> <span
+                                    class="text-sm">0% used</span> </div>
+                            <div class="w-full border border-1 border-neutral-200 rounded-full h-2 overflow-hidden">
+                                <div class="h-full rounded-full bg-neutral-300" style="width: 0%"></div>
+                            </div>
+                            <div class="text-xs text-neutral-500 mt-1 local-time" data-time="2026-03-09T00:00:00Z">
+                                Resets in 17 hours </div>
+                        </div>
+                        <script> document.querySelectorAll(".local-time").forEach(function (el) { var iso = el.dataset.time; if (iso) { var d = new Date(iso); el.title = d.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", }); } }); </script>
+                    </div>
+            </section>
+        </div>
+    </div>
+    <footer class="mt-auto">
+        <div class="underline-offset-4 hidden md:block">
+            <div class="flex items-center justify-between px-6 py-3.5">
+                <div class="text-xs text-neutral-500">© 2026 Ollama</div>
+                <div class="flex space-x-6 text-xs text-neutral-500"> <a href="/download"
+                        class="hover:underline">Download</a> <a href="/blog" class="hover:underline">Blog</a> <a
+                        href="https://docs.ollama.com" class="hover:underline">Docs</a> <a
+                        href="https://github.com/ollama/ollama" class="hover:underline">GitHub</a> <a
+                        href="https://discord.com/invite/ollama" class="hover:underline">Discord</a> <a
+                        href="https://twitter.com/ollama" class="hover:underline">X (Twitter)</a> <a
+                        href="mailto:hello@ollama.com" class="hover:underline">Contact</a> </div>
+            </div>
+        </div>
+        <div class="py-4 md:hidden">
+            <div class="flex flex-col items-center justify-center">
+                <ul class="flex flex-wrap items-center justify-center text-sm text-neutral-500">
+                    <li class="mx-2 my-1"> <a href="/blog" class="hover:underline">Blog</a> </li>
+                    <li class="mx-2 my-1"> <a href="/download" class="hover:underline">Download</a> </li>
+                    <li class="mx-2 my-1"> <a href="https://docs.ollama.com" class="hover:underline">Docs</a> </li>
+                </ul>
+                <ul class="flex flex-wrap items-center justify-center text-sm text-neutral-500">
+                    <li class="mx-2 my-1"> <a href="https://github.com/ollama/ollama" class="hover:underline">GitHub</a>
+                    </li>
+                    <li class="mx-2 my-1"> <a href="https://discord.com/invite/ollama"
+                            class="hover:underline">Discord</a> </li>
+                    <li class="mx-2 my-1"> <a href="https://twitter.com/ollama" class="hover:underline">X (Twitter)</a>
+                    </li>
+                    <li class="mx-2 my-1"> <a href="https://lu.ma/ollama" class="hover:underline">Meetups</a> </li>
+                </ul>
+                <div class="mt-2 flex items-center justify-center text-sm text-neutral-500"> © 2026 Ollama Inc. </div>
+            </div>
+        </div>
+    </footer> <span class="hidden" id="end_of_template"></span>
+</body>
+
+</html>

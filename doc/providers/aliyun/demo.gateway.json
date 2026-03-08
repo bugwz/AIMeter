@@ -1,0 +1,51 @@
+{
+    "code": "200",
+    "data": {
+        "DataV2": {
+            "ret": [
+                "SUCCESS::接口调用成功"
+            ],
+            "data": {
+                "data": {
+                    "codingPlanInstanceInfos": [
+                        {
+                            "codingPlanQuotaInfo": {
+                                "perBillMonthUsedQuota": 0,
+                                "per5HourUsedQuota": 0,
+                                "perBillMonthTotalQuota": 18000,
+                                "per5HourTotalQuota": 1200,
+                                "perWeekTotalQuota": 9000,
+                                "perBillMonthQuotaNextRefreshTime": 1773158400000,
+                                "per5HourQuotaNextRefreshTime": 1772955528000,
+                                "perWeekUsedQuota": 0,
+                                "perWeekQuotaNextRefreshTime": 1772985600000
+                            },
+                            "instanceId": "sfm_codingplan_public_cn-pd24ner6d0v",
+                            "instanceEndTime": 1773158400000,
+                            "instanceName": "Coding Plan Lite",
+                            "instanceType": "lite",
+                            "remainingDays": 2,
+                            "chargeType": "MONTH",
+                            "chargeAmount": 40,
+                            "autoRenewFlag": false,
+                            "instanceStartTime": 1770691489000,
+                            "status": "VALID"
+                        }
+                    ],
+                    "userId": "11111111111101938"
+                },
+                "success": true,
+                "errorMsgUnmodified": false,
+                "failed": false
+            }
+        },
+        "success": true,
+        "httpStatus": 200,
+        "errorCode": "",
+        "api": "zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2",
+        "errorMsg": ""
+    },
+    "httpStatusCode": "200",
+    "requestId": "111abcde-1234-abcd-abcd-12349c781234",
+    "successResponse": true
+}
