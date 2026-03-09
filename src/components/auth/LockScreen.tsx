@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiService } from '../../services/ApiService';
 import { getRuntimeEntry } from '../../runtimeContext';
+import { AppTheme, applyTheme, getStoredTheme, persistTheme } from '../../theme';
 
 interface LockScreenProps {
   onUnlock: () => void;
@@ -17,12 +18,6 @@ function validatePassword(value: string): string {
   if (value.length < MIN_PASSWORD_LENGTH) return `At least ${MIN_PASSWORD_LENGTH} characters required (${value.length}/${MIN_PASSWORD_LENGTH})`;
   if (!/[a-zA-Z]/.test(value)) return 'Must contain at least one letter';
   if (!/[0-9]/.test(value)) return 'Must contain at least one digit';
-  return '';
-}
-
-function validateConfirm(value: string, original: string): string {
-  if (!value) return '';
-  if (value !== original) return 'Passwords do not match';
   return '';
 }
 
@@ -48,20 +43,17 @@ function generateAdminRouteSecret(): string {
 export function LockScreen({ onUnlock }: LockScreenProps) {
   const role = getRuntimeEntry().role;
   const sessionKey = role === 'admin' ? 'aimeter_admin_authenticated' : 'aimeter_normal_authenticated';
+  const [theme, setTheme] = useState<AppTheme>(getStoredTheme);
   const [mode, setMode] = useState<LockMode>('check');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
-  const [confirmAdminPassword, setConfirmAdminPassword] = useState('');
   const [adminRouteSecret, setAdminRouteSecret] = useState(generateAdminRouteSecret);
   const [authMutable, setAuthMutable] = useState(true);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [passwordVisible, setPasswordVisible] = useState({
     password: false,
-    confirmPassword: false,
     adminPassword: false,
-    confirmAdminPassword: false,
   });
 
   const renderPasswordInput = ({
@@ -116,6 +108,11 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
   );
 
   useEffect(() => {
+    applyTheme(theme);
+    persistTheme(theme);
+  }, [theme]);
+
+  useEffect(() => {
     checkAuthStatus();
   }, []);
 
@@ -153,12 +150,6 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
         if (password.length < MIN_PASSWORD_LENGTH || adminPassword.length < MIN_PASSWORD_LENGTH) {
           throw new Error(`Normal and admin passwords must both be at least ${MIN_PASSWORD_LENGTH} characters`);
         }
-        if (password !== confirmPassword) {
-          throw new Error('Normal passwords do not match');
-        }
-        if (adminPassword !== confirmAdminPassword) {
-          throw new Error('Admin passwords do not match');
-        }
         if (password === adminPassword) {
           throw new Error('Normal and admin passwords must be different');
         }
@@ -178,9 +169,6 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
         }
         if (password.length < MIN_PASSWORD_LENGTH) {
           throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-        }
-        if (password !== confirmPassword) {
-          throw new Error('Passwords do not match');
         }
         await apiService.setupPassword(password);
         sessionStorage.setItem(sessionKey, 'true');
@@ -233,6 +221,38 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
       <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, var(--color-surface-hover) 0%, var(--color-bg) 52%, var(--color-bg-subtle) 100%)' }} />
       <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, var(--color-border-subtle) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
 
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          type="button"
+          onClick={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-subtle)] transition-colors"
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          style={{ WebkitTapHighlightColor: 'transparent' }}
+        >
+          {theme === 'dark' ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2" />
+              <path d="M12 20v2" />
+              <path d="m4.93 4.93 1.41 1.41" />
+              <path d="m17.66 17.66 1.41 1.41" />
+              <path d="M2 12h2" />
+              <path d="M20 12h2" />
+              <path d="m6.34 17.66-1.41 1.41" />
+              <path d="m19.07 4.93-1.41 1.41" />
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3a6 6 0 1 0 9 9 9 9 0 1 1-9-9z" />
+            </svg>
+          )}
+          <span className="hidden sm:inline text-sm font-medium">
+            {theme === 'dark' ? 'Light' : 'Dark'}
+          </span>
+        </button>
+      </div>
+
       <div className="relative z-10 w-full max-w-md animate-fade-in">
         <div className="text-center mb-10">
           <div
@@ -269,19 +289,6 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
                 )}
               </div>
               <div>
-                <label className="mb-2 block text-xs font-medium text-[var(--color-text-secondary)]">Confirm Normal Password</label>
-                {renderPasswordInput({
-                  value: confirmPassword,
-                  onChange: setConfirmPassword,
-                  placeholder: 'Confirm normal password',
-                  visible: passwordVisible.confirmPassword,
-                  onToggleVisible: () => setPasswordVisible((prev) => ({ ...prev, confirmPassword: !prev.confirmPassword })),
-                })}
-                {validateConfirm(confirmPassword, password) && (
-                  <p className="mt-1 text-xs text-[#f87171]">{validateConfirm(confirmPassword, password)}</p>
-                )}
-              </div>
-              <div>
                 <label className="mb-2 block text-xs font-medium text-[var(--color-text-secondary)]">Admin Password</label>
                 {renderPasswordInput({
                   value: adminPassword,
@@ -295,19 +302,6 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
                 )}
                 {!validatePassword(adminPassword) && adminPassword && adminPassword === password && (
                   <p className="mt-1 text-xs text-[#f87171]">Normal and admin passwords must be different</p>
-                )}
-              </div>
-              <div>
-                <label className="mb-2 block text-xs font-medium text-[var(--color-text-secondary)]">Confirm Admin Password</label>
-                {renderPasswordInput({
-                  value: confirmAdminPassword,
-                  onChange: setConfirmAdminPassword,
-                  placeholder: 'Confirm admin password',
-                  visible: passwordVisible.confirmAdminPassword,
-                  onToggleVisible: () => setPasswordVisible((prev) => ({ ...prev, confirmAdminPassword: !prev.confirmAdminPassword })),
-                })}
-                {validateConfirm(confirmAdminPassword, adminPassword) && (
-                  <p className="mt-1 text-xs text-[#f87171]">{validateConfirm(confirmAdminPassword, adminPassword)}</p>
                 )}
               </div>
               <div>
@@ -364,20 +358,6 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
                 )}
               </div>
 
-              {mode === 'setup' && (
-                <div>
-                  {renderPasswordInput({
-                    value: confirmPassword,
-                    onChange: setConfirmPassword,
-                    placeholder: 'Confirm password',
-                    visible: passwordVisible.confirmPassword,
-                    onToggleVisible: () => setPasswordVisible((prev) => ({ ...prev, confirmPassword: !prev.confirmPassword })),
-                  })}
-                  {validateConfirm(confirmPassword, password) && (
-                    <p className="mt-1 text-xs text-[#f87171]">{validateConfirm(confirmPassword, password)}</p>
-                  )}
-                </div>
-              )}
             </>
           )}
 

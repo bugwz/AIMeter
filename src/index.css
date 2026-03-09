@@ -131,10 +131,9 @@
 body {
   font-family: var(--font-sans);
   background:
-    radial-gradient(circle at top right, var(--color-bg-glow-1), transparent 30%),
-    radial-gradient(circle at 18% 16%, var(--color-bg-glow-2), transparent 24%),
-    radial-gradient(circle at bottom left, var(--color-bg-glow-3), transparent 28%),
-    var(--color-bg);
+    radial-gradient(circle at 1px 1px, var(--color-border-subtle) 1px, transparent 0),
+    linear-gradient(135deg, var(--color-surface-hover) 0%, var(--color-bg) 52%, var(--color-bg-subtle) 100%);
+  background-size: 32px 32px, 100% 100%;
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
