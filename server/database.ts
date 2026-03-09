@@ -1,10 +1,10 @@
-import Database from 'better-sqlite3';
+import type { Database as BetterSqlite3Database } from 'better-sqlite3';
 import { getAppConfig } from './config.js';
 import type { Credential, ProviderConfig, UsageProvider, UsageSnapshot } from '../src/types/index.js';
 import type { AuditLogRow, DatabaseEngine, UsageRecordRow } from './db/engine.js';
 
 let engineInstance: DatabaseEngine | null = null;
-let sqliteRaw: Database.Database | null = null;
+let sqliteRaw: BetterSqlite3Database | null = null;
 let initPromise: Promise<void> | null = null;
 
 async function initializeEngine(): Promise<void> {
@@ -47,12 +47,12 @@ async function getEngine(): Promise<DatabaseEngine> {
   return engineInstance;
 }
 
-export async function initDatabase(): Promise<Database.Database | null> {
+export async function initDatabase(): Promise<BetterSqlite3Database | null> {
   await getEngine();
   return sqliteRaw;
 }
 
-export function getDatabase(): Database.Database {
+export function getDatabase(): BetterSqlite3Database {
   if (!sqliteRaw) {
     throw new Error('getDatabase() is only available for sqlite engine');
   }
