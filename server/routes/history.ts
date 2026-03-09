@@ -111,29 +111,4 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/providers', async (req: Request, res: Response) => {
-  try {
-    const days = parseInt(req.query.days as string) || 30;
-    const history = await storage.getAllUsageHistory(days);
-    
-    const providers = Object.keys(history).map(providerId => ({
-      id: providerId,
-      recordCount: history[providerId]?.length || 0,
-    }));
-    
-    res.json({
-      success: true,
-      data: providers,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-    });
-  }
-});
-
 export default router;

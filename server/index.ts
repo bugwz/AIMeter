@@ -90,7 +90,6 @@ const { default: authRouter } = await import('./routes/auth.js');
 const { default: providersRouter } = await import('./routes/providers.js');
 const { default: historyRouter } = await import('./routes/history.js');
 const { default: proxyRouter } = await import('./routes/proxy.js');
-const { default: widgetRouter } = await import('./routes/widget.js');
 const { default: endpointRouter } = await import('./routes/endpoint.js');
 const { default: systemRouter } = await import('./routes/system.js');
 const { default: jobsRouter } = await import('./routes/jobs.js');
@@ -101,7 +100,6 @@ app.use('/api/system', requireApiAuth(['normal', 'admin']), systemRouter);
 app.use('/api/providers', requireApiAuth(['normal', 'admin']), providersRouter);
 app.use('/api/history', requireApiAuth(['normal', 'admin']), historyRouter);
 app.use('/api/proxy', requireApiAuth(['normal', 'admin']), proxyRouter);
-app.use('/api/widget', requireApiAuth(['normal', 'admin']), widgetRouter);
 app.use('/api/endpoint', requireEndpointAuth(['normal', 'admin']), endpointRouter);
 
 app.get('/api/health', (_req, res) => {

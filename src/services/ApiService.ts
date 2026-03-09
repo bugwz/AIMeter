@@ -346,18 +346,6 @@ class ApiService {
     return this.normalizeSnapshot(response.data.data!);
   }
 
-  async proxyRefresh(provider: UsageProvider, region?: string): Promise<UsageSnapshot> {
-    const providerKey = provider.toLowerCase();
-    const response = await this.client.post<ApiResponse<UsageSnapshot>>(`/proxy/${providerKey}`, {
-      provider,
-      region,
-    });
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to refresh provider');
-    }
-    return this.normalizeSnapshot(response.data.data!);
-  }
-
   async fetchLatest(): Promise<(DashboardProviderData | UsageError)[]> {
     const response = await this.client.post<ApiResponse<(DashboardProviderData | UsageError)[]>>('/proxy/latest');
     if (!response.data.success) {
