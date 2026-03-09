@@ -3,7 +3,7 @@
     "data": {
         "DataV2": {
             "ret": [
-                "SUCCESS::接口调用成功"
+                "SUCCESS::API call succeeded"
             ],
             "data": {
                 "data": {

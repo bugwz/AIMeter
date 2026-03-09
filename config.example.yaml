@@ -187,7 +187,7 @@ auth:
 providers:
   - id: minimax_domestic
     type: minimax
-    name: 国内
+    name: Domestic
     authType: api_key
     credential: replace-with-minimax-api-key
     refreshInterval: 5
@@ -195,42 +195,42 @@ providers:
 
   - id: openrouter_test
     type: openrouter
-    name: 测试号
+    name: Test Account
     authType: api_key
     credential: replace-with-openrouter-api-key
     refreshInterval: 5
 
   - id: kimi_test
     type: kimi
-    name: 测试
+    name: Test
     authType: api_key
     credential: replace-with-kimi-api-key
     refreshInterval: 5
 
   - id: codex_test
     type: codex
-    name: 测试
+    name: Test
     authType: api_key
     credential: replace-with-codex-api-key-or-token
     refreshInterval: 5
 
   - id: copilot_test
     type: copilot
-    name: 测试
+    name: Test
     authType: oauth
     credential: replace-with-copilot-access-token
     refreshInterval: 5
 
   - id: ollama_test
     type: ollama
-    name: 测试
+    name: Test
     authType: cookie
     credential: replace-with-ollama-base-url-or-cookie
     refreshInterval: 5
 
   - id: cursor_self
     type: cursor
-    name: 自己
+    name: Self
     authType: cookie
     credential: replace-with-cursor-cookie
     refreshInterval: 5
