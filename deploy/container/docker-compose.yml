@@ -1,0 +1,31 @@
+services:
+  aimeter:
+    image: bugwz/aimeter:latest
+    ports:
+      - "3000:3000"
+    # volumes:
+      # TLS certificates: auto-generated inside container by default.
+      # To use your own certificates, uncomment and set the host path:
+      # - /opt/aimeter/conf:/aimeter/conf
+      # SQLite database storage
+      # - /opt/aimeter/db:/aimeter/db
+      # Application logs
+      # - /opt/aimeter/log:/aimeter/log
+    environment:
+      NODE_ENV: production
+      # Node.js internal port (nginx proxies :3000 → :3001)
+      AIMETER_BACKEND_PORT: 3001
+      # Database configuration (SQLite)
+      AIMETER_DATABASE_ENGINE: sqlite
+      AIMETER_DATABASE_CONNECTION: /aimeter/db/aimeter.db
+      # Runtime mode: node (built-in timer) or serverless (external trigger)
+      AIMETER_RUNTIME_MODE: node
+      # Security keys (must change to strong random keys)
+      AIMETER_ENCRYPTION_KEY: 6f23ba97b91ecc348b7f9fe36d1a000b
+      AIMETER_AUTH_SESSION_SECRET: 2b74764196834cdd7bb1da298a6d75899b243f9c98614de8a4445ae0584ec865
+      # HTTPS via nginx (built into container)
+      AIMETER_SECURE_COOKIE: "true"
+      AIMETER_TRUST_PROXY: "true"
+      # Optional configuration
+      # AIMETER_ADMIN_ROUTE_SECRET: change-me-64-char-admin-secret
+    restart: unless-stopped
