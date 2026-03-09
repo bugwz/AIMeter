@@ -141,9 +141,6 @@ export async function ensureMockRuntimeProvidersSeeded(): Promise<void> {
   const BACKFILL_STEP_MINUTES = 5;
   const EXPECTED_POINTS = Math.floor((BACKFILL_DAYS * 24 * 60) / BACKFILL_STEP_MINUTES);
   const BATCH_SIZE = 720;
-  const HISTORY_MODEL_VERSION = 'mock-runtime-history-v2';
-  const currentHistoryModelVersion = await storage.getSetting('mock_runtime_history_model_version');
-  const forceRebuildHistory = currentHistoryModelVersion !== HISTORY_MODEL_VERSION;
 
   for (const provider of providers) {
     const defaultRegion = getDefaultMockRegion(provider.provider);
@@ -154,8 +151,7 @@ export async function ensureMockRuntimeProvidersSeeded(): Promise<void> {
 
     const historyRows = await storage.getUsageHistory(provider.id, BACKFILL_DAYS);
     const hasEnoughHistory = historyRows.length >= EXPECTED_POINTS;
-    const shouldRebuildHistory = forceRebuildHistory || !hasEnoughHistory;
-    if (shouldRebuildHistory) {
+    if (!hasEnoughHistory) {
       const mockProvider = createMockProvider(provider.provider, provider);
       if (mockProvider && typeof mockProvider.fetchUsageAt === 'function') {
         await storage.clearUsageHistory(provider.id);
@@ -195,7 +191,4 @@ export async function ensureMockRuntimeProvidersSeeded(): Promise<void> {
     }
   }
 
-  if (forceRebuildHistory) {
-    await storage.setSetting('mock_runtime_history_model_version', HISTORY_MODEL_VERSION);
-  }
 }
