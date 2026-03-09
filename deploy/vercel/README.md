@@ -1,8 +1,6 @@
 # Deploy AIMeter to Vercel
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/YOUR_ORG/AIMeter&env=NODE_ENV,AIMETER_RUNTIME_MODE,AIMETER_TRUST_PROXY,AIMETER_SECURE_COOKIE,AIMETER_DATABASE_ENGINE,AIMETER_DATABASE_CONNECTION,AIMETER_ENCRYPTION_KEY,AIMETER_AUTH_SESSION_SECRET,AIMETER_ADMIN_ROUTE_SECRET,AIMETER_CRON_SECRET&envDescription=AIMeter%20Vercel%20configuration&envLink=https://github.com/YOUR_ORG/AIMeter/blob/main/deploy/vercel/README.md)
-
-> **Before using the button** replace `YOUR_ORG` in the URL above with your GitHub username or organization name.
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/bugwz/AIMeter&env=NODE_ENV,AIMETER_RUNTIME_MODE,AIMETER_TRUST_PROXY,AIMETER_SECURE_COOKIE,AIMETER_DATABASE_ENGINE,AIMETER_DATABASE_CONNECTION,AIMETER_ENCRYPTION_KEY,AIMETER_AUTH_SESSION_SECRET,AIMETER_ADMIN_ROUTE_SECRET,AIMETER_CRON_SECRET&envDefaults=%7B%22NODE_ENV%22%3A%22production%22%2C%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_TRUST_PROXY%22%3A%22true%22%2C%22AIMETER_SECURE_COOKIE%22%3A%22true%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22postgres%22%7D&envDescription=AIMeter%20Vercel%20configuration&envLink=https://github.com/bugwz/AIMeter/blob/main/deploy/vercel/README.md)
 
 ---
 

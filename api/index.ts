@@ -5,7 +5,7 @@ let appPromise: Promise<Application> | null = null;
 
 function getApp(): Promise<Application> {
   if (!appPromise) {
-    appPromise = import('./app.js').then(({ createApp }) => createApp());
+    appPromise = import('../server/app.js').then(({ createApp }) => createApp());
   }
   return appPromise;
 }

@@ -2,13 +2,13 @@
   "buildCommand": "npm run vercel-build",
   "outputDirectory": "dist",
   "functions": {
-    "server/vercel.ts": {
+    "api/index.ts": {
       "maxDuration": 30,
       "memory": 512
     }
   },
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/server/vercel" },
+    { "source": "/api/:path*", "destination": "/api/index" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
