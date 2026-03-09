@@ -116,22 +116,39 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
     checkAuthStatus();
   }, []);
 
+  const sleep = (ms: number) => new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+
   const checkAuthStatus = async () => {
+    let lastError: unknown = null;
     try {
-      const status = await apiService.getAuthStatus();
-      if (status.authenticated) {
-        sessionStorage.setItem(sessionKey, 'true');
-        onUnlock();
-        return;
+      const retryDelays = [0, 500];
+      for (let i = 0; i < retryDelays.length; i += 1) {
+        try {
+          if (retryDelays[i] > 0) {
+            await sleep(retryDelays[i]);
+          }
+          const status = await apiService.getAuthStatus();
+          if (status.authenticated) {
+            sessionStorage.setItem(sessionKey, 'true');
+            onUnlock();
+            return;
+          }
+          setAuthMutable(status.authMutable !== false);
+          if (status.bootstrapRequired && role === 'normal') {
+            setMode('bootstrap');
+          } else {
+            setMode(status.needsSetup ? 'setup' : 'check');
+          }
+          setError('');
+          return;
+        } catch (error) {
+          lastError = error;
+        }
       }
-      setAuthMutable(status.authMutable !== false);
-      if (status.bootstrapRequired && role === 'normal') {
-        setMode('bootstrap');
-      } else {
-        setMode(status.needsSetup ? 'setup' : 'check');
-      }
-    } catch {
-      setError('Failed to check auth status');
+
+      setError(lastError instanceof Error ? lastError.message : 'Failed to check auth status');
     } finally {
       setIsLoading(false);
     }
@@ -181,6 +198,16 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
         sessionStorage.setItem(sessionKey, 'true');
         onUnlock();
       } else {
+        try {
+          const status = await apiService.getAuthStatus();
+          if (status.authenticated) {
+            sessionStorage.setItem(sessionKey, 'true');
+            onUnlock();
+            return;
+          }
+        } catch {
+          // Keep the original incorrect password message.
+        }
         setError('Incorrect password');
       }
     } catch (err) {
