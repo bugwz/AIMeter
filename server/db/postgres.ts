@@ -151,5 +151,9 @@ export async function createPostgresEngine(): Promise<DatabaseEngine> {
   const client = new PostgresClient(pool);
 
   await initSchema(client);
-  return new SqlEngine(client, 'postgres', appConfig.database.encryptionKey);
+
+  const encryptionKey = appConfig.database.encryptionKey
+    || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE key = ?', ['encryption_key']))?.value;
+
+  return new SqlEngine(client, 'postgres', encryptionKey);
 }

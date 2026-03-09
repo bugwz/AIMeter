@@ -126,11 +126,24 @@ AIMeter поддерживает:
 
 
 
+## Развёртывание в контейнере
+
+AIMeter поставляется с конфигурацией одного контейнера: **nginx** (HTTPS, порт 3000) завершает TLS и проксирует запросы в Node.js (внутренний порт 3001).
+
+```bash
+./deploy/container/build.sh   # сборка образа
+./deploy/container/run.sh     # запуск сервиса
+```
+
+Ключи шифрования и сессии генерируются автоматически при первом запуске — ручная настройка не требуется.
+
+Подробности смотрите в [deploy/container/README.md](../../deploy/container/README.md).
+
 ## Примечания по безопасности
 
 Для production-развертывания:
 
-- Используйте сильные значения для session и encryption secrets.
+- В режиме базы данных `AIMETER_ENCRYPTION_KEY` и `AIMETER_AUTH_SESSION_SECRET` автоматически генерируются при первом запуске и сохраняются. Ручная настройка нужна только при нескольких инстансах с общей базой данных.
 - Включайте secure cookies за HTTPS.
 - Ограничивайте CORS origins.
-- Защищайте bootstrap/admin/cron secrets.
+- Защищайте admin/cron/endpoint secrets.

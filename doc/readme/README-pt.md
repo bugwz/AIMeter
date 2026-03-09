@@ -126,11 +126,24 @@ AIMeter suporta:
 
 
 
+## Deploy com container
+
+AIMeter inclui uma configuracao de container unico: **nginx** (HTTPS, porta 3000) encerra o TLS e faz proxy para o Node.js (porta interna 3001).
+
+```bash
+./deploy/container/build.sh   # construir a imagem
+./deploy/container/run.sh     # iniciar o servico
+```
+
+As chaves de criptografia e sessao sao geradas automaticamente no primeiro inicio — nenhuma configuracao manual necessaria.
+
+Para mais detalhes, consulte [deploy/container/README.md](../../deploy/container/README.md).
+
 ## Notas de seguranca
 
 Para producao:
 
-- Defina segredos fortes para sessao e criptografia.
+- No modo banco de dados, `AIMETER_ENCRYPTION_KEY` e `AIMETER_AUTH_SESSION_SECRET` sao gerados automaticamente no primeiro inicio e persistidos. Configuracao manual so e necessaria para multiplas instancias compartilhando um banco de dados.
 - Ative cookies seguros em HTTPS.
 - Restrinja origens CORS.
-- Proteja os segredos bootstrap/admin/cron.
+- Proteja os segredos admin/cron/endpoint.

@@ -126,11 +126,24 @@ AIMeter soporta:
 
 
 
+## Despliegue con contenedor
+
+AIMeter incluye una configuración de contenedor único: **nginx** (HTTPS, puerto 3000) termina TLS y actúa como proxy a Node.js (puerto interno 3001).
+
+```bash
+./deploy/container/build.sh   # construir la imagen
+./deploy/container/run.sh     # iniciar el servicio
+```
+
+Las claves de cifrado y sesión se generan automáticamente en el primer inicio — no se requiere configuración manual.
+
+Para más detalles, consulta [deploy/container/README.md](../../deploy/container/README.md).
+
 ## Notas de seguridad
 
 Para despliegue en producción:
 
-- Configura secretos fuertes para sesión y cifrado.
+- En modo base de datos, `AIMETER_ENCRYPTION_KEY` y `AIMETER_AUTH_SESSION_SECRET` se generan automáticamente al primer inicio y se persisten. Solo es necesario configurarlos manualmente en despliegues con múltiples instancias compartiendo una base de datos.
 - Habilita cookies seguras detrás de HTTPS.
 - Restringe estrictamente los orígenes CORS.
-- Protege los secretos bootstrap/admin/cron.
+- Protege los secretos admin/cron/endpoint.

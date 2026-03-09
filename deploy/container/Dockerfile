@@ -24,8 +24,8 @@ COPY public/ ./public/
 COPY --from=builder /app/dist ./dist
 
 # Copy nginx config and startup entrypoint
-COPY deploy/docker/nginx/nginx.conf /etc/nginx/nginx.conf
-COPY deploy/docker/entrypoint.sh /entrypoint.sh
+COPY deploy/container/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY deploy/container/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Create runtime directories

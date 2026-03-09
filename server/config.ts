@@ -39,7 +39,6 @@ export interface AppConfig {
     connection: string;
     mockConnection?: string;
     encryptionKey?: string;
-    mockEncryptionKey?: string;
   };
   auth: {
     sessionSecret?: string;
@@ -331,11 +330,11 @@ function isWeakAdminRouteSecret(value: string | undefined): boolean {
 function validateSecurityConfig(config: AppConfig): void {
   if (!config.runtime.isProduction) {
     // Emit warnings so developers catch misconfigurations before going to production.
-    if (isWeakSecret(config.auth.sessionSecret)) {
+    if (isWeakSecret(config.auth.sessionSecret) && !config.database.enabled) {
       console.warn('[SECURITY] sessionSecret is weak or unset. Set AIMETER_AUTH_SESSION_SECRET before deploying to production.');
     }
-    if (config.database.enabled && isWeakSecret(config.database.encryptionKey, ['aimeter-secret-key'])) {
-      console.warn('[SECURITY] encryptionKey is weak or unset. Set AIMETER_ENCRYPTION_KEY before deploying to production.');
+    if (config.database.enabled && config.database.encryptionKey && isWeakSecret(config.database.encryptionKey, ['aimeter-secret-key'])) {
+      console.warn('[SECURITY] encryptionKey is set but weak. Set AIMETER_ENCRYPTION_KEY to a strong random secret.');
     }
     if (config.auth.adminRouteSecret && isWeakAdminRouteSecret(config.auth.adminRouteSecret)) {
       console.warn('[SECURITY] adminRouteSecret is weak or invalid. Set AIMETER_ADMIN_ROUTE_SECRET to exactly 64 random characters before deploying to production.');
@@ -343,7 +342,12 @@ function validateSecurityConfig(config: AppConfig): void {
     return;
   }
 
-  if (isWeakSecret(config.auth.sessionSecret)) {
+  // If a value is explicitly set but weak, always reject it.
+  // If unset and database mode is enabled, allow it — secrets are auto-managed in the DB.
+  if (config.auth.sessionSecret && isWeakSecret(config.auth.sessionSecret)) {
+    throw new Error('Security check failed: AIMETER_AUTH_SESSION_SECRET is set but too weak. Use a strong random secret.');
+  }
+  if (!config.auth.sessionSecret && !config.database.enabled) {
     throw new Error('Security check failed: AIMETER_AUTH_SESSION_SECRET must be set to a strong secret in production.');
   }
 
@@ -351,8 +355,8 @@ function validateSecurityConfig(config: AppConfig): void {
     throw new Error('Security check failed: secureCookie must be enabled in production.');
   }
 
-  if (config.database.enabled && isWeakSecret(config.database.encryptionKey, ['aimeter-secret-key'])) {
-    throw new Error('Security check failed: AIMETER_ENCRYPTION_KEY must be set to a strong secret in production.');
+  if (config.database.enabled && config.database.encryptionKey && isWeakSecret(config.database.encryptionKey, ['aimeter-secret-key'])) {
+    throw new Error('Security check failed: AIMETER_ENCRYPTION_KEY is set but too weak. Use a strong random secret.');
   }
 
   if (config.auth.adminRouteSecret && isWeakAdminRouteSecret(config.auth.adminRouteSecret)) {
@@ -495,7 +499,6 @@ export function getAppConfig(): AppConfig {
       mockConnection: process.env.AIMETER_DATABASE_MOCK_CONNECTION
         || asString(database.mockConnection),
       encryptionKey: process.env.AIMETER_ENCRYPTION_KEY || asString(database.encryptionKey),
-      mockEncryptionKey: process.env.AIMETER_MOCK_ENCRYPTION_KEY || asString(database.mockEncryptionKey),
     },
     auth: {
       sessionSecret: process.env.AIMETER_AUTH_SESSION_SECRET || asString(auth.sessionSecret),

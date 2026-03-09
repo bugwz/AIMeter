@@ -199,8 +199,8 @@ export async function runCommonBootstrap(client: DbClient, usageTable: string = 
     });
   }
 
-  // Auto-generate cron_secret and endpoint_secret if not yet present
-  for (const key of ['cron_secret', 'endpoint_secret']) {
+  // Auto-generate secrets if not yet present
+  for (const key of ['cron_secret', 'endpoint_secret', 'encryption_key', 'session_secret']) {
     const existing = await client.query<{ value: string }>(
       'SELECT value FROM settings WHERE key = ?', [key]
     );

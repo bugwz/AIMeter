@@ -183,8 +183,11 @@ export async function createSqliteEngine(): Promise<SqliteRuntime> {
   const client = new SqliteClient(raw);
   await initSchema(client);
 
+  const encryptionKey = appConfig.database.encryptionKey
+    || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE key = ?', ['encryption_key']))?.value;
+
   return {
-    engine: new SqlEngine(client, 'sqlite', appConfig.database.encryptionKey),
+    engine: new SqlEngine(client, 'sqlite', encryptionKey),
     raw,
   };
 }

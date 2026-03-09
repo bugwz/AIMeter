@@ -149,5 +149,9 @@ export async function createMysqlEngine(): Promise<DatabaseEngine> {
   const client = new MysqlClient(pool);
 
   await initSchema(client);
-  return new SqlEngine(client, 'mysql', appConfig.database.encryptionKey);
+
+  const encryptionKey = appConfig.database.encryptionKey
+    || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE key = ?', ['encryption_key']))?.value;
+
+  return new SqlEngine(client, 'mysql', encryptionKey);
 }

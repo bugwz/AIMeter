@@ -4,7 +4,7 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { initDatabase } from './database.js';
+import { initDatabase, getSetting } from './database.js';
 import { schedulerService } from './services/SchedulerService.js';
 import { initMock, ensureMockRuntimeProvidersSeeded } from './mock/init.js';
 import { requireApiAuth, requireEndpointAuth } from './middleware/auth.js';
@@ -13,7 +13,7 @@ import { runtimeConfig } from './runtime.js';
 import { storage } from './storage.js';
 import { getAppConfig } from './config.js';
 import { checkEntryContextRateLimit } from './security/loginRateLimit.js';
-import type { AuthRole } from './auth.js';
+import { type AuthRole, initSessionSecret } from './auth.js';
 
 await import('../src/adapters/index.js');
 
@@ -61,6 +61,12 @@ if (runtimeConfig.storageMode === 'database') {
   console.log('Starting with DATABASE storage');
   await initDatabase();
   console.log('Database initialized');
+  if (!appConfig.auth.sessionSecret) {
+    const dbSessionSecret = await getSetting('session_secret');
+    if (dbSessionSecret) {
+      initSessionSecret(dbSessionSecret);
+    }
+  }
   if (isMockMode) {
     await ensureMockRuntimeProvidersSeeded();
   }

@@ -27,15 +27,14 @@ Single-container deployment: **nginx** (HTTPS, port 3000) terminates TLS and pro
 # 1. Build the image (run from anywhere; script resolves project root)
 ./deploy/container/build.sh
 
-# 2. Edit docker-compose.yml — replace the placeholder security keys:
-#    AIMETER_ENCRYPTION_KEY, AIMETER_AUTH_SESSION_SECRET
-
-# 3. Start the service
+# 2. Start the service
 ./deploy/container/run.sh
 
-# 4. Open the app (accept the browser warning for the self-signed cert)
+# 3. Open the app (accept the browser warning for the self-signed cert)
 open https://localhost:3000
 ```
+
+Security keys (`AIMETER_ENCRYPTION_KEY`, `AIMETER_AUTH_SESSION_SECRET`) are **auto-generated and persisted in the database** on first start — no manual configuration required.
 
 ## Managing the Service
 
@@ -92,12 +91,14 @@ Without volumes, all data is lost when the container is removed.
 
 Configured in `docker-compose.yml` under `environment:`.
 
-### Required — must replace before production use
+### Auto-managed (no action required)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AIMETER_ENCRYPTION_KEY` | `6f23ba97...` | Key for encrypting sensitive data at rest |
-| `AIMETER_AUTH_SESSION_SECRET` | `2b747641...` | Secret for signing session tokens |
+| Variable | Description |
+|----------|-------------|
+| `AIMETER_ENCRYPTION_KEY` | Key for encrypting sensitive data at rest. Auto-generated and stored in the database on first start. |
+| `AIMETER_AUTH_SESSION_SECRET` | Secret for signing session tokens. Auto-generated and stored in the database on first start. |
+
+Override these only when you need a fixed value (e.g. multiple instances sharing one database).
 
 ### Optional
 
@@ -113,6 +114,6 @@ Configured in `docker-compose.yml` under `environment:`.
 
 ## Security Notes
 
-- **Replace all default secret values** (`AIMETER_ENCRYPTION_KEY`, `AIMETER_AUTH_SESSION_SECRET`) with strong random strings before any production deployment.
+- `AIMETER_ENCRYPTION_KEY` and `AIMETER_AUTH_SESSION_SECRET` are auto-generated on first start and persisted in the database — no manual setup required. If you set them explicitly, use strong random values.
 - Self-signed certificates are suitable for local use only. Use a CA-signed certificate for production.
 - Set `AIMETER_ADMIN_ROUTE_SECRET` to a strong secret to restrict access to the admin route.

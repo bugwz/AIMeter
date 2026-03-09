@@ -126,11 +126,24 @@ AIMeter 지원 엔진:
 
 
 
+## 컨테이너 배포
+
+AIMeter는 단일 컨테이너 스택을 제공합니다: **nginx**(HTTPS, 포트 3000)가 TLS를 종료하고 Node.js(내부 포트 3001)로 프록시합니다.
+
+```bash
+./deploy/container/build.sh   # 이미지 빌드
+./deploy/container/run.sh     # 서비스 시작
+```
+
+암호화 키와 세션 키는 첫 시작 시 자동 생성됩니다. 별도 설정이 필요하지 않습니다.
+
+자세한 내용은 [deploy/container/README.md](../../deploy/container/README.md)를 참고하세요.
+
 ## 보안 참고
 
 프로덕션 배포 시 권장 사항:
 
-- 세션/암호화 시크릿에 강력한 값을 사용하세요.
+- 데이터베이스 모드에서는 `AIMETER_ENCRYPTION_KEY`와 `AIMETER_AUTH_SESSION_SECRET`이 첫 시작 시 자동 생성 및 저장됩니다. 다중 인스턴스가 DB를 공유하는 경우에만 수동 설정이 필요합니다.
 - HTTPS 환경에서 secure cookie를 활성화하세요.
 - CORS origin을 제한하세요.
-- bootstrap/admin/cron 시크릿을 안전하게 보관하세요.
+- admin/cron/endpoint 시크릿을 안전하게 보관하세요.

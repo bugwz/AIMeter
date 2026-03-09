@@ -126,11 +126,24 @@ AIMeter が対応する DB：
 
 
 
+## コンテナデプロイ
+
+AIMeter はシングルコンテナ構成を提供します：**nginx**（HTTPS、ポート 3000）が TLS を終端し、Node.js（内部ポート 3001）へリバースプロキシします。
+
+```bash
+./deploy/container/build.sh   # イメージのビルド
+./deploy/container/run.sh     # サービスの起動
+```
+
+暗号化キーとセッションキーは初回起動時に自動生成されます。手動設定は不要です。
+
+詳細は [deploy/container/README.md](../../deploy/container/README.md) を参照してください。
+
 ## セキュリティ
 
 本番環境では次を推奨します：
 
-- セッションと暗号化に十分強い秘密値を設定する。
+- データベースモードでは、`AIMETER_ENCRYPTION_KEY` と `AIMETER_AUTH_SESSION_SECRET` は初回起動時に自動生成・永続化されます。複数インスタンスで DB を共有する場合のみ手動設定が必要です。
 - HTTPS 配下で Secure Cookie を有効にする。
 - CORS オリジンを制限する。
-- bootstrap/admin/cron の秘密値を適切に保護する。
+- admin/cron/endpoint の秘密値を適切に保護する。

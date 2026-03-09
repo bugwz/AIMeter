@@ -11,11 +11,15 @@ const SESSION_COOKIE_NAMES: Record<AuthRole, string> = {
 
 const appConfig = getAppConfig();
 const SESSION_TTL_SECONDS = Math.max(appConfig.auth.sessionTtlSeconds || 12 * 60 * 60, 300);
-const SESSION_SECRET = appConfig.auth.sessionSecret || crypto.randomBytes(32).toString('hex');
+let SESSION_SECRET = appConfig.auth.sessionSecret || crypto.randomBytes(32).toString('hex');
 const IS_PROD = appConfig.auth.secureCookie === true;
 
 if (!appConfig.auth.sessionSecret) {
-  console.warn('[SECURITY] AIMETER_AUTH_SESSION_SECRET is not set. Using a random in-memory secret; existing sessions will be invalidated on restart.');
+  console.warn('[SECURITY] AIMETER_AUTH_SESSION_SECRET is not set. In database mode it will be loaded from the database; otherwise sessions will be invalidated on restart.');
+}
+
+export function initSessionSecret(secret: string): void {
+  SESSION_SECRET = secret;
 }
 
 interface SessionPayload {

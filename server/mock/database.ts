@@ -131,10 +131,8 @@ export interface MockAuditLogRow {
   details: Record<string, unknown> | null;
 }
 
-const LEGACY_MOCK_ENCRYPTION_SECRET = 'aimeter-mock-secret';
-const MOCK_ENCRYPTION_SECRET = appConfig.database.mockEncryptionKey || LEGACY_MOCK_ENCRYPTION_SECRET;
+const MOCK_ENCRYPTION_SECRET = appConfig.database.encryptionKey || 'aimeter-mock-secret';
 const ENCRYPTION_KEY = crypto.createHash('sha256').update(MOCK_ENCRYPTION_SECRET).digest();
-const LEGACY_ENCRYPTION_KEY = crypto.createHash('sha256').update(LEGACY_MOCK_ENCRYPTION_SECRET).digest();
 
 function parseProviderAttrs(raw: unknown): Record<string, unknown> {
   if (!raw) return {};
@@ -170,26 +168,11 @@ function getEncryptionHelpers(): { encrypt: (text: string) => string; decrypt: (
   };
 
   const decrypt = (encryptedStr: string): string => {
-    const decryptWithKey = (key: Buffer): string => {
-      const { iv, data } = JSON.parse(encryptedStr);
-      const decipher = crypto.createDecipheriv('aes-256-cbc', key, Buffer.from(iv, 'base64'));
-      let decrypted = decipher.update(data, 'base64', 'utf-8');
-      decrypted += decipher.final('utf-8');
-      return decrypted;
-    };
-
-    try {
-      return decryptWithKey(Buffer.from(ENCRYPTION_KEY));
-    } catch {
-      try {
-        if (!ENCRYPTION_KEY.equals(LEGACY_ENCRYPTION_KEY)) {
-          return decryptWithKey(Buffer.from(LEGACY_ENCRYPTION_KEY));
-        }
-      } catch {
-        // fall through
-      }
-      return Buffer.from(encryptedStr, 'base64').toString('utf-8');
-    }
+    const { iv, data } = JSON.parse(encryptedStr);
+    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), Buffer.from(iv, 'base64'));
+    let decrypted = decipher.update(data, 'base64', 'utf-8');
+    decrypted += decipher.final('utf-8');
+    return decrypted;
   };
 
   return { encrypt, decrypt };

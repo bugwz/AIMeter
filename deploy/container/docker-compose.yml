@@ -20,9 +20,10 @@ services:
       AIMETER_DATABASE_CONNECTION: /aimeter/db/aimeter.db
       # Runtime mode: node (built-in timer) or serverless (external trigger)
       AIMETER_RUNTIME_MODE: node
-      # Security keys (must change to strong random keys)
-      AIMETER_ENCRYPTION_KEY: 6f23ba97b91ecc348b7f9fe36d1a000b
-      AIMETER_AUTH_SESSION_SECRET: 2b74764196834cdd7bb1da298a6d75899b243f9c98614de8a4445ae0584ec865
+      # Security keys: auto-generated and stored in the database on first start.
+      # Override only if you need a fixed value (e.g. multi-instance deployments).
+      # AIMETER_ENCRYPTION_KEY:
+      # AIMETER_AUTH_SESSION_SECRET:
       # HTTPS via nginx (built into container)
       AIMETER_SECURE_COOKIE: "true"
       AIMETER_TRUST_PROXY: "true"

@@ -126,11 +126,24 @@ AIMeter 支持：
 
 
 
+## 容器化部署
+
+AIMeter 提供单容器部署方案：**nginx**（HTTPS，端口 3000）终止 TLS 并反向代理至 Node.js（内部端口 3001）。
+
+```bash
+./deploy/container/build.sh   # 构建镜像
+./deploy/container/run.sh     # 启动服务
+```
+
+加密密钥与会话密钥在首次启动时自动生成，无需手动配置。
+
+详细说明请参阅 [deploy/container/README.md](../../deploy/container/README.md)。
+
 ## 安全说明
 
 生产部署建议：
 
-- 为会话和加密配置高强度密钥。
+- 数据库模式下，`AIMETER_ENCRYPTION_KEY` 和 `AIMETER_AUTH_SESSION_SECRET` 在首次启动时自动生成并持久化，仅多实例共享数据库时需手动覆盖。
 - 在 HTTPS 后启用安全 Cookie。
 - 严格限制 CORS 来源。
-- 妥善保管 bootstrap/admin/cron 等敏感密钥。
+- 妥善保管 admin/cron/endpoint 等敏感密钥。

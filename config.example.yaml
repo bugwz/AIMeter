@@ -80,20 +80,19 @@ database:
   # Encrypt provider credentials stored in the main database.
   # Allowed:
   # - any non-empty string: used as the encryption secret
-  # Built-in default when unset in both env and this file: legacy fallback key (not recommended)
-  encryptionKey: replace-with-strong-random-encryption-key
-  # Encrypt provider credentials stored in mock database state.
-  # Allowed:
-  # - any non-empty string: used as the mock encryption secret
-  # Built-in default when unset in both env and this file: legacy mock fallback key (not recommended)
-  mockEncryptionKey: replace-with-strong-random-mock-encryption-key
+  # Default when unset in database mode: auto-generated on first start and stored in the database
+  # Default when unset in env mode: startup will fail in production
+  # Override only when a fixed key is required (e.g. multiple instances sharing one database)
+  # encryptionKey:
 
 auth:
   # Sign authentication session cookies.
   # Allowed:
   # - any non-empty string: used to sign session cookies
-  # Default when unset in both env and this file: unset
-  sessionSecret: replace-with-strong-random-session-secret
+  # Default when unset in database mode: auto-generated on first start and stored in the database
+  # Default when unset in env mode: random in-memory value (sessions invalidated on restart)
+  # Override only when a fixed secret is required (e.g. multiple instances sharing one database)
+  # sessionSecret:
   # Session cookie lifetime in seconds.
   # Allowed:
   # - any positive integer: session lifetime in seconds
@@ -132,11 +131,6 @@ auth:
   # - any non-empty string: caller must send this value in x-aimeter-endpoint-secret
   # Default when unset in both env and this file: unset (secret-based access disabled)
   # endpointSecret: replace-with-strong-random-endpoint-secret
-  # One-time secret required for /api/auth/bootstrap while initial setup is not complete.
-  # Allowed:
-  # - any non-empty strong random string
-  # Default when unset in both env and this file: unset
-  # bootstrapToken: replace-with-strong-bootstrap-token
   rateLimit:
     # Rate-limit evaluation window length.
     # Allowed:

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Resolve project root (two levels up from deploy/docker/)
+# Resolve project root (two levels up from deploy/container/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${PROJECT_ROOT}"
@@ -37,7 +37,7 @@ echo "Context: ${PROJECT_ROOT}"
 echo ""
 
 "${RUNTIME}" build \
-  -f deploy/docker/Dockerfile \
+  -f deploy/container/Dockerfile \
   -t "${FULL_IMAGE}" \
   -t "${IMAGE_NAME}:latest" \
   .

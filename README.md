@@ -110,7 +110,7 @@ Key areas:
 - `server`: API URL, frontend/backend ports, CORS, trust proxy
 - `runtime`: `node` or `serverless`, mock switch
 - `database`: engine, DSN/path, encryption keys
-- `auth`: session secret, cookie options, rate limits, bootstrap/admin secrets
+- `auth`: session secret, cookie options, rate limits, admin secrets
 - `providers`: provider list (used when database mode is disabled)
 
 ## Runtime Modes
@@ -128,11 +128,24 @@ AIMeter supports:
 
 
 
+## Container Deployment
+
+AIMeter ships a single-container stack: **nginx** (HTTPS, port 3000) terminates TLS and proxies to Node.js (internal port 3001).
+
+```bash
+./deploy/container/build.sh   # build the image
+./deploy/container/run.sh     # start the service
+```
+
+Security keys are auto-generated on first start — no manual configuration required.
+
+For full details see [deploy/container/README.md](deploy/container/README.md).
+
 ## Security Notes
 
 For production deployment:
 
-- Set strong values for session and encryption secrets.
+- In database mode, `AIMETER_ENCRYPTION_KEY` and `AIMETER_AUTH_SESSION_SECRET` are auto-generated on first start and stored in the database. Override them only for multi-instance deployments.
 - Enable secure cookies behind HTTPS.
 - Restrict CORS origins.
-- Keep bootstrap/admin/cron secrets private.
+- Keep admin/cron/endpoint secrets private.
