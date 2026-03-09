@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
-import { getAppConfig } from '../config.js';
 import { storage } from '../storage.js';
 import { fetchUsageForProvider } from '../services/ProviderUsageService.js';
 
@@ -17,15 +16,8 @@ function safeEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(aBuffer, bBuffer);
 }
 
-function getCronSecret(): string | null {
-  const value = getAppConfig().auth.cronSecret;
-  if (!value) return null;
-  const trimmed = value.trim();
-  return trimmed || null;
-}
-
-function isAuthorized(req: Request): boolean {
-  const configuredSecret = getCronSecret();
+async function isAuthorized(req: Request): Promise<boolean> {
+  const configuredSecret = await storage.getCronSecret();
   if (!configuredSecret) return false;
   const headerSecret = req.header('x-aimeter-cron-secret')?.trim();
   if (!headerSecret) return false;
@@ -33,7 +25,7 @@ function isAuthorized(req: Request): boolean {
 }
 
 router.post('/refresh', async (req: Request, res: Response) => {
-  const configuredSecret = getCronSecret();
+  const configuredSecret = await storage.getCronSecret();
   if (!configuredSecret) {
     res.status(503).json({
       success: false,
@@ -45,7 +37,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!isAuthorized(req)) {
+  if (!await isAuthorized(req)) {
     res.status(401).json({
       success: false,
       error: {

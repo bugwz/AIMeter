@@ -74,6 +74,9 @@ export interface RuntimeCapabilities {
     persisted: boolean;
     mode: 'database' | 'disabled';
   };
+  secrets: {
+    managedInDb: boolean;
+  };
 }
 
 const ROLE_PASSWORD_KEYS: Record<AuthRole, string> = {
@@ -81,6 +84,8 @@ const ROLE_PASSWORD_KEYS: Record<AuthRole, string> = {
   admin: 'admin_password_hash',
 };
 const ADMIN_ROUTE_SECRET_KEY = 'admin_route_secret';
+const CRON_SECRET_KEY = 'cron_secret';
+const ENDPOINT_SECRET_KEY = 'endpoint_secret';
 const PASSWORD_SCHEME = 'pbkdf2_sha256';
 const PBKDF2_KEYLEN = 32;
 const PBKDF2_DEFAULT_ITERATIONS = 210000;
@@ -299,6 +304,9 @@ async function getCapabilities(viewerRole: AuthRole): Promise<RuntimeCapabilitie
       persisted: runtimeConfig.historyMode === 'database',
       mode: runtimeConfig.historyMode,
     },
+    secrets: {
+      managedInDb: runtimeConfig.storageMode === 'database',
+    },
   };
 }
 
@@ -324,6 +332,32 @@ export const storage = {
       throw new ReadonlyAdminRouteError('Admin route secret is managed by environment variables');
     }
     await setDbSetting(ADMIN_ROUTE_SECRET_KEY, value);
+  },
+
+  async getCronSecret(): Promise<string | null> {
+    if (runtimeConfig.storageMode === 'database') {
+      return getDbSetting(CRON_SECRET_KEY);
+    }
+    return getAppConfig().auth.cronSecret?.trim() || null;
+  },
+
+  async getEndpointSecret(): Promise<string | null> {
+    if (runtimeConfig.storageMode === 'database') {
+      return getDbSetting(ENDPOINT_SECRET_KEY);
+    }
+    return getAppConfig().auth.endpointSecret?.trim() || null;
+  },
+
+  async resetCronSecret(): Promise<string> {
+    const secret = crypto.randomBytes(32).toString('hex');
+    await setDbSetting(CRON_SECRET_KEY, secret);
+    return secret;
+  },
+
+  async resetEndpointSecret(): Promise<string> {
+    const secret = crypto.randomBytes(32).toString('hex');
+    await setDbSetting(ENDPOINT_SECRET_KEY, secret);
+    return secret;
   },
 
   async isInitialSetupRequired(): Promise<boolean> {

@@ -159,6 +159,9 @@ export interface RuntimeCapabilities {
     persisted: boolean;
     mode: 'database' | 'disabled';
   };
+  secrets: {
+    managedInDb: boolean;
+  };
 }
 
 // Batch query result

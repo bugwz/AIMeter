@@ -1,4 +1,4 @@
-# System API `/api/system` + `/api/system/jobs`
+# System API `/api/system` + `/api/system/jobs` + `/api/system/secrets`
 
 ---
 
@@ -81,9 +81,13 @@ Batch-refreshes all (or selected) providers' usage data. Designed for integratio
 
 #### Authentication
 
-Request header: `x-aimeter-cron-secret: <secret>`, where the value must match the `AIMETER_CRON_SECRET` environment variable.
+Request header: `x-aimeter-cron-secret: <secret>`.
 
-Returns 503 if `AIMETER_CRON_SECRET` is not configured.
+Secret source by deployment mode:
+- **Database mode**: auto-generated at first startup; retrieve the current value from the admin Settings page or `GET /api/system/secrets`.
+- **Env/config mode**: must match the `AIMETER_CRON_SECRET` environment variable (or `auth.cronSecret` in `config.yaml`).
+
+Returns 503 if no cron secret is available.
 
 #### Request Body (optional)
 
@@ -233,5 +237,108 @@ Set the `AIMETER_CRON_SECRET` environment variable in your Vercel project settin
 
 | Status | Code | Description |
 |--------|------|-------------|
-| 503 | `CRON_SECRET_NOT_CONFIGURED` | `AIMETER_CRON_SECRET` is not set on the server |
+| 503 | `CRON_SECRET_NOT_CONFIGURED` | No cron secret is available (not configured in env/config and not found in DB) |
 | 401 | `UNAUTHORIZED` | `x-aimeter-cron-secret` header is missing or incorrect |
+
+---
+
+### `GET /api/system/secrets`
+
+Returns the current cron secret and endpoint secret. Only available when the server is running in **database mode** — in env/config mode, secrets are managed externally and this endpoint is not useful.
+
+#### Authentication
+
+admin session cookie (`requireApiAuth(['normal', 'admin'])` + `requireAdminRole`).
+
+#### Request Example
+
+```bash
+curl -b cookies.txt http://localhost:3001/api/system/secrets
+```
+
+#### Response Example
+
+```json
+{
+  "success": true,
+  "data": {
+    "cronSecret": "a3f8c2...(64 hex chars)",
+    "endpointSecret": "9d1e74...(64 hex chars)"
+  }
+}
+```
+
+#### Error Codes
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 403 | `FORBIDDEN` | Authenticated but not admin |
+
+---
+
+### `POST /api/system/secrets/cron/reset`
+
+Rotates the cron secret — generates a new 64-character hex secret and overwrites the value in the `settings` table. **The old secret stops working immediately.** Only available in database mode.
+
+#### Authentication
+
+admin session cookie.
+
+#### Request Example
+
+```bash
+curl -X POST -b cookies.txt http://localhost:3001/api/system/secrets/cron/reset
+```
+
+#### Response Example
+
+```json
+{
+  "success": true,
+  "data": {
+    "cronSecret": "new_64_hex_secret..."
+  }
+}
+```
+
+#### Error Codes
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 403 | `FORBIDDEN` | Authenticated but not admin |
+
+---
+
+### `POST /api/system/secrets/endpoint/reset`
+
+Rotates the endpoint secret — same behavior as the cron secret reset, but for the endpoint secret used by `/api/endpoint/subscriptions`.
+
+#### Authentication
+
+admin session cookie.
+
+#### Request Example
+
+```bash
+curl -X POST -b cookies.txt http://localhost:3001/api/system/secrets/endpoint/reset
+```
+
+#### Response Example
+
+```json
+{
+  "success": true,
+  "data": {
+    "endpointSecret": "new_64_hex_secret..."
+  }
+}
+```
+
+#### Error Codes
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 403 | `FORBIDDEN` | Authenticated but not admin |

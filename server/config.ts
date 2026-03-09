@@ -515,7 +515,7 @@ export function getAppConfig(): AppConfig {
         || asString(auth.adminRouteSecret),
       cronSecret: process.env.AIMETER_CRON_SECRET
         || asString(auth.cronSecret),
-      endpointSecret: process.env.AIMETER_ENDPOINT_SECRET?.trim() || undefined,
+      endpointSecret: process.env.AIMETER_ENDPOINT_SECRET?.trim() || asString(auth.endpointSecret) || undefined,
       rateLimit: {
         windowMs: Number(process.env.AIMETER_AUTH_RATE_LIMIT_WINDOW_MS)
           || asNumber(authRateLimit.windowMs)

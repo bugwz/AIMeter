@@ -449,6 +449,30 @@ class ApiService {
     return Boolean(response.data.success);
   }
 
+  async getSecrets(): Promise<{ cronSecret: string | null; endpointSecret: string | null }> {
+    const response = await this.client.get<ApiResponse<{ cronSecret: string | null; endpointSecret: string | null }>>('/system/secrets');
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to fetch secrets');
+    }
+    return response.data.data!;
+  }
+
+  async resetCronSecret(): Promise<string> {
+    const response = await this.client.post<ApiResponse<{ cronSecret: string }>>('/system/secrets/cron/reset');
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to reset cron secret');
+    }
+    return response.data.data!.cronSecret;
+  }
+
+  async resetEndpointSecret(): Promise<string> {
+    const response = await this.client.post<ApiResponse<{ endpointSecret: string }>>('/system/secrets/endpoint/reset');
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to reset endpoint secret');
+    }
+    return response.data.data!.endpointSecret;
+  }
+
   async getSubscriptions(params?: {
     providers?: string;
     format?: 'json' | 'xml' | 'table' | 'markdown' | 'csv';

@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { isRequestAuthenticated, type AuthRole } from '../auth.js';
-import { getAppConfig } from '../config.js';
 import { storage } from '../storage.js';
 
 function safeEqual(a: string, b: string): boolean {
@@ -65,7 +64,7 @@ export function requireEndpointAuth(allowedRoles: AuthRole[]) {
     }
 
     // 2. Try endpoint secret (external scripts)
-    const configuredSecret = getAppConfig().auth.endpointSecret;
+    const configuredSecret = await storage.getEndpointSecret();
     if (configuredSecret) {
       const headerSecret = req.header('x-aimeter-endpoint-secret')?.trim();
       if (headerSecret && safeEqual(headerSecret, configuredSecret)) {

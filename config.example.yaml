@@ -127,6 +127,11 @@ auth:
   # - any non-empty string: caller must send this value in X-AIMETER-CRON-SECRET
   # Default when unset in both env and this file: unset (cron endpoint disabled)
   # cronSecret: replace-with-strong-random-cron-secret
+  # Shared secret for external script access to /api/endpoint/subscriptions.
+  # Allowed:
+  # - any non-empty string: caller must send this value in x-aimeter-endpoint-secret
+  # Default when unset in both env and this file: unset (secret-based access disabled)
+  # endpointSecret: replace-with-strong-random-endpoint-secret
   # One-time secret required for /api/auth/bootstrap while initial setup is not complete.
   # Allowed:
   # - any non-empty strong random string

@@ -198,6 +198,21 @@ export async function runCommonBootstrap(client: DbClient, usageTable: string = 
       }
     });
   }
+
+  // Auto-generate cron_secret and endpoint_secret if not yet present
+  for (const key of ['cron_secret', 'endpoint_secret']) {
+    const existing = await client.query<{ value: string }>(
+      'SELECT value FROM settings WHERE key = ?', [key]
+    );
+    if (existing.length === 0) {
+      const secret = crypto.randomBytes(32).toString('hex');
+      const now = Math.floor(Date.now() / 1000);
+      await client.execute(
+        'INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)',
+        [key, secret, now]
+      );
+    }
+  }
 }
 
 export class SqlEngine implements DatabaseEngine {

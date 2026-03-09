@@ -13,13 +13,17 @@ Exports the latest usage data for all (or selected) providers. Supports JSON, XM
 Two authentication methods are accepted (either one works):
 
 1. **Session cookie** (recommended for browser/frontend): normal or admin role
-2. **Endpoint secret** (recommended for scripts/automation): set the `AIMETER_ENDPOINT_SECRET` environment variable, then pass the secret via request header
+2. **Endpoint secret** (recommended for scripts/automation): pass the secret via request header
 
 ```
 x-aimeter-endpoint-secret: <configured_secret>
 ```
 
-> Endpoint secret authentication is fixed to the `normal` role. If `AIMETER_ENDPOINT_SECRET` is not configured, secret-based authentication is unavailable.
+Secret source by deployment mode:
+- **Database mode**: auto-generated at first startup; retrieve the current value from the admin Settings page or `GET /api/system/secrets`.
+- **Env/config mode**: must match the `AIMETER_ENDPOINT_SECRET` environment variable (or `auth.endpointSecret` in `config.yaml`).
+
+> Endpoint secret authentication is fixed to the `normal` role. If no secret is configured or found, secret-based authentication is unavailable.
 
 #### Query Parameters
 

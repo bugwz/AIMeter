@@ -34,7 +34,11 @@ Token format: `base64url(payload).hmac_sha256_signature`. The signature is bound
 x-aimeter-endpoint-secret: <configured_secret>
 ```
 
-The secret must match the `AIMETER_ENDPOINT_SECRET` environment variable. If not configured, secret-based authentication is unavailable.
+Secret source by deployment mode:
+- **Database mode**: auto-generated at first startup and stored in the `settings` table; retrieve the value from the admin Settings page or via `GET /api/system/secrets`.
+- **Env/config mode**: must match the `AIMETER_ENDPOINT_SECRET` environment variable (or `auth.endpointSecret` in `config.yaml`).
+
+If no secret is configured or found, secret-based authentication is unavailable.
 
 ### Cron Secret (`/api/system/jobs/refresh` only)
 
@@ -42,7 +46,11 @@ The secret must match the `AIMETER_ENDPOINT_SECRET` environment variable. If not
 x-aimeter-cron-secret: <configured_secret>
 ```
 
-The secret must match the `AIMETER_CRON_SECRET` environment variable. If not configured, the endpoint returns 503.
+Secret source by deployment mode:
+- **Database mode**: auto-generated at first startup and stored in the `settings` table; retrieve the value from the admin Settings page or via `GET /api/system/secrets`.
+- **Env/config mode**: must match the `AIMETER_CRON_SECRET` environment variable (or `auth.cronSecret` in `config.yaml`).
+
+If not configured, the endpoint returns 503.
 
 ---
 
@@ -170,6 +178,9 @@ Applied to every response:
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | GET | `/api/system/capabilities` | Get runtime capabilities | normal/admin |
+| GET | `/api/system/secrets` | Get cron & endpoint secrets (DB mode only) | admin |
+| POST | `/api/system/secrets/cron/reset` | Rotate cron secret (DB mode only) | admin |
+| POST | `/api/system/secrets/endpoint/reset` | Rotate endpoint secret (DB mode only) | admin |
 | POST | `/api/system/jobs/refresh` | Cron batch refresh | Cron Secret |
 
 ### [Miscellaneous](./misc.md)

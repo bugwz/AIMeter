@@ -6,6 +6,7 @@ import { getRuntimeEntry } from '../../runtimeContext';
 
 type Role = 'normal' | 'admin';
 type PasswordField = 'oldPassword' | 'newPassword' | 'confirmPassword';
+type SecretKey = 'cron' | 'endpoint';
 
 const EyeIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -42,9 +43,20 @@ export const Settings: React.FC = () => {
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [changingPassword, setChangingPassword] = useState(false);
   const [capabilities, setCapabilities] = useState<RuntimeCapabilities | null>(null);
+  const [secrets, setSecrets] = useState<{ cronSecret: string | null; endpointSecret: string | null } | null>(null);
+  const [secretsVisible, setSecretsVisible] = useState<Record<SecretKey, boolean>>({ cron: false, endpoint: false });
+  const [copied, setCopied] = useState<Record<SecretKey, boolean>>({ cron: false, endpoint: false });
+  const [confirmReset, setConfirmReset] = useState<SecretKey | null>(null);
+  const [resetting, setResetting] = useState<Record<SecretKey, boolean>>({ cron: false, endpoint: false });
+  const [secretMessage, setSecretMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    apiService.getCapabilities().then(setCapabilities).catch(() => undefined);
+    apiService.getCapabilities().then((caps) => {
+      setCapabilities(caps);
+      if (caps.secrets?.managedInDb) {
+        apiService.getSecrets().then(setSecrets).catch(() => undefined);
+      }
+    }).catch(() => undefined);
   }, []);
 
   const handlePasswordFieldChange = (role: Role, field: PasswordField, value: string) => {
@@ -303,6 +315,158 @@ export const Settings: React.FC = () => {
           </div>
         )}
       </div>
+
+      {capabilities?.secrets?.managedInDb && (
+        <div className="bg-[var(--color-surface)] rounded-xl p-6 gradient-border animate-fade-in mt-6" style={{ boxShadow: 'var(--shadow-card)' }}>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[var(--color-bg-subtle)]">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="8" cy="18" r="4"/>
+                <path d="M12 18V2l7 4"/>
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                API Secrets
+              </h2>
+              <p className="text-xs text-[var(--color-text-tertiary)]">
+                Auto-generated secrets for external integrations
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {([
+              { key: 'cron' as SecretKey, label: 'Cron Secret', desc: 'Used to authenticate scheduled job requests via X-AIMeter-Cron-Secret header', value: secrets?.cronSecret ?? null },
+              { key: 'endpoint' as SecretKey, label: 'Endpoint Secret', desc: 'Used to authenticate external API requests via X-AIMeter-Endpoint-Secret header', value: secrets?.endpointSecret ?? null },
+            ]).map(({ key, label, desc, value }) => (
+              <div key={key} className="rounded-lg bg-[var(--color-bg-subtle)] p-4 space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{label}</h3>
+                  <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{desc}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 font-mono text-xs bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--color-text-secondary)] min-h-[36px] flex items-center overflow-hidden">
+                    {value === null ? (
+                      <span className="text-[var(--color-text-muted)] italic">Loading...</span>
+                    ) : secretsVisible[key] ? (
+                      <span className="break-all">{value}</span>
+                    ) : (
+                      <span>{'•'.repeat(32)}</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSecretsVisible((prev) => ({ ...prev, [key]: !prev[key] }))}
+                    className="text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)] p-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]"
+                    aria-label={secretsVisible[key] ? 'Hide' : 'Show'}
+                    title={secretsVisible[key] ? 'Hide' : 'Show'}
+                  >
+                    {secretsVisible[key] ? <EyeIcon /> : <EyeOffIcon />}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!value}
+                    onClick={() => {
+                      if (!value) return;
+                      void navigator.clipboard.writeText(value).then(() => {
+                        setCopied((prev) => ({ ...prev, [key]: true }));
+                        setTimeout(() => setCopied((prev) => ({ ...prev, [key]: false })), 1500);
+                      });
+                    }}
+                    className={`transition-colors p-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] disabled:opacity-40 ${copied[key] ? 'text-[#059669]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'}`}
+                    aria-label="Copy"
+                    title="Copy to clipboard"
+                  >
+                    {copied[key] ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6 9 17l-5-5"/>
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                      </svg>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={resetting[key]}
+                    onClick={() => setConfirmReset(key)}
+                    className="text-[#dc2626] transition-colors hover:text-[#b91c1c] p-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] disabled:opacity-40 text-xs font-medium px-3"
+                    title={`Reset ${label}`}
+                  >
+                    {resetting[key] ? 'Resetting...' : 'Reset'}
+                  </button>
+                </div>
+                {confirmReset === key && (
+                  <div className="flex items-center gap-2 rounded-lg border border-[#fca5a5] bg-[var(--color-error-subtle)] px-3 py-2 animate-fade-in">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                      <line x1="12" y1="9" x2="12" y2="13"/>
+                      <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <span className="flex-1 text-xs text-[#dc2626]">Old secret will stop working immediately.</span>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmReset(null)}
+                      className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={resetting[key]}
+                      onClick={async () => {
+                        setConfirmReset(null);
+                        setResetting((prev) => ({ ...prev, [key]: true }));
+                        setSecretMessage(null);
+                        try {
+                          const newSecret = key === 'cron'
+                            ? await apiService.resetCronSecret()
+                            : await apiService.resetEndpointSecret();
+                          setSecrets((prev) => prev ? { ...prev, [key === 'cron' ? 'cronSecret' : 'endpointSecret']: newSecret } : prev);
+                          setSecretsVisible((prev) => ({ ...prev, [key]: true }));
+                          setSecretMessage({ type: 'success', text: `${label} has been reset.` });
+                        } catch (err) {
+                          setSecretMessage({ type: 'error', text: err instanceof Error ? err.message : `Failed to reset ${label}` });
+                        } finally {
+                          setResetting((prev) => ({ ...prev, [key]: false }));
+                        }
+                      }}
+                      className="text-xs font-medium text-white bg-[#dc2626] hover:bg-[#b91c1c] px-2 py-1 rounded transition-colors disabled:opacity-50"
+                    >
+                      Confirm Reset
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {secretMessage && (
+            <div
+              className={`mt-4 flex items-center gap-2 p-3 rounded-lg text-sm animate-fade-in ${
+                secretMessage.type === 'success'
+                  ? 'bg-[var(--color-success-subtle)] text-[#059669]'
+                  : 'bg-[var(--color-error-subtle)] text-[#dc2626]'
+              }`}
+            >
+              {secretMessage.type === 'success' ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 8v4M12 16h.01"/>
+                </svg>
+              )}
+              {secretMessage.text}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
