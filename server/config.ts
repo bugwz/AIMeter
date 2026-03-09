@@ -49,6 +49,7 @@ export interface AppConfig {
     adminPasswordHash?: string;
     adminRouteSecret?: string;
     cronSecret?: string;
+    endpointSecret?: string;
     rateLimit: {
       windowMs: number;
       maxAttempts: number;
@@ -514,6 +515,7 @@ export function getAppConfig(): AppConfig {
         || asString(auth.adminRouteSecret),
       cronSecret: process.env.AIMETER_CRON_SECRET
         || asString(auth.cronSecret),
+      endpointSecret: process.env.AIMETER_ENDPOINT_SECRET?.trim() || undefined,
       rateLimit: {
         windowMs: Number(process.env.AIMETER_AUTH_RATE_LIMIT_WINDOW_MS)
           || asNumber(authRateLimit.windowMs)

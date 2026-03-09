@@ -13,15 +13,13 @@ Exports the latest usage data for all (or selected) providers. Supports JSON, XM
 Two authentication methods are accepted (either one works):
 
 1. **Session cookie** (recommended for browser/frontend): normal or admin role
-2. **HTTP Basic Auth** (recommended for scripts/automation): username must be `normal`, password is the normal role password
+2. **Endpoint secret** (recommended for scripts/automation): set the `AIMETER_ENDPOINT_SECRET` environment variable, then pass the secret via request header
 
 ```
-Authorization: Basic base64(normal:<password>)
+x-aimeter-endpoint-secret: <configured_secret>
 ```
 
-> Basic Auth is limited to the `normal` role; admin is not supported via Basic Auth.
-
-When no credentials are provided, the response includes `WWW-Authenticate: Basic realm="AIMeter Endpoint"`.
+> Endpoint secret authentication is fixed to the `normal` role. If `AIMETER_ENDPOINT_SECRET` is not configured, secret-based authentication is unavailable.
 
 #### Query Parameters
 
@@ -37,8 +35,8 @@ When no credentials are provided, the response includes `WWW-Authenticate: Basic
 **curl**
 
 ```bash
-# JSON — Basic Auth
-curl -u "normal:mypassword123" \
+# JSON — endpoint secret
+curl -H "x-aimeter-endpoint-secret: mysecret" \
   "http://localhost:3001/api/endpoint/subscriptions"
 
 # JSON — session cookie
@@ -46,20 +44,20 @@ curl -b cookies.txt \
   "http://localhost:3001/api/endpoint/subscriptions"
 
 # XML, pretty-printed
-curl -u "normal:mypassword123" \
+curl -H "x-aimeter-endpoint-secret: mysecret" \
   "http://localhost:3001/api/endpoint/subscriptions?format=xml&pretty=true"
 
 # CSV, save to file
-curl -u "normal:mypassword123" \
+curl -H "x-aimeter-endpoint-secret: mysecret" \
   "http://localhost:3001/api/endpoint/subscriptions?format=csv" \
   --output usage.csv
 
 # Markdown, specific providers, custom timezone
-curl -u "normal:mypassword123" \
+curl -H "x-aimeter-endpoint-secret: mysecret" \
   "http://localhost:3001/api/endpoint/subscriptions?format=markdown&providers=claude,kimi&timezone=America/New_York"
 
 # ASCII table in terminal
-curl -u "normal:mypassword123" \
+curl -H "x-aimeter-endpoint-secret: mysecret" \
   "http://localhost:3001/api/endpoint/subscriptions?format=table&timezone=America/New_York"
 ```
 
@@ -67,13 +65,12 @@ curl -u "normal:mypassword123" \
 
 ```python
 import requests
-from requests.auth import HTTPBasicAuth
 
 BASE_URL = "http://localhost:3001"
-auth = HTTPBasicAuth("normal", "mypassword123")
+headers = {"x-aimeter-endpoint-secret": "mysecret"}
 
 # JSON — all providers
-response = requests.get(f"{BASE_URL}/api/endpoint/subscriptions", auth=auth)
+response = requests.get(f"{BASE_URL}/api/endpoint/subscriptions", headers=headers)
 data = response.json()
 for provider in data["providers"]:
     if "progress" in provider:
@@ -82,7 +79,7 @@ for provider in data["providers"]:
 # CSV — save to file
 response = requests.get(
     f"{BASE_URL}/api/endpoint/subscriptions",
-    auth=auth,
+    headers=headers,
     params={"format": "csv"},
 )
 with open("usage.csv", "w") as f:
@@ -91,7 +88,7 @@ with open("usage.csv", "w") as f:
 # JSON — specific providers, compact output
 response = requests.get(
     f"{BASE_URL}/api/endpoint/subscriptions",
-    auth=auth,
+    headers=headers,
     params={"providers": "claude,kimi", "pretty": "false"},
 )
 ```
@@ -100,12 +97,10 @@ response = requests.get(
 
 ```js
 const BASE_URL = "http://localhost:3001";
-const credentials = btoa("normal:mypassword123"); // base64(username:password)
+const headers = { "x-aimeter-endpoint-secret": "mysecret" };
 
 // JSON — all providers
-const res = await fetch(`${BASE_URL}/api/endpoint/subscriptions`, {
-  headers: { Authorization: `Basic ${credentials}` },
-});
+const res = await fetch(`${BASE_URL}/api/endpoint/subscriptions`, { headers });
 const data = await res.json();
 data.providers
   .filter((p) => "progress" in p)
@@ -114,7 +109,7 @@ data.providers
 // CSV — save output
 const csvRes = await fetch(
   `${BASE_URL}/api/endpoint/subscriptions?format=csv`,
-  { headers: { Authorization: `Basic ${credentials}` } }
+  { headers }
 );
 const csv = await csvRes.text();
 // write csv to file in Node.js: fs.writeFileSync("usage.csv", csv)
@@ -122,7 +117,7 @@ const csv = await csvRes.text();
 // Markdown — specific providers, Shanghai timezone
 const mdRes = await fetch(
   `${BASE_URL}/api/endpoint/subscriptions?format=markdown&providers=claude,kimi&timezone=Asia/Shanghai`,
-  { headers: { Authorization: `Basic ${credentials}` } }
+  { headers }
 );
 console.log(await mdRes.text());
 ```
@@ -280,7 +275,7 @@ Summary: providers(total=1), avgUsed=45%, timezone=UTC
 ```bash
 #!/bin/bash
 # Print Claude's primary usage percentage
-curl -s -u "normal:$AIMETER_PASSWORD" \
+curl -s -H "x-aimeter-endpoint-secret: $AIMETER_ENDPOINT_SECRET" \
   "http://localhost:3001/api/endpoint/subscriptions?format=json&pretty=false" \
   | jq '.providers[] | select(.provider == "claude") | .progress[0].usedPercent'
 ```
@@ -288,7 +283,7 @@ curl -s -u "normal:$AIMETER_PASSWORD" \
 **Status page — fetch Markdown table (curl)**
 
 ```bash
-curl -s -u "normal:$AIMETER_PASSWORD" \
+curl -s -H "x-aimeter-endpoint-secret: $AIMETER_ENDPOINT_SECRET" \
   "http://localhost:3001/api/endpoint/subscriptions?format=markdown&timezone=America/New_York"
 ```
 
@@ -296,12 +291,11 @@ curl -s -u "normal:$AIMETER_PASSWORD" \
 
 ```python
 import requests
-from requests.auth import HTTPBasicAuth
 
-auth = HTTPBasicAuth("normal", "mypassword123")
+headers = {"x-aimeter-endpoint-secret": "mysecret"}
 res = requests.get(
     "http://localhost:3001/api/endpoint/subscriptions",
-    auth=auth,
+    headers=headers,
     params={"format": "json", "pretty": "false"},
 )
 for provider in res.json()["providers"]:
@@ -314,12 +308,12 @@ for provider in res.json()["providers"]:
 ```js
 import { writeFileSync } from "fs";
 
-const credentials = btoa(`normal:${process.env.AIMETER_PASSWORD}`);
+const headers = { "x-aimeter-endpoint-secret": process.env.AIMETER_ENDPOINT_SECRET };
 
 async function poll() {
   const res = await fetch(
     "http://localhost:3001/api/endpoint/subscriptions?format=json&pretty=false",
-    { headers: { Authorization: `Basic ${credentials}` } }
+    { headers }
   );
   const { providers, summary } = await res.json();
   console.log(`[${new Date().toISOString()}] avg=${summary.averageUsedPercent}%`);
@@ -338,7 +332,7 @@ poll();
 
 | Status | Code | Description |
 |--------|------|-------------|
-| 401 | `UNAUTHORIZED` | Not authenticated; response includes `WWW-Authenticate: Basic realm="AIMeter Endpoint"` |
+| 401 | `UNAUTHORIZED` | Not authenticated (no valid session cookie or endpoint secret) |
 | 400 | `INVALID_FORMAT` | `format` is not a supported value |
 | 400 | `INVALID_PRETTY` | `pretty` is not a valid boolean |
 | 400 | `INVALID_TIMEZONE` | `timezone` is not a valid IANA timezone string |

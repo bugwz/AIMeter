@@ -26,13 +26,15 @@ Cookie flags: `HttpOnly; SameSite=Strict; Path=/`. The `Secure` flag is added in
 
 Token format: `base64url(payload).hmac_sha256_signature`. The signature is bound to the current password hash — changing a password immediately invalidates all existing tokens for that role.
 
-### Basic Auth (`/api/endpoint` only)
+### Endpoint Secret (`/api/endpoint` only)
 
-`/api/endpoint/subscriptions` additionally accepts HTTP Basic Auth, limited to the `normal` role:
+`/api/endpoint/subscriptions` additionally accepts an endpoint secret header, fixed to the `normal` role:
 
 ```
-Authorization: Basic base64(normal:<password>)
+x-aimeter-endpoint-secret: <configured_secret>
 ```
+
+The secret must match the `AIMETER_ENDPOINT_SECRET` environment variable. If not configured, secret-based authentication is unavailable.
 
 ### Cron Secret (`/api/system/jobs/refresh` only)
 
@@ -161,7 +163,7 @@ Applied to every response:
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| GET | `/api/endpoint/subscriptions` | Multi-format data export | normal/admin (Basic Auth supported) |
+| GET | `/api/endpoint/subscriptions` | Multi-format data export | normal/admin (Endpoint Secret supported) |
 
 ### [System `/api/system`](./system.md)
 

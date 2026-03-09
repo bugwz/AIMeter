@@ -150,7 +150,7 @@ export const Endpoint: React.FC = () => {
   }, [config, apiBaseUrl, supportsPretty, supportsTimezone]);
 
   const generatedCurl = useMemo(() => {
-    return `curl -u normal:<your-password> '${generatedUrl}'`;
+    return `curl -H "x-aimeter-endpoint-secret: <your-secret>" '${generatedUrl}'`;
   }, [generatedUrl]);
 
   const copyToClipboard = (text: string, type: 'url' | 'curl') => {
