@@ -75,6 +75,8 @@ type ProgressLike = {
   resetDescription?: string;
 };
 
+type AntigravityDisplayMode = 'pool' | 'models';
+
 type SerializedProgressItem = Omit<DashboardProviderData['progress'][number], 'resetsAt'> & {
   resetsAt: number | null;
 };
@@ -131,6 +133,89 @@ function serializeProgressItems(provider: UsageProvider, items: ProgressLike[]):
   }));
 }
 
+function resolveAntigravitySettings(provider: ProviderConfig): {
+  displayMode: AntigravityDisplayMode;
+  poolConfig?: Record<string, string[]>;
+} {
+  const attrs = provider.attrs && typeof provider.attrs === 'object' ? provider.attrs : undefined;
+  const antigravity = attrs && typeof attrs.antigravity === 'object' && attrs.antigravity !== null
+    ? attrs.antigravity as Record<string, unknown>
+    : undefined;
+
+  const displayMode: AntigravityDisplayMode = antigravity?.displayMode === 'models' ? 'models' : 'pool';
+  const rawPoolConfig = antigravity?.poolConfig;
+  if (!rawPoolConfig || typeof rawPoolConfig !== 'object' || Array.isArray(rawPoolConfig)) {
+    return { displayMode };
+  }
+
+  const poolConfig: Record<string, string[]> = {};
+  Object.entries(rawPoolConfig).forEach(([key, value]) => {
+    if (!Array.isArray(value)) return;
+    const patterns = value
+      .map((item) => (typeof item === 'string' ? item.trim().toLowerCase() : ''))
+      .filter(Boolean);
+    if (patterns.length > 0) {
+      poolConfig[key] = patterns;
+    }
+  });
+
+  return { displayMode, ...(Object.keys(poolConfig).length > 0 ? { poolConfig } : {}) };
+}
+
+function toPoolName(name: string, poolConfig?: Record<string, string[]>): string {
+  const normalized = name.trim().toLowerCase();
+  if (poolConfig) {
+    for (const [poolName, patterns] of Object.entries(poolConfig)) {
+      if (patterns.some((pattern) => normalized.includes(pattern))) {
+        return poolName;
+      }
+    }
+  }
+
+  if (normalized.includes('gemini') && normalized.includes('pro')) return 'Gemini Pro';
+  if (normalized.includes('gemini') && normalized.includes('flash')) return 'Gemini Flash';
+  return 'Claude';
+}
+
+function aggregateAntigravityPools(items: ProgressLike[], poolConfig?: Record<string, string[]>): ProgressLike[] {
+  const pools = new Map<string, ProgressLike>();
+
+  items.forEach((item) => {
+    const poolName = toPoolName(item.name, poolConfig);
+    const usedPercent = typeof item.usedPercent === 'number' ? item.usedPercent : 0;
+    const existing = pools.get(poolName);
+    if (!existing || usedPercent > (existing.usedPercent || 0)) {
+      pools.set(poolName, {
+        ...item,
+        name: poolName,
+        usedPercent,
+        remainingPercent: typeof item.remainingPercent === 'number'
+          ? item.remainingPercent
+          : Math.max(0, 100 - usedPercent),
+        used: usedPercent,
+        limit: 100,
+      });
+    }
+  });
+
+  const order = ['Claude', 'Gemini Pro', 'Gemini Flash'];
+  return Array.from(pools.values()).sort((left, right) => {
+    const leftIndex = order.indexOf(left.name);
+    const rightIndex = order.indexOf(right.name);
+    const a = leftIndex === -1 ? 99 : leftIndex;
+    const b = rightIndex === -1 ? 99 : rightIndex;
+    if (a !== b) return a - b;
+    return left.name.localeCompare(right.name);
+  });
+}
+
+function applyProviderDisplayMode(provider: ProviderConfig, items: ProgressLike[]): ProgressLike[] {
+  if (provider.provider !== UsageProvider.ANTIGRAVITY) return items;
+  const settings = resolveAntigravitySettings(provider);
+  if (settings.displayMode === 'models') return items;
+  return aggregateAntigravityPools(items, settings.poolConfig);
+}
+
 function serializeUsageError(error: UsageError): SerializedUsageError {
   return {
     ...error,
@@ -160,7 +245,7 @@ router.post('/latest', async (req: Request, res: Response) => {
               liveSnapshot.identity as Record<string, unknown> | undefined,
               provider.plan,
             ),
-            progress: serializeProgressItems(provider.provider, extractSnapshotItems(liveSnapshot)),
+            progress: serializeProgressItems(provider.provider, applyProviderDisplayMode(provider, extractSnapshotItems(liveSnapshot))),
             updatedAt: toUnixSeconds(liveSnapshot.updatedAt) ?? Math.floor(Date.now() / 1000),
           });
         } catch (error) {
@@ -199,7 +284,7 @@ router.post('/latest', async (req: Request, res: Response) => {
           region: provider.region || undefined,
           refreshInterval: provider.refreshInterval,
           identity: finalIdentity || undefined,
-          progress: serializeProgressItems(provider.provider, progressItems),
+          progress: serializeProgressItems(provider.provider, applyProviderDisplayMode(provider, progressItems)),
           updatedAt: toUnixSeconds(latestRecord.createdAt) ?? Math.floor(Date.now() / 1000),
         };
         results.push(snapshot);
@@ -226,7 +311,7 @@ router.post('/latest', async (req: Request, res: Response) => {
               liveSnapshot.identity as Record<string, unknown> | undefined,
               provider.plan,
             ),
-            progress: serializeProgressItems(provider.provider, extractSnapshotItems(liveSnapshot)),
+            progress: serializeProgressItems(provider.provider, applyProviderDisplayMode(provider, extractSnapshotItems(liveSnapshot))),
             updatedAt: toUnixSeconds(liveSnapshot.updatedAt) ?? Math.floor(Date.now() / 1000),
           });
         } catch (error) {

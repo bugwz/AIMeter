@@ -25,6 +25,7 @@ export interface ProviderSummary {
   plan?: string;
   opencodeWorkspaceId?: string;
   defaultProgressItem?: string | null;
+  attrs?: Record<string, unknown>;
 }
 
 export interface ProviderDetail extends Omit<ProviderSummary, 'credentials'> {
@@ -95,6 +96,14 @@ export interface CodexOAuthTokenResult {
   refreshToken?: string;
   expiresAt?: string;
   clientId?: string;
+}
+
+export interface AntigravityOAuthTokenResult {
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: string;
+  clientId?: string;
+  projectId?: string;
 }
 
 export interface CopilotAuthStartResponse {
@@ -251,6 +260,7 @@ class ApiService {
       plan?: string;
       opencodeWorkspaceId?: string;
       defaultProgressItem?: string;
+      attrs?: Record<string, unknown>;
     }
   ): Promise<ProviderSummary> {
     const response = await this.client.post<ApiResponse<ProviderSummary>>('/providers', {
@@ -305,6 +315,26 @@ class ApiService {
     return response.data.data!;
   }
 
+  async generateAntigravityOAuthUrl(): Promise<{ authUrl: string; sessionId: string }> {
+    const response = await this.client.post<ApiResponse<{ authUrl: string; sessionId: string }>>('/providers/antigravity/oauth/generate-auth-url');
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to generate Antigravity OAuth URL');
+    }
+    return response.data.data!;
+  }
+
+  async exchangeAntigravityOAuthCode(sessionId: string, code: string, state?: string): Promise<AntigravityOAuthTokenResult> {
+    const response = await this.client.post<ApiResponse<AntigravityOAuthTokenResult>>('/providers/antigravity/oauth/exchange-code', {
+      sessionId,
+      code,
+      ...(state ? { state } : {}),
+    });
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to exchange Antigravity OAuth code');
+    }
+    return response.data.data!;
+  }
+
   async startCopilotAuth(): Promise<CopilotAuthStartResponse> {
     const response = await this.client.post<ApiResponse<CopilotAuthStartResponse>>('/providers/copilot/auth/start');
     if (!response.data.success) {
@@ -345,6 +375,7 @@ class ApiService {
       plan?: string;
       opencodeWorkspaceId?: string;
       defaultProgressItem?: string;
+      attrs?: Record<string, unknown>;
     }
   ): Promise<ProviderSummary> {
     const response = await this.client.put<ApiResponse<ProviderSummary>>(

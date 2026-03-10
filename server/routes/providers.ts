@@ -4,6 +4,7 @@ import { getViewerRole, requireAdminRole } from '../middleware/auth.js';
 import { copilotDeviceFlowService, FlowNotFoundError } from '../services/CopilotDeviceFlowService.js';
 import { claudeOAuthService } from '../services/ClaudeOAuthService.js';
 import { codexOAuthService } from '../services/CodexOAuthService.js';
+import { antigravityOAuthService } from '../services/AntigravityOAuthService.js';
 import { storage, tryParseReadonlyError } from '../storage.js';
 import type { ProviderInstance, UsageRecordRow } from '../storage.js';
 import { fetchUsageForProvider, getAdapterForProvider } from '../services/ProviderUsageService.js';
@@ -176,6 +177,7 @@ function serializeProvider(provider: ProviderInstance) {
     plan: provider.plan,
     opencodeWorkspaceId: provider.opencodeWorkspaceId,
     defaultProgressItem: provider.defaultProgressItem || null,
+    attrs: provider.attrs || {},
   };
 }
 
@@ -199,13 +201,19 @@ function isOAuthAuthError(error: unknown): boolean {
     lower.includes('oauth error: 401') ||
     lower.includes('auth invalid') ||
     lower.includes('oauth token expired') ||
+    lower.includes('antigravity auth') ||
+    lower.includes('authentication failed') ||
     lower.includes('invalid_client') ||
     lower.includes('invalid_grant')
   );
 }
 
 function isProviderAuthError(provider: UsageProvider, error: unknown): boolean {
-  if (provider !== UsageProvider.CLAUDE && provider !== UsageProvider.CODEX) {
+  if (
+    provider !== UsageProvider.CLAUDE
+    && provider !== UsageProvider.CODEX
+    && provider !== UsageProvider.ANTIGRAVITY
+  ) {
     return false;
   }
   return isOAuthAuthError(error);
@@ -294,6 +302,7 @@ router.get('/:id', async (req: Request, res: Response) => {
         plan: provider.plan,
         opencodeWorkspaceId: provider.opencodeWorkspaceId,
         defaultProgressItem: provider.defaultProgressItem || null,
+        attrs: provider.attrs || {},
       },
     });
   } catch (error) {
@@ -577,10 +586,53 @@ router.post('/codex/oauth/exchange-code', async (req: Request, res: Response) =>
   }
 });
 
+router.post('/antigravity/oauth/generate-auth-url', (req: Request, res: Response) => {
+  if (!requireAdminRole(req, res)) return;
+  try {
+    const result = antigravityOAuthService.generateAuthUrl();
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'ANTIGRAVITY_OAUTH_GENERATE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to generate authorization URL',
+      },
+    });
+  }
+});
+
+router.post('/antigravity/oauth/exchange-code', async (req: Request, res: Response) => {
+  if (!requireAdminRole(req, res)) return;
+  try {
+    const { sessionId, code, state } = req.body as { sessionId?: string; code?: string; state?: string };
+    if (!sessionId || !code) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_REQUEST',
+          message: 'sessionId and code are required',
+        },
+      });
+      return;
+    }
+    const tokenInfo = await antigravityOAuthService.exchangeCode(sessionId, code, state);
+    res.json({ success: true, data: tokenInfo });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'ANTIGRAVITY_OAUTH_EXCHANGE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to exchange authorization code',
+      },
+    });
+  }
+});
+
 router.post('/', async (req: Request, res: Response) => {
   if (!requireAdminRole(req, res)) return;
   try {
-    const { provider, credentials, authType, refreshInterval, region, name, claudeAuthMode, plan, opencodeWorkspaceId, defaultProgressItem } = req.body;
+    const { provider, credentials, authType, refreshInterval, region, name, claudeAuthMode, plan, opencodeWorkspaceId, defaultProgressItem, attrs } = req.body;
     
     if (!provider || !credentials) {
       res.status(400).json({
@@ -637,6 +689,7 @@ router.post('/', async (req: Request, res: Response) => {
         ? normalizeOpenCodeWorkspaceId(opencodeWorkspaceId)
         : undefined,
       defaultProgressItem: defaultProgressItem || undefined,
+      attrs: attrs && typeof attrs === 'object' && !Array.isArray(attrs) ? attrs : undefined,
     };
 
     const providerId = provider as UsageProvider;
@@ -720,6 +773,7 @@ router.post('/', async (req: Request, res: Response) => {
         claudeAuthMode: config.claudeAuthMode,
         plan: config.plan,
         opencodeWorkspaceId: config.opencodeWorkspaceId,
+        attrs: config.attrs || {},
       },
     });
   } catch (error) {
@@ -797,6 +851,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       defaultProgressItem,
       authType,
       credentials,
+      attrs,
     } = req.body;
     
     const existing = await storage.getProvider(id);
@@ -880,6 +935,9 @@ router.put('/:id', async (req: Request, res: Response) => {
       defaultProgressItem: defaultProgressItem !== undefined
         ? (defaultProgressItem || undefined)
         : existing.defaultProgressItem,
+      attrs: attrs && typeof attrs === 'object' && !Array.isArray(attrs)
+        ? { ...(existing.attrs || {}), ...attrs }
+        : existing.attrs,
     };
 
     const adapter = getAdapterForProvider(existing.provider);
@@ -938,6 +996,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       plan: nextConfig.plan,
       opencodeWorkspaceId: nextConfig.opencodeWorkspaceId,
       defaultProgressItem: nextConfig.defaultProgressItem,
+      attrs: nextConfig.attrs,
     });
 
     if (adapter && !shouldSkipLiveValidation) {
@@ -1197,6 +1256,9 @@ function createCredential(provider: UsageProvider, type: string, value: string):
       if (provider === UsageProvider.CODEX) {
         return createOAuthCredentialFromJSON(value, 'Codex');
       }
+      if (provider === UsageProvider.ANTIGRAVITY) {
+        return createOAuthCredentialFromJSON(value, 'Antigravity');
+      }
       return { type: AuthType.OAUTH, accessToken: value };
     case 'jwt':
       if (provider === UsageProvider.KIMI) {
@@ -1208,7 +1270,7 @@ function createCredential(provider: UsageProvider, type: string, value: string):
   }
 }
 
-function createOAuthCredentialFromJSON(value: string, providerName: 'Claude' | 'Codex'): Credential {
+function createOAuthCredentialFromJSON(value: string, providerName: 'Claude' | 'Codex' | 'Antigravity'): Credential {
   const raw = value.trim();
   if (!raw) {
     throw new Error(`${providerName} OAuth token is required`);

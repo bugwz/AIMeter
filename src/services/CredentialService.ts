@@ -23,6 +23,7 @@ export class CredentialService {
         plan: config.plan,
         opencodeWorkspaceId: config.opencodeWorkspaceId,
         defaultProgressItem: config.defaultProgressItem,
+        attrs: config.attrs,
       }
     );
     
@@ -39,7 +40,11 @@ export class CredentialService {
     }
 
     if (credential.type === AuthType.OAUTH) {
-      if (provider === UsageProvider.CLAUDE || provider === UsageProvider.CODEX) {
+      if (
+        provider === UsageProvider.CLAUDE
+        || provider === UsageProvider.CODEX
+        || provider === UsageProvider.ANTIGRAVITY
+      ) {
         const hasBundleFields = Boolean(
           credential.refreshToken
             || credential.clientId
@@ -82,6 +87,7 @@ export class CredentialService {
       plan: config.plan,
       opencodeWorkspaceId: config.opencodeWorkspaceId,
       defaultProgressItem: config.defaultProgressItem,
+      attrs: config.attrs,
     });
   }
   
@@ -101,6 +107,7 @@ export class CredentialService {
         plan: p.plan,
         opencodeWorkspaceId: p.opencodeWorkspaceId,
         defaultProgressItem: p.defaultProgressItem || undefined,
+        attrs: p.attrs,
       }));
     } catch {
       return [];
@@ -123,6 +130,7 @@ export class CredentialService {
         plan: p.plan,
         opencodeWorkspaceId: p.opencodeWorkspaceId,
         defaultProgressItem: p.defaultProgressItem || undefined,
+        attrs: p.attrs,
       }));
     } catch {
       return [];
@@ -149,6 +157,7 @@ export class CredentialService {
         plan: provider.plan,
         opencodeWorkspaceId: provider.opencodeWorkspaceId,
         defaultProgressItem: provider.defaultProgressItem || undefined,
+        attrs: provider.attrs,
       };
     } catch {
       return null;

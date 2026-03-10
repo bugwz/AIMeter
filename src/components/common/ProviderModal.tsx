@@ -37,8 +37,11 @@ interface ClaudeOAuthFormState {
   accessToken: string;
   refreshToken: string;
   clientId: string;
+  projectId: string;
   expiresAt: string;
 }
+
+type AntigravityDisplayMode = 'pool' | 'models';
 
 interface LinkOAuthState {
   sessionId: string;
@@ -61,6 +64,7 @@ const EMPTY_CLAUDE_OAUTH_FORM: ClaudeOAuthFormState = {
   accessToken: '',
   refreshToken: '',
   clientId: '',
+  projectId: '',
   expiresAt: '',
 };
 
@@ -90,6 +94,7 @@ function toClaudeOAuthFormState(credential: Extract<Credential, { type: AuthType
     accessToken: credential.accessToken || '',
     refreshToken: credential.refreshToken || '',
     clientId: credential.clientId || '',
+    projectId: credential.projectId || '',
     expiresAt: toInputValue(credential.expiresAt),
   };
 }
@@ -124,6 +129,10 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
   const [claudeLinkOAuth, setClaudeLinkOAuth] = useState<LinkOAuthState>(EMPTY_LINK_OAUTH);
   const [codexOAuth, setCodexOAuth] = useState<ClaudeOAuthFormState>(EMPTY_CLAUDE_OAUTH_FORM);
   const [codexLinkOAuth, setCodexLinkOAuth] = useState<LinkOAuthState>(EMPTY_LINK_OAUTH);
+  const [antigravityOAuth, setAntigravityOAuth] = useState<ClaudeOAuthFormState>(EMPTY_CLAUDE_OAUTH_FORM);
+  const [antigravityLinkOAuth, setAntigravityLinkOAuth] = useState<LinkOAuthState>(EMPTY_LINK_OAUTH);
+  const [antigravityDisplayMode, setAntigravityDisplayMode] = useState<AntigravityDisplayMode>('pool');
+  const [antigravityPoolConfigText, setAntigravityPoolConfigText] = useState('');
   const [defaultProgressItem, setDefaultProgressItem] = useState('');
 
   const availableProviders = React.useMemo(
@@ -165,8 +174,28 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
           ? toClaudeOAuthFormState(editConfig.credentials)
           : EMPTY_CLAUDE_OAUTH_FORM
       );
+      setAntigravityOAuth(
+        editConfig.provider === UsageProvider.ANTIGRAVITY && editConfig.credentials.type === AuthType.OAUTH
+          ? toClaudeOAuthFormState(editConfig.credentials)
+          : EMPTY_CLAUDE_OAUTH_FORM
+      );
+      const antigravityAttrs = editConfig.provider === UsageProvider.ANTIGRAVITY
+        && editConfig.attrs
+        && typeof editConfig.attrs === 'object'
+        && !Array.isArray(editConfig.attrs)
+        ? (editConfig.attrs.antigravity as Record<string, unknown> | undefined)
+        : undefined;
+      const displayMode = antigravityAttrs?.displayMode === 'models' ? 'models' : 'pool';
+      setAntigravityDisplayMode(displayMode);
+      const poolConfig = antigravityAttrs?.poolConfig;
+      if (poolConfig && typeof poolConfig === 'object' && !Array.isArray(poolConfig)) {
+        setAntigravityPoolConfigText(JSON.stringify(poolConfig, null, 2));
+      } else {
+        setAntigravityPoolConfigText('');
+      }
       setClaudeLinkOAuth(EMPTY_LINK_OAUTH);
       setCodexLinkOAuth(EMPTY_LINK_OAUTH);
+      setAntigravityLinkOAuth(EMPTY_LINK_OAUTH);
       setError(null);
       setShowCredentialValue(false);
       setCopilotAuth({ status: 'idle', loading: false });
@@ -192,6 +221,10 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
       setClaudeLinkOAuth(EMPTY_LINK_OAUTH);
       setCodexOAuth(EMPTY_CLAUDE_OAUTH_FORM);
       setCodexLinkOAuth(EMPTY_LINK_OAUTH);
+      setAntigravityOAuth(EMPTY_CLAUDE_OAUTH_FORM);
+      setAntigravityLinkOAuth(EMPTY_LINK_OAUTH);
+      setAntigravityDisplayMode('pool');
+      setAntigravityPoolConfigText('');
     }
   }, [isOpen, isEditMode]);
 
@@ -250,6 +283,10 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
     setClaudeLinkOAuth(EMPTY_LINK_OAUTH);
     setCodexOAuth(EMPTY_CLAUDE_OAUTH_FORM);
     setCodexLinkOAuth(EMPTY_LINK_OAUTH);
+    setAntigravityOAuth(EMPTY_CLAUDE_OAUTH_FORM);
+    setAntigravityLinkOAuth(EMPTY_LINK_OAUTH);
+    setAntigravityDisplayMode('pool');
+    setAntigravityPoolConfigText('');
 
     const providerAdapters = getAdaptersForProvider(provider);
     if (providerAdapters.length > 0) {
@@ -271,6 +308,8 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
     setClaudeLinkOAuth(EMPTY_LINK_OAUTH);
     setCodexOAuth(EMPTY_CLAUDE_OAUTH_FORM);
     setCodexLinkOAuth(EMPTY_LINK_OAUTH);
+    setAntigravityOAuth(EMPTY_CLAUDE_OAUTH_FORM);
+    setAntigravityLinkOAuth(EMPTY_LINK_OAUTH);
     setCopilotAuth({ status: 'idle', loading: false });
     setError(null);
   };
@@ -283,6 +322,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
         refreshToken: claudeOAuth.refreshToken.trim() || undefined,
         expiresAt: claudeOAuth.expiresAt.trim() || undefined,
         clientId: claudeOAuth.clientId.trim() || undefined,
+        projectId: claudeOAuth.projectId.trim() || undefined,
       };
     }
     if (selectedProvider === UsageProvider.CODEX && selectedAuthType === AuthType.OAUTH) {
@@ -292,6 +332,17 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
         refreshToken: codexOAuth.refreshToken.trim() || undefined,
         expiresAt: codexOAuth.expiresAt.trim() || undefined,
         clientId: codexOAuth.clientId.trim() || undefined,
+        projectId: codexOAuth.projectId.trim() || undefined,
+      };
+    }
+    if (selectedProvider === UsageProvider.ANTIGRAVITY && selectedAuthType === AuthType.OAUTH) {
+      return {
+        type: AuthType.OAUTH,
+        accessToken: antigravityOAuth.accessToken.trim(),
+        refreshToken: antigravityOAuth.refreshToken.trim() || undefined,
+        expiresAt: antigravityOAuth.expiresAt.trim() || undefined,
+        clientId: antigravityOAuth.clientId.trim() || undefined,
+        projectId: antigravityOAuth.projectId.trim() || undefined,
       };
     }
 
@@ -384,18 +435,41 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
       setError('Codex Access Token is required');
       return;
     }
+    if (selectedProvider === UsageProvider.ANTIGRAVITY
+      && selectedAuthType === AuthType.OAUTH
+      && antigravityOAuth.accessToken.trim().length === 0) {
+      setError('Antigravity Access Token is required');
+      return;
+    }
+    let antigravityPoolConfig: Record<string, unknown> | undefined;
+    if (selectedProvider === UsageProvider.ANTIGRAVITY && antigravityPoolConfigText.trim()) {
+      try {
+        const parsed = JSON.parse(antigravityPoolConfigText);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          throw new Error('Pool config must be a JSON object');
+        }
+        antigravityPoolConfig = parsed as Record<string, unknown>;
+      } catch (parseError) {
+        setError(parseError instanceof Error ? parseError.message : 'Invalid Antigravity pool config JSON');
+        return;
+      }
+    }
     const hasClaudeOAuthInput = selectedProvider === UsageProvider.CLAUDE
       && selectedAuthType === AuthType.OAUTH
       && claudeOAuth.accessToken.trim().length > 0;
     const hasCodexOAuthInput = selectedProvider === UsageProvider.CODEX
       && selectedAuthType === AuthType.OAUTH
       && codexOAuth.accessToken.trim().length > 0;
+    const hasAntigravityOAuthInput = selectedProvider === UsageProvider.ANTIGRAVITY
+      && selectedAuthType === AuthType.OAUTH
+      && antigravityOAuth.accessToken.trim().length > 0;
 
     if (!isEditMode
       && !(selectedProvider === UsageProvider.COPILOT && selectedAuthType === AuthType.OAUTH)
       && !credentialValue
       && !hasClaudeOAuthInput
-      && !hasCodexOAuthInput) {
+      && !hasCodexOAuthInput
+      && !hasAntigravityOAuthInput) {
       return;
     }
     
@@ -419,6 +493,14 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
             ? (opencodeWorkspaceId.trim() || undefined)
             : undefined,
           defaultProgressItem: defaultProgressItem.trim() || undefined,
+          attrs: selectedProvider === UsageProvider.ANTIGRAVITY
+            ? {
+              antigravity: {
+                displayMode: antigravityDisplayMode,
+                ...(antigravityPoolConfig ? { poolConfig: antigravityPoolConfig } : {}),
+              },
+            }
+            : undefined,
         };
 
         await credentialService.updateConfig(editConfig.id, config);
@@ -451,6 +533,14 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
             ? (opencodeWorkspaceId.trim() || undefined)
             : undefined,
           defaultProgressItem: defaultProgressItem.trim() || undefined,
+          attrs: selectedProvider === UsageProvider.ANTIGRAVITY
+            ? {
+              antigravity: {
+                displayMode: antigravityDisplayMode,
+                ...(antigravityPoolConfig ? { poolConfig: antigravityPoolConfig } : {}),
+              },
+            }
+            : undefined,
         };
 
         await credentialService.saveConfig(selectedProvider, config);
@@ -467,6 +557,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
   const isCopilotOAuth = selectedProvider === UsageProvider.COPILOT && selectedAuthType === AuthType.OAUTH;
   const isClaudeOAuth = selectedProvider === UsageProvider.CLAUDE && selectedAuthType === AuthType.OAUTH;
   const isCodexOAuth = selectedProvider === UsageProvider.CODEX && selectedAuthType === AuthType.OAUTH;
+  const isAntigravityOAuth = selectedProvider === UsageProvider.ANTIGRAVITY && selectedAuthType === AuthType.OAUTH;
   const isCookieInput = selectedAuthType === AuthType.COOKIE;
   const isSensitiveCredential = selectedAuthType === AuthType.COOKIE
     || selectedAuthType === AuthType.API_KEY
@@ -476,11 +567,13 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
   const requiresCredentialInput = !showCopilotDeviceFlow;
   const hasClaudeAccessToken = claudeOAuth.accessToken.trim().length > 0;
   const hasCodexAccessToken = codexOAuth.accessToken.trim().length > 0;
+  const hasAntigravityAccessToken = antigravityOAuth.accessToken.trim().length > 0;
   const isSubmitDisabled = !selectedProvider
     || !name.trim()
-    || (requiresCredentialInput && !isClaudeOAuth && !isCodexOAuth && !credentialValue)
+    || (requiresCredentialInput && !isClaudeOAuth && !isCodexOAuth && !isAntigravityOAuth && !credentialValue)
     || (isClaudeOAuth && !hasClaudeAccessToken)
     || (isCodexOAuth && !hasCodexAccessToken)
+    || (isAntigravityOAuth && !hasAntigravityAccessToken)
     || (showCopilotDeviceFlow && !copilotAuth.tempCredentialId)
     || saving;
 
@@ -968,6 +1061,145 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                           <p>Or paste callback URL / code(#state) above to auto-fill.</p>
                         </div>
                       </div>
+                    ) : isAntigravityOAuth ? (
+                      <div className="rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-subtle)] p-4 space-y-4">
+                        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-3 space-y-2">
+                          <p className="text-xs font-medium text-[var(--color-text-secondary)]">Auto Fill (Link Auth)</p>
+                          <p className="text-xs text-[var(--color-text-tertiary)]">
+                            Paste callback URL or code(#state), then auto-fill OAuth fields below.
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={antigravityLinkOAuth.loading}
+                              onClick={async () => {
+                                setAntigravityLinkOAuth((prev) => ({ ...prev, loading: true, error: undefined }));
+                                try {
+                                  const result = await apiService.generateAntigravityOAuthUrl();
+                                  setAntigravityLinkOAuth((prev) => ({
+                                    ...prev,
+                                    sessionId: result.sessionId,
+                                    authUrl: result.authUrl,
+                                    step: 'generated',
+                                    loading: false,
+                                  }));
+                                } catch (err) {
+                                  setAntigravityLinkOAuth((prev) => ({
+                                    ...prev,
+                                    loading: false,
+                                    error: err instanceof Error ? err.message : 'Failed to generate link',
+                                  }));
+                                }
+                              }}
+                              className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-[var(--color-accent)] text-white hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                            >
+                              {antigravityLinkOAuth.loading && antigravityLinkOAuth.step === 'idle' ? 'Generating...' : antigravityLinkOAuth.step !== 'idle' ? 'Regenerate Link' : 'Generate Authorization Link'}
+                            </button>
+                            {antigravityLinkOAuth.authUrl && (
+                              <a
+                                href={antigravityLinkOAuth.authUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border border-[var(--color-border-subtle)] bg-[var(--color-bg-subtle)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface)] transition"
+                              >
+                                Open Authorization Link
+                              </a>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            value={antigravityLinkOAuth.code}
+                            onChange={(e) => setAntigravityLinkOAuth((prev) => ({ ...prev, code: e.target.value }))}
+                            placeholder="Paste callback URL or code(#state) here..."
+                            className="input-field font-mono text-xs"
+                            spellCheck={false}
+                            autoCapitalize="off"
+                            autoCorrect="off"
+                          />
+                          <button
+                            type="button"
+                            disabled={antigravityLinkOAuth.loading || !antigravityLinkOAuth.code.trim() || !antigravityLinkOAuth.sessionId}
+                            onClick={async () => {
+                              setAntigravityLinkOAuth((prev) => ({ ...prev, loading: true, error: undefined }));
+                              try {
+                                const parsed = parseOAuthCallbackInput(antigravityLinkOAuth.code);
+                                if (!parsed.code) {
+                                  throw new Error('Please paste a valid authorization code or callback URL.');
+                                }
+                                const tokenInfo = await apiService.exchangeAntigravityOAuthCode(antigravityLinkOAuth.sessionId, parsed.code, parsed.state);
+                                setAntigravityOAuth((prev) => ({
+                                  ...prev,
+                                  accessToken: tokenInfo.accessToken || prev.accessToken,
+                                  refreshToken: tokenInfo.refreshToken || prev.refreshToken,
+                                  clientId: tokenInfo.clientId || prev.clientId,
+                                  projectId: tokenInfo.projectId || prev.projectId,
+                                  expiresAt: tokenInfo.expiresAt || prev.expiresAt,
+                                }));
+                                setAntigravityLinkOAuth((prev) => ({ ...prev, loading: false, step: 'exchanged' }));
+                              } catch (err) {
+                                setAntigravityLinkOAuth((prev) => ({
+                                  ...prev,
+                                  loading: false,
+                                  error: err instanceof Error ? err.message : 'Failed to auto fill tokens',
+                                }));
+                              }
+                            }}
+                            className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-[var(--color-accent)] text-white hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                          >
+                            {antigravityLinkOAuth.loading ? 'Auto Filling...' : 'Auto Fill Inputs'}
+                          </button>
+
+                          {antigravityLinkOAuth.step === 'exchanged' && (
+                            <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-xs text-emerald-800">
+                              Inputs auto-filled. Review values below, then click Add Provider.
+                            </div>
+                          )}
+                          {antigravityLinkOAuth.error && (
+                            <div className="rounded-lg border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs text-rose-800">
+                              {antigravityLinkOAuth.error}
+                            </div>
+                          )}
+                        </div>
+
+                        <OAuthField
+                          label="Access Token"
+                          type="password"
+                          value={antigravityOAuth.accessToken}
+                          onChange={(value) => setAntigravityOAuth((prev) => ({ ...prev, accessToken: value }))}
+                          placeholder="ya29...."
+                          required
+                          help="Required."
+                        />
+                        <OAuthField
+                          label="Refresh Token"
+                          type="password"
+                          value={antigravityOAuth.refreshToken}
+                          onChange={(value) => setAntigravityOAuth((prev) => ({ ...prev, refreshToken: value }))}
+                          placeholder="1//..."
+                          help="Optional. Needed for automatic token refresh."
+                        />
+                        <OAuthField
+                          label="Client ID"
+                          value={antigravityOAuth.clientId}
+                          onChange={(value) => setAntigravityOAuth((prev) => ({ ...prev, clientId: value }))}
+                          placeholder="1071006060591-....apps.googleusercontent.com"
+                          help="Optional. Defaults to official Antigravity OAuth client."
+                        />
+                        <OAuthField
+                          label="Project ID"
+                          value={antigravityOAuth.projectId}
+                          onChange={(value) => setAntigravityOAuth((prev) => ({ ...prev, projectId: value }))}
+                          placeholder="projects/..."
+                          help="Optional. Auto-filled if exchange succeeds; can also be resolved during fetch."
+                        />
+                        <OAuthField
+                          label="Expiry Time"
+                          value={antigravityOAuth.expiresAt}
+                          onChange={(value) => setAntigravityOAuth((prev) => ({ ...prev, expiresAt: value }))}
+                          placeholder="1735689600000 or 2026-02-28T12:00:00Z"
+                          help="Optional. Supports unix milliseconds or ISO time."
+                        />
+                      </div>
                     ) : (
                       <div>
                         <label className="block text-xs font-medium text-[var(--color-text-secondary)] tracking-wide mb-2">
@@ -1056,6 +1288,40 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                     <p className="mt-1.5 text-xs text-[var(--color-text-muted)]">
                       Optional. Used as stored plan metadata and to improve Claude usage window interpretation.
                     </p>
+                  </div>
+                )}
+
+                {selectedProvider === UsageProvider.ANTIGRAVITY && (
+                  <div className="space-y-3">
+                    <label className="block text-xs font-medium text-[var(--color-text-secondary)] tracking-wide">
+                      Antigravity Display Mode
+                    </label>
+                    <SelectField
+                      value={antigravityDisplayMode}
+                      onChange={(value) => setAntigravityDisplayMode(value as AntigravityDisplayMode)}
+                      options={[
+                        { value: 'pool', label: 'Pool (Claude / Gemini Pro / Gemini Flash)' },
+                        { value: 'models', label: 'All models' },
+                      ]}
+                      className="input-field select-field"
+                    />
+                    <div>
+                      <label className="block text-xs font-medium text-[var(--color-text-secondary)] tracking-wide mb-2">
+                        Pool Config (JSON, optional)
+                      </label>
+                      <textarea
+                        value={antigravityPoolConfigText}
+                        onChange={(e) => setAntigravityPoolConfigText(e.target.value)}
+                        placeholder={'{\"Claude\":[\"claude\",\"gpt-oss\"],\"Gemini Pro\":[\"gemini\",\"pro\"],\"Gemini Flash\":[\"gemini\",\"flash\"]}'}
+                        className="input-field min-h-[96px] resize-y font-mono text-xs"
+                        spellCheck={false}
+                        autoCapitalize="off"
+                        autoCorrect="off"
+                      />
+                      <p className="mt-1.5 text-xs text-[var(--color-text-muted)]">
+                        Optional. Override model-to-pool matching rules for dashboard display.
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -1381,6 +1647,8 @@ function getAdaptersForProvider(provider: UsageProvider): AuthType[] {
       return [AuthType.OAUTH, AuthType.COOKIE];
     case UsageProvider.CODEX:
       return [AuthType.OAUTH];
+    case UsageProvider.ANTIGRAVITY:
+      return [AuthType.OAUTH];
     case UsageProvider.KIMI:
       return [AuthType.COOKIE];
     case UsageProvider.MINIMAX:
@@ -1468,6 +1736,9 @@ function getCredentialPlaceholder(authType: AuthType, provider?: UsageProvider):
       }
       return 'sk-or-v1-xxx...';
     case AuthType.OAUTH:
+      if (provider === UsageProvider.ANTIGRAVITY) {
+        return 'ya29....';
+      }
       return 'eyJxxx...';
     case AuthType.JWT:
       return 'eyJxxx...';
@@ -1477,6 +1748,10 @@ function getCredentialPlaceholder(authType: AuthType, provider?: UsageProvider):
 function getCredentialHelp(provider: UsageProvider, authType: AuthType, region?: string): React.ReactNode {
   if (provider === UsageProvider.COPILOT && authType === AuthType.OAUTH) {
     return 'Sign in with GitHub to authorize Copilot usage access.';
+  }
+
+  if (provider === UsageProvider.ANTIGRAVITY && authType === AuthType.OAUTH) {
+    return 'Use Link Auth above or paste Antigravity OAuth tokens manually.';
   }
 
   if (authType === AuthType.API_KEY) {

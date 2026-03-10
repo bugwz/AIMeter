@@ -58,7 +58,11 @@ async function persistUpdatedCredentialIfNeeded(
   config: ProviderConfig,
   beforeCredentialFingerprint: string | undefined,
 ): Promise<void> {
-  if (config.provider !== UsageProvider.CLAUDE && config.provider !== UsageProvider.CODEX) {
+  if (
+    config.provider !== UsageProvider.CLAUDE
+    && config.provider !== UsageProvider.CODEX
+    && config.provider !== UsageProvider.ANTIGRAVITY
+  ) {
     return;
   }
   if (!config.id || config.storageMode !== 'database') {

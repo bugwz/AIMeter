@@ -2,6 +2,7 @@ import { UsageProvider } from '../../types';
 
 const DEFAULT_PROVIDER_LINKS: Record<UsageProvider, string> = {
   [UsageProvider.ALIYUN]: 'https://bailian.console.aliyun.com/',
+  [UsageProvider.ANTIGRAVITY]: 'https://antigravity.so/',
   [UsageProvider.CLAUDE]: 'https://claude.ai/',
   [UsageProvider.CODEX]: 'https://chatgpt.com/',
   [UsageProvider.KIMI]: 'https://www.kimi.com/',

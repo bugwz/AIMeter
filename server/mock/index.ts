@@ -741,6 +741,32 @@ function createCredential(provider: UsageProvider, type: string, value: string):
     case 'cookie':
       return { type: AuthType.COOKIE, value, source: 'manual' };
     case 'oauth':
+      if (provider === UsageProvider.ANTIGRAVITY) {
+        const trimmed = value.trim();
+        if (trimmed.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+            const accessToken = typeof parsed.accessToken === 'string'
+              ? parsed.accessToken
+              : (typeof parsed.access_token === 'string' ? parsed.access_token : '');
+            if (!accessToken) {
+              throw new Error('Antigravity OAuth JSON is missing access_token');
+            }
+            return {
+              type: AuthType.OAUTH,
+              accessToken,
+              refreshToken: typeof parsed.refreshToken === 'string'
+                ? parsed.refreshToken
+                : (typeof parsed.refresh_token === 'string' ? parsed.refresh_token : undefined),
+              projectId: typeof parsed.projectId === 'string'
+                ? parsed.projectId
+                : (typeof parsed.project_id === 'string' ? parsed.project_id : undefined),
+            };
+          } catch (error) {
+            throw new Error(error instanceof Error ? error.message : 'Invalid Antigravity OAuth JSON');
+          }
+        }
+      }
       return { type: AuthType.OAUTH, accessToken: value };
     case 'jwt':
       if (provider === UsageProvider.KIMI) {

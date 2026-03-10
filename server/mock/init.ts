@@ -26,6 +26,7 @@ function buildDefaultMockCredential(provider: UsageProvider): Credential {
       return { type: AuthType.COOKIE, value: `mock-cookie-${provider}`, source: 'manual' };
     case UsageProvider.CLAUDE:
     case UsageProvider.CODEX:
+    case UsageProvider.ANTIGRAVITY:
       return { type: AuthType.OAUTH, accessToken: `mock-oauth-${provider}` };
     case UsageProvider.COPILOT:
       return { type: AuthType.OAUTH, accessToken: `mock-oauth-${provider}` };

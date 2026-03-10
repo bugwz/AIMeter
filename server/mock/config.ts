@@ -22,6 +22,16 @@ export const MOCK_PROVIDER_CONFIGS: Record<UsageProvider, MockProviderConfig> = 
     consumptionUnit: 'requests',
     resetDay: 1,
   },
+  [UsageProvider.ANTIGRAVITY]: {
+    provider: UsageProvider.ANTIGRAVITY,
+    name: 'Antigravity',
+    initialUsage: 20,
+    limit: 100,
+    periodType: 'daily',
+    consumptionRate: 1,
+    consumptionUnit: 'requests',
+    resetDay: 1,
+  },
   [UsageProvider.CLAUDE]: {
     provider: UsageProvider.CLAUDE,
     name: 'Claude',

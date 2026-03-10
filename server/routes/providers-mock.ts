@@ -52,7 +52,7 @@ function createCredential(provider: UsageProvider, type: string, value: string):
     case 'cookie':
       return { type: AuthType.COOKIE, value, source: 'manual' };
     case 'oauth':
-      if (provider === UsageProvider.CLAUDE) {
+      if (provider === UsageProvider.CLAUDE || provider === UsageProvider.ANTIGRAVITY) {
         const trimmed = value.trim();
         if (trimmed.startsWith('{')) {
           try {
@@ -78,9 +78,12 @@ function createCredential(provider: UsageProvider, type: string, value: string):
               expiresAt: typeof parsed.expiresAt === 'string'
                 ? parsed.expiresAt
                 : (typeof parsed.expiry_date === 'string' ? parsed.expiry_date : undefined),
+              projectId: typeof parsed.projectId === 'string'
+                ? parsed.projectId
+                : (typeof parsed.project_id === 'string' ? parsed.project_id : undefined),
             };
           } catch (error) {
-            throw new Error(error instanceof Error ? error.message : 'Invalid Claude OAuth JSON');
+            throw new Error(error instanceof Error ? error.message : 'Invalid OAuth JSON');
           }
         }
       }

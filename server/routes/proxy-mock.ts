@@ -20,6 +20,8 @@ type ProgressLike = {
   resetDescription?: string;
 };
 
+type AntigravityDisplayMode = 'pool' | 'models';
+
 type SerializedProgressItem = Omit<DashboardProviderData['progress'][number], 'resetsAt'> & {
   resetsAt: number | null;
 };
@@ -78,6 +80,82 @@ function serializeProgressItems(provider: UsageProvider, items: ProgressLike[]):
     resetsAt: toUnixSeconds(item.resetsAt) ?? null,
     resetDescription: item.resetDescription,
   }));
+}
+
+function resolveAntigravitySettings(provider: ProviderConfig): {
+  displayMode: AntigravityDisplayMode;
+  poolConfig?: Record<string, string[]>;
+} {
+  const attrs = provider.attrs && typeof provider.attrs === 'object' ? provider.attrs : undefined;
+  const antigravity = attrs && typeof attrs.antigravity === 'object' && attrs.antigravity !== null
+    ? attrs.antigravity as Record<string, unknown>
+    : undefined;
+  const displayMode: AntigravityDisplayMode = antigravity?.displayMode === 'models' ? 'models' : 'pool';
+  const rawPoolConfig = antigravity?.poolConfig;
+  if (!rawPoolConfig || typeof rawPoolConfig !== 'object' || Array.isArray(rawPoolConfig)) {
+    return { displayMode };
+  }
+
+  const poolConfig: Record<string, string[]> = {};
+  Object.entries(rawPoolConfig).forEach(([key, value]) => {
+    if (!Array.isArray(value)) return;
+    const patterns = value
+      .map((item) => (typeof item === 'string' ? item.trim().toLowerCase() : ''))
+      .filter(Boolean);
+    if (patterns.length > 0) poolConfig[key] = patterns;
+  });
+
+  return { displayMode, ...(Object.keys(poolConfig).length > 0 ? { poolConfig } : {}) };
+}
+
+function toPoolName(name: string, poolConfig?: Record<string, string[]>): string {
+  const normalized = name.trim().toLowerCase();
+  if (poolConfig) {
+    for (const [poolName, patterns] of Object.entries(poolConfig)) {
+      if (patterns.some((pattern) => normalized.includes(pattern))) return poolName;
+    }
+  }
+  if (normalized.includes('gemini') && normalized.includes('pro')) return 'Gemini Pro';
+  if (normalized.includes('gemini') && normalized.includes('flash')) return 'Gemini Flash';
+  return 'Claude';
+}
+
+function aggregateAntigravityPools(items: ProgressLike[], poolConfig?: Record<string, string[]>): ProgressLike[] {
+  const pools = new Map<string, ProgressLike>();
+  items.forEach((item) => {
+    const poolName = toPoolName(item.name, poolConfig);
+    const usedPercent = typeof item.usedPercent === 'number' ? item.usedPercent : 0;
+    const existing = pools.get(poolName);
+    if (!existing || usedPercent > (existing.usedPercent || 0)) {
+      pools.set(poolName, {
+        ...item,
+        name: poolName,
+        usedPercent,
+        remainingPercent: typeof item.remainingPercent === 'number'
+          ? item.remainingPercent
+          : Math.max(0, 100 - usedPercent),
+        used: usedPercent,
+        limit: 100,
+      });
+    }
+  });
+
+  const order = ['Claude', 'Gemini Pro', 'Gemini Flash'];
+  return Array.from(pools.values()).sort((a, b) => {
+    const ai = order.indexOf(a.name);
+    const bi = order.indexOf(b.name);
+    const aw = ai === -1 ? 99 : ai;
+    const bw = bi === -1 ? 99 : bi;
+    if (aw !== bw) return aw - bw;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function applyProviderDisplayMode(provider: ProviderConfig, items: ProgressLike[]): ProgressLike[] {
+  if (provider.provider !== UsageProvider.ANTIGRAVITY) return items;
+  const settings = resolveAntigravitySettings(provider);
+  if (settings.displayMode === 'models') return items;
+  return aggregateAntigravityPools(items, settings.poolConfig);
 }
 
 function serializeUsageSnapshot(snapshot: UsageSnapshot): SerializedUsageSnapshot {
@@ -161,7 +239,7 @@ router.post('/latest', async (req: Request, res: Response) => {
           name: provider.name || null,
           refreshInterval: provider.refreshInterval,
           identity: finalIdentity || undefined,
-          progress: serializeProgressItems(provider.provider, progressItems.map((item) => ({
+          progress: serializeProgressItems(provider.provider, applyProviderDisplayMode(provider, progressItems.map((item) => ({
             ...item,
             windowMinutes: item.windowMinutes ?? windowMinutes ?? null,
             resetsAt: item.resetsAt ?? resetsAt ?? null,
@@ -254,7 +332,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
           name: provider.name || null,
           refreshInterval: provider.refreshInterval,
           identity: finalIdentity || undefined,
-          progress: serializeProgressItems(provider.provider, items.map((item) => ({
+          progress: serializeProgressItems(provider.provider, applyProviderDisplayMode(providerConfig, items.map((item) => ({
             ...item,
             windowMinutes: item.windowMinutes ?? windowMinutes ?? null,
             resetsAt: item.resetsAt ?? resetsAt ?? null,

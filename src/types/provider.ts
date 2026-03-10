@@ -1,6 +1,7 @@
 // Provider-related type definitions
 export enum UsageProvider {
   ALIYUN = 'aliyun',
+  ANTIGRAVITY = 'antigravity',
   CLAUDE = 'claude',
   CODEX = 'codex',
   KIMI = 'kimi',
@@ -131,6 +132,7 @@ export function getRegionsForProvider(provider: UsageProvider): RegionMeta[] {
 // Provider name map
 export const PROVIDER_NAMES: Record<UsageProvider, string> = {
   [UsageProvider.ALIYUN]: 'Aliyun',
+  [UsageProvider.ANTIGRAVITY]: 'Antigravity',
   [UsageProvider.CLAUDE]: 'Claude',
   [UsageProvider.CODEX]: 'Codex',
   [UsageProvider.KIMI]: 'Kimi',
@@ -146,6 +148,7 @@ export const PROVIDER_NAMES: Record<UsageProvider, string> = {
 // Provider color map
 export const PROVIDER_COLORS: Record<UsageProvider, string> = {
   [UsageProvider.ALIYUN]: '#FF6A00',
+  [UsageProvider.ANTIGRAVITY]: '#4285F4',
   [UsageProvider.CLAUDE]: '#D97757',
   [UsageProvider.CODEX]: '#10A37F',
   [UsageProvider.KIMI]: '#5B5FE3',

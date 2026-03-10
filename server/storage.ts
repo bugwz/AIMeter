@@ -186,7 +186,11 @@ function parseConfiguredCredential(provider: UsageProvider, authType: string, ra
     case AuthType.API_KEY:
       return { type: AuthType.API_KEY, value: raw, keyPrefix: raw.slice(0, 8) };
     case AuthType.OAUTH:
-      if (provider === UsageProvider.CLAUDE || provider === UsageProvider.CODEX) {
+      if (
+        provider === UsageProvider.CLAUDE
+        || provider === UsageProvider.CODEX
+        || provider === UsageProvider.ANTIGRAVITY
+      ) {
         const parsed = parseOAuthJSONCredential(raw);
         if (parsed) return parsed;
       }

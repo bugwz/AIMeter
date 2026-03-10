@@ -11,6 +11,7 @@ import { ollamaAdapter } from './OllamaAdapter';
 import { cursorAdapter } from './CursorAdapter';
 import { openCodeAdapter } from './OpenCodeAdapter';
 import { zaiAdapter } from './ZaiAdapter';
+import { antigravityAdapter } from './AntigravityAdapter';
 
 // Register all adapters
 providerRegistry.registerAdapter(aliyunAdapter);
@@ -24,6 +25,7 @@ providerRegistry.registerAdapter(ollamaAdapter);
 providerRegistry.registerAdapter(cursorAdapter);
 providerRegistry.registerAdapter(openCodeAdapter);
 providerRegistry.registerAdapter(zaiAdapter);
+providerRegistry.registerAdapter(antigravityAdapter);
 
 // Export all adapters
 export * from './interface';
@@ -39,3 +41,4 @@ export { ollamaAdapter } from './OllamaAdapter';
 export { cursorAdapter } from './CursorAdapter';
 export { openCodeAdapter } from './OpenCodeAdapter';
 export { zaiAdapter } from './ZaiAdapter';
+export { antigravityAdapter } from './AntigravityAdapter';

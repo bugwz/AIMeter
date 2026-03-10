@@ -2,6 +2,7 @@ import { UsageProvider } from '../../types';
 
 export const providerLogos: Partial<Record<UsageProvider, string>> = {
   [UsageProvider.ALIYUN]: '/providers/aliyun.svg',
+  [UsageProvider.ANTIGRAVITY]: '/providers/antigravity.svg',
   [UsageProvider.CLAUDE]: '/providers/claude.svg',
   [UsageProvider.CODEX]: '/providers/codex.svg',
   [UsageProvider.KIMI]: '/providers/kimi.svg',

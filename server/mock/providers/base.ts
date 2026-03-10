@@ -37,6 +37,7 @@ export function createMockProvider(provider: UsageProvider, providerConfig?: Pic
     case UsageProvider.ALIYUN:
       return new ClaudeMockProvider(options);
     case UsageProvider.CLAUDE:
+    case UsageProvider.ANTIGRAVITY:
       return new ClaudeMockProvider(options);
     case UsageProvider.COPILOT:
       return new CopilotMockProvider(options);
