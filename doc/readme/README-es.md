@@ -28,6 +28,7 @@ AIMeter es un panel self-hosted para supervisar uso, cuota e historial de varios
 Los adaptadores actuales incluyen:
 
 - Aliyun
+- Antigravity
 - Claude
 - Codex
 - Kimi

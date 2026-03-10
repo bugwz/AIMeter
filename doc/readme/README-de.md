@@ -28,6 +28,7 @@ AIMeter ist ein self-hosted Dashboard, um Nutzung, Kontingente und Verlauf mehre
 Aktuell verfügbare Adapter:
 
 - Aliyun
+- Antigravity
 - Claude
 - Codex
 - Kimi

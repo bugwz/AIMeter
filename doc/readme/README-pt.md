@@ -28,6 +28,7 @@ AIMeter e um dashboard self-hosted para acompanhar uso, cota e historico de vari
 Os adaptadores atuais incluem:
 
 - Aliyun
+- Antigravity
 - Claude
 - Codex
 - Kimi

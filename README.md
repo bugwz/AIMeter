@@ -30,6 +30,7 @@ It includes a React frontend, an Express backend, multi-provider adapters, sched
 Current provider adapters include:
 
 - Aliyun
+- Antigravity
 - Claude
 - Codex
 - Kimi

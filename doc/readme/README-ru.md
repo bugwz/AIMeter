@@ -28,6 +28,7 @@ AIMeter - это self-hosted панель для отслеживания исп
 Текущие адаптеры включают:
 
 - Aliyun
+- Antigravity
 - Claude
 - Codex
 - Kimi

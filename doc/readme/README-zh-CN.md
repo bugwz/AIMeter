@@ -28,6 +28,7 @@ AIMeter 是一个可自托管的仪表盘，用于在一个界面中跟踪多个
 当前适配器包括：
 
 - Aliyun
+- Antigravity
 - Claude
 - Codex
 - Kimi

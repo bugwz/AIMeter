@@ -35,6 +35,7 @@ curl -b cookies.txt http://localhost:3001/api/providers
       "plan": "Claude Pro",
       "opencodeWorkspaceId": null,
       "defaultProgressItem": null,
+      "attrs": {},
       "credentials": {
         "type": "cookie",
         "value": "[COOKIE]"
@@ -115,6 +116,7 @@ curl -b cookies.txt http://localhost:3001/api/providers/prov_abc123
     "plan": "Claude Pro",
     "opencodeWorkspaceId": null,
     "defaultProgressItem": null,
+    "attrs": {},
     "credentials": {
       "type": "cookie",
       "value": "actual_cookie_value_here"
@@ -153,7 +155,8 @@ admin session cookie.
   "claudeAuthMode": null,
   "plan": null,
   "opencodeWorkspaceId": null,
-  "defaultProgressItem": null
+  "defaultProgressItem": null,
+  "attrs": {}
 }
 ```
 
@@ -169,11 +172,13 @@ admin session cookie.
 | `plan` | string | No | Claude only: optional plan metadata (for display and usage interpretation) |
 | `opencodeWorkspaceId` | string | No | OpenCode only: workspace ID (`wrk_...`) |
 | `defaultProgressItem` | string | No | Progress item name to display as primary in history charts |
+| `attrs` | object | No | Provider-specific extension settings (e.g. Antigravity display mode/pool rules) |
 
 OAuth requirement notes:
 
 - For `provider=codex` + `authType=oauth`, `accessToken` is required.
 - For `provider=claude` + `authType=oauth`, `accessToken` is required.
+- For `provider=antigravity` + `authType=oauth`, `accessToken` is required.
 - `refreshToken`, `clientId`, and `expiresAt` are optional.
 
 #### Request Example
@@ -204,7 +209,8 @@ curl -b cookies.txt -X POST http://localhost:3001/api/providers \
     "name": "OpenRouter Main",
     "claudeAuthMode": null,
     "plan": null,
-    "opencodeWorkspaceId": null
+    "opencodeWorkspaceId": null,
+    "attrs": {}
   }
 }
 ```
@@ -312,7 +318,12 @@ admin session cookie.
   "claudeAuthMode": "oauth",
   "plan": "Claude Max",
   "opencodeWorkspaceId": "wrk_xxx",
-  "defaultProgressItem": "Fast Requests"
+  "defaultProgressItem": "Fast Requests",
+  "attrs": {
+    "antigravity": {
+      "displayMode": "pool"
+    }
+  }
 }
 ```
 
@@ -855,6 +866,101 @@ curl -b cookies.txt -X POST http://localhost:3001/api/providers/codex/oauth/exch
 
 ---
 
+### `POST /api/providers/antigravity/oauth/generate-auth-url`
+
+Generates a one-time Antigravity OAuth authorization URL and session ID for PKCE code exchange. Admin only.
+
+#### Authentication
+
+admin session cookie.
+
+#### Request Example
+
+```bash
+curl -b cookies.txt -X POST http://localhost:3001/api/providers/antigravity/oauth/generate-auth-url
+```
+
+#### Response Example
+
+```json
+{
+  "success": true,
+  "data": {
+    "authUrl": "https://accounts.google.com/o/oauth2/v2/auth?...",
+    "sessionId": "9eb5dc83-ef8c-4d4f-b8db-a9f5b9ba0da3"
+  }
+}
+```
+
+#### Error Codes
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 403 | `FORBIDDEN` | Not an admin |
+| 500 | `ANTIGRAVITY_OAUTH_GENERATE_FAILED` | Failed to generate authorization URL |
+
+---
+
+### `POST /api/providers/antigravity/oauth/exchange-code`
+
+Exchanges an Antigravity OAuth authorization code for tokens using the previously generated `sessionId`. Admin only.
+
+#### Authentication
+
+admin session cookie.
+
+#### Request Body
+
+```json
+{
+  "sessionId": "9eb5dc83-ef8c-4d4f-b8db-a9f5b9ba0da3",
+  "code": "callback_url_or_code",
+  "state": "optional_state"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `sessionId` | string | Yes | Session ID from `generate-auth-url` |
+| `code` | string | Yes | OAuth code, callback URL, or `code#state` format |
+| `state` | string | No | Optional state override |
+
+#### Request Example
+
+```bash
+curl -b cookies.txt -X POST http://localhost:3001/api/providers/antigravity/oauth/exchange-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "9eb5dc83-ef8c-4d4f-b8db-a9f5b9ba0da3",
+    "code": "http://localhost:8085/callback?code=abc&state=xyz"
+  }'
+```
+
+#### Response Example
+
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "...",
+    "refreshToken": "...",
+    "expiresAt": "2026-03-10T16:35:00.000Z",
+    "clientId": "1071006060591-xxxxx.apps.googleusercontent.com",
+    "projectId": "projects/xxxxx"
+  }
+}
+```
+
+#### Error Codes
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 403 | `FORBIDDEN` | Not an admin |
+| 400 | `INVALID_REQUEST` | Missing `sessionId` or `code` |
+| 400 | `ANTIGRAVITY_OAUTH_EXCHANGE_FAILED` | Code exchange failed |
+
+---
+
 ## Appendix
 
 ### Provider Types
@@ -862,6 +968,7 @@ curl -b cookies.txt -X POST http://localhost:3001/api/providers/codex/oauth/exch
 | Value | Display Name |
 |-------|-------------|
 | `aliyun` | Aliyun |
+| `antigravity` | Antigravity |
 | `claude` | Claude |
 | `codex` | Codex |
 | `kimi` | Kimi |
@@ -879,7 +986,7 @@ curl -b cookies.txt -X POST http://localhost:3001/api/providers/codex/oauth/exch
 |-------|-------------|---------------------|
 | `api_key` | API key | OpenRouter, Aliyun, etc. |
 | `cookie` | Browser session cookie | Claude, Kimi, Cursor, etc. |
-| `oauth` | OAuth access token | Claude (OAuth mode), Copilot (device flow), Codex |
+| `oauth` | OAuth access token | Claude/Codex/Antigravity, Copilot device flow |
 | `jwt` | JWT token | Select providers |
 
 > Codex only supports `oauth`. Kimi only supports `cookie`.
@@ -917,6 +1024,12 @@ Notes for Codex OAuth credentials:
 - JSON keys accept both camelCase and snake_case (`accessToken`/`access_token`, `refreshToken`/`refresh_token`, `clientId`/`client_id`, `expiresAt`/`expiry_date`, etc.).
 - `accessToken` is required for create/update.
 - `clientId` is an OAuth app identifier, not a user identifier.
+
+Notes for Antigravity OAuth credentials:
+
+- `accessToken` is required for create/update.
+- `refreshToken` + `clientId` improve automatic token refresh reliability.
+- `projectId` is optional and can be resolved server-side after OAuth exchange.
 
 **jwt**
 ```json

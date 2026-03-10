@@ -155,6 +155,8 @@ Applied to every response:
 | POST | `/api/providers/copilot/auth/complete` | Complete OAuth and create provider | admin |
 | POST | `/api/providers/claude/oauth/generate-auth-url` | Generate Claude OAuth authorization URL | admin |
 | POST | `/api/providers/claude/oauth/exchange-code` | Exchange Claude OAuth code for tokens | admin |
+| POST | `/api/providers/antigravity/oauth/generate-auth-url` | Generate Antigravity OAuth authorization URL | admin |
+| POST | `/api/providers/antigravity/oauth/exchange-code` | Exchange Antigravity OAuth code for tokens | admin |
 
 ### [History `/api/history`](./history.md)
 

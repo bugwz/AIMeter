@@ -28,6 +28,7 @@ AIMeter 是一個可自託管的儀表板，用於在單一介面中追蹤多個
 目前支援的適配器：
 
 - Aliyun
+- Antigravity
 - Claude
 - Codex
 - Kimi

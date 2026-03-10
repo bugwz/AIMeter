@@ -28,6 +28,7 @@ AIMeter is a self-hosted dashboard for tracking AI provider usage, quota, and hi
 Current provider adapters include:
 
 - Aliyun
+- Antigravity
 - Claude
 - Codex
 - Kimi

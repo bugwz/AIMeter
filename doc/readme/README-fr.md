@@ -28,6 +28,7 @@ AIMeter est un tableau de bord self-hosted pour suivre l'utilisation, les quotas
 Les adaptateurs actuels incluent :
 
 - Aliyun
+- Antigravity
 - Claude
 - Codex
 - Kimi

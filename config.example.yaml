@@ -161,7 +161,7 @@ auth:
 #   - lowercase snake_case string; should be unique within this list
 # - type: provider type
 #   Allowed:
-#   - aliyun | claude | codex | cursor | openrouter | copilot | minimax | zai | kimi | ollama | opencode
+#   - aliyun | antigravity | claude | codex | cursor | openrouter | copilot | minimax | zai | kimi | ollama | opencode
 # - name: display name shown in the UI
 #   Allowed:
 #   - any string
@@ -171,7 +171,7 @@ auth:
 # - credential: raw credential payload
 #   Allowed:
 #   - any non-empty string
-#   - for oauth providers (Claude/Codex/Copilot), you can pass a plain access token string
+#   - for oauth providers (Claude/Codex/Copilot/Antigravity), you can pass a plain access token string
 #     or a JSON string with token bundle fields such as:
 #     accessToken/access_token, refreshToken/refresh_token, idToken/id_token,
 #     clientId/client_id, clientSecret/client_secret, projectId/project_id/project,
@@ -190,6 +190,13 @@ auth:
 #   Allowed:
 #   - any string
 providers:
+  - id: antigravity_main
+    type: antigravity
+    name: Antigravity Main
+    authType: oauth
+    credential: replace-with-antigravity-oauth-access-token-or-json-bundle
+    refreshInterval: 5
+
   - id: minimax_domestic
     type: minimax
     name: Domestic
