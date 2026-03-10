@@ -84,7 +84,8 @@ function summarizeCredentialForLog(credential: Credential): Record<string, unkno
     };
   }
 
-  return { type: credential.type };
+  // Keep a safe fallback for potential future auth types.
+  return { type: 'unknown' };
 }
 
 function logValidationEvent(
