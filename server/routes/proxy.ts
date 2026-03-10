@@ -13,6 +13,28 @@ function sanitizeViewerIdentity(identity: Record<string, unknown> | undefined): 
   return plan ? { plan } : undefined;
 }
 
+function withPlanFallback(
+  identity: Record<string, unknown> | undefined,
+  fallbackPlan: string | undefined,
+  overridePlan?: string,
+): DashboardProviderData['identity'] | undefined {
+  const normalizedFallback = typeof fallbackPlan === 'string' ? fallbackPlan.trim() : '';
+  const mergedIdentity: Record<string, unknown> = {
+    ...(identity || {}),
+  };
+
+  if (overridePlan) {
+    mergedIdentity.plan = overridePlan;
+  } else if (
+    (typeof mergedIdentity.plan !== 'string' || !mergedIdentity.plan.trim())
+    && normalizedFallback
+  ) {
+    mergedIdentity.plan = normalizedFallback;
+  }
+
+  return sanitizeViewerIdentity(mergedIdentity);
+}
+
 function isMiniMaxCNRegion(region: string | undefined): boolean {
   if (!region) return false;
   const normalized = region.trim().toLowerCase();
@@ -133,7 +155,11 @@ router.post('/latest', async (req: Request, res: Response) => {
             provider: provider.provider,
             name: provider.name || null,
             region: provider.region || undefined,
-            identity: sanitizeViewerIdentity(liveSnapshot.identity as Record<string, unknown> | undefined),
+            refreshInterval: provider.refreshInterval,
+            identity: withPlanFallback(
+              liveSnapshot.identity as Record<string, unknown> | undefined,
+              provider.plan,
+            ),
             progress: serializeProgressItems(provider.provider, extractSnapshotItems(liveSnapshot)),
             updatedAt: toUnixSeconds(liveSnapshot.updatedAt) ?? Math.floor(Date.now() / 1000),
           });
@@ -160,13 +186,18 @@ router.post('/latest', async (req: Request, res: Response) => {
           ? calculateMiniMaxPlan(provider.region, progressItems)
           : undefined;
 
-        const finalIdentity = sanitizeViewerIdentity(calculatedPlan ? { ...identity, plan: calculatedPlan } : identity);
+        const finalIdentity = withPlanFallback(
+          identity,
+          provider.plan,
+          calculatedPlan,
+        );
 
         const snapshot: SerializedDashboardProviderData = {
           id: provider.id,
           provider: provider.provider,
           name: provider.name || null,
           region: provider.region || undefined,
+          refreshInterval: provider.refreshInterval,
           identity: finalIdentity || undefined,
           progress: serializeProgressItems(provider.provider, progressItems),
           updatedAt: toUnixSeconds(latestRecord.createdAt) ?? Math.floor(Date.now() / 1000),
@@ -190,7 +221,11 @@ router.post('/latest', async (req: Request, res: Response) => {
             provider: provider.provider,
             name: provider.name || null,
             region: provider.region || undefined,
-            identity: sanitizeViewerIdentity(liveSnapshot.identity as Record<string, unknown> | undefined),
+            refreshInterval: provider.refreshInterval,
+            identity: withPlanFallback(
+              liveSnapshot.identity as Record<string, unknown> | undefined,
+              provider.plan,
+            ),
             progress: serializeProgressItems(provider.provider, extractSnapshotItems(liveSnapshot)),
             updatedAt: toUnixSeconds(liveSnapshot.updatedAt) ?? Math.floor(Date.now() / 1000),
           });
@@ -251,13 +286,21 @@ router.post('/refresh', async (req: Request, res: Response) => {
         await storage.recordUsage(provider.id, snapshot);
         
         const items = extractSnapshotItems(snapshot);
+        const calculatedPlan = provider.provider === UsageProvider.MINIMAX
+          ? calculateMiniMaxPlan(provider.region, items)
+          : undefined;
         
         const dashboardData: SerializedDashboardProviderData = {
           id: provider.id,
           provider: provider.provider,
           name: provider.name || null,
           region: provider.region || undefined,
-          identity: sanitizeViewerIdentity(snapshot.identity as Record<string, unknown> | undefined),
+          refreshInterval: provider.refreshInterval,
+          identity: withPlanFallback(
+            snapshot.identity as Record<string, unknown> | undefined,
+            provider.plan,
+            calculatedPlan,
+          ),
           progress: serializeProgressItems(provider.provider, items),
           updatedAt: toUnixSeconds(snapshot.updatedAt) ?? Math.floor(Date.now() / 1000),
         };

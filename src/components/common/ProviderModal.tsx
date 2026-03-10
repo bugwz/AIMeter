@@ -37,15 +37,30 @@ interface ClaudeOAuthFormState {
   accessToken: string;
   refreshToken: string;
   clientId: string;
-  clientSecret: string;
   expiresAt: string;
 }
+
+interface ClaudeLinkOAuthState {
+  sessionId: string;
+  authUrl: string;
+  code: string;
+  step: 'idle' | 'generated' | 'exchanged';
+  loading: boolean;
+  error?: string;
+}
+
+const EMPTY_CLAUDE_LINK_OAUTH: ClaudeLinkOAuthState = {
+  sessionId: '',
+  authUrl: '',
+  code: '',
+  step: 'idle',
+  loading: false,
+};
 
 const EMPTY_CLAUDE_OAUTH_FORM: ClaudeOAuthFormState = {
   accessToken: '',
   refreshToken: '',
   clientId: '',
-  clientSecret: '',
   expiresAt: '',
 };
 
@@ -55,6 +70,14 @@ const REFRESH_INTERVAL_OPTIONS = [
   { value: 30, label: 'Every 30 minutes' },
   { value: 60, label: 'Every 1 hour' },
   { value: 120, label: 'Every 2 hours' },
+];
+
+const CLAUDE_PLAN_OPTIONS = [
+  { value: '', label: 'Unknown' },
+  { value: 'Claude Pro', label: 'Claude Pro' },
+  { value: 'Claude Max', label: 'Claude Max' },
+  { value: 'Claude Team', label: 'Claude Team' },
+  { value: 'Claude Enterprise', label: 'Claude Enterprise' },
 ];
 
 function toInputValue(value?: string | Date): string {
@@ -67,7 +90,6 @@ function toClaudeOAuthFormState(credential: Extract<Credential, { type: AuthType
     accessToken: credential.accessToken || '',
     refreshToken: credential.refreshToken || '',
     clientId: credential.clientId || '',
-    clientSecret: credential.clientSecret || '',
     expiresAt: toInputValue(credential.expiresAt),
   };
 }
@@ -98,7 +120,8 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
   const [copilotCodeCopied, setCopilotCodeCopied] = useState(false);
   const copiedIndicatorTimerRef = React.useRef<number | null>(null);
   const [claudeOAuth, setClaudeOAuth] = useState<ClaudeOAuthFormState>(EMPTY_CLAUDE_OAUTH_FORM);
-  const [showClaudeOAuthAdvanced, setShowClaudeOAuthAdvanced] = useState(false);
+  const [claudePlan, setClaudePlan] = useState<string>('');
+  const [claudeLinkOAuth, setClaudeLinkOAuth] = useState<ClaudeLinkOAuthState>(EMPTY_CLAUDE_LINK_OAUTH);
   const [defaultProgressItem, setDefaultProgressItem] = useState('');
 
   const availableProviders = React.useMemo(
@@ -128,15 +151,12 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
           ? toClaudeOAuthFormState(editConfig.credentials)
           : EMPTY_CLAUDE_OAUTH_FORM
       );
-      setShowClaudeOAuthAdvanced(
+      setClaudePlan(
         editConfig.provider === UsageProvider.CLAUDE
-          && editConfig.credentials.type === AuthType.OAUTH
-          && Boolean(
-            editConfig.credentials.refreshToken
-              || editConfig.credentials.clientId
-              || editConfig.credentials.clientSecret
-              || editConfig.credentials.expiresAt,
-          ),
+          ? (editConfig.plan
+            || (typeof editConfig.attrs?.plan === 'string' ? editConfig.attrs.plan : '')
+          )
+          : '',
       );
       setError(null);
       setShowCredentialValue(false);
@@ -159,7 +179,8 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
       setCopilotAuth({ status: 'idle', loading: false });
       setCopilotCodeCopied(false);
       setClaudeOAuth(EMPTY_CLAUDE_OAUTH_FORM);
-      setShowClaudeOAuthAdvanced(false);
+      setClaudePlan('');
+      setClaudeLinkOAuth(EMPTY_CLAUDE_LINK_OAUTH);
     }
   }, [isOpen, isEditMode]);
 
@@ -214,8 +235,9 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
     setShowCredentialValue(false);
     setCopilotAuth({ status: 'idle', loading: false });
     setClaudeOAuth(EMPTY_CLAUDE_OAUTH_FORM);
-    setShowClaudeOAuthAdvanced(false);
-    
+    setClaudePlan('');
+    setClaudeLinkOAuth(EMPTY_CLAUDE_LINK_OAUTH);
+
     const providerAdapters = getAdaptersForProvider(provider);
     if (providerAdapters.length > 0) {
       setSelectedAuthType(providerAdapters[0]);
@@ -232,7 +254,8 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
     setCredentialValue('');
     setShowCredentialValue(false);
     setClaudeOAuth(EMPTY_CLAUDE_OAUTH_FORM);
-    setShowClaudeOAuthAdvanced(false);
+    setClaudePlan('');
+    setClaudeLinkOAuth(EMPTY_CLAUDE_LINK_OAUTH);
     setCopilotAuth({ status: 'idle', loading: false });
     setError(null);
   };
@@ -245,7 +268,6 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
         refreshToken: claudeOAuth.refreshToken.trim() || undefined,
         expiresAt: claudeOAuth.expiresAt.trim() || undefined,
         clientId: claudeOAuth.clientId.trim() || undefined,
-        clientSecret: claudeOAuth.clientSecret.trim() || undefined,
       };
     }
 
@@ -328,7 +350,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
     }
     const hasClaudeOAuthInput = selectedProvider === UsageProvider.CLAUDE
       && selectedAuthType === AuthType.OAUTH
-      && claudeOAuth.accessToken.trim();
+      && claudeOAuth.accessToken.trim().length > 0;
 
     if (!isEditMode
       && !(selectedProvider === UsageProvider.COPILOT && selectedAuthType === AuthType.OAUTH)
@@ -352,6 +374,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
           claudeAuthMode: selectedProvider === UsageProvider.CLAUDE
             ? (selectedAuthType === AuthType.OAUTH ? 'oauth' : 'cookie')
             : undefined,
+          plan: selectedProvider === UsageProvider.CLAUDE ? (claudePlan || undefined) : undefined,
           opencodeWorkspaceId: selectedProvider === UsageProvider.OPENCODE
             ? (opencodeWorkspaceId.trim() || undefined)
             : undefined,
@@ -383,6 +406,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
           claudeAuthMode: selectedProvider === UsageProvider.CLAUDE
             ? (selectedAuthType === AuthType.OAUTH ? 'oauth' : 'cookie')
             : undefined,
+          plan: selectedProvider === UsageProvider.CLAUDE ? (claudePlan || undefined) : undefined,
           opencodeWorkspaceId: selectedProvider === UsageProvider.OPENCODE
             ? (opencodeWorkspaceId.trim() || undefined)
             : undefined,
@@ -624,83 +648,142 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                     </div>
                   ) : (
                     isClaudeOAuth ? (
-                      <div className="rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-subtle)] p-4 space-y-3">
-                        <div>
-                          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-                            Claude OAuth
-                          </h3>
-                          <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-                            Access Token is required. Refresh fields are optional, and only needed for automatic token refresh.
+                      <div className="rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-subtle)] p-4 space-y-4">
+                        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-3 space-y-2">
+                          <p className="text-xs font-medium text-[var(--color-text-secondary)]">Auto Fill (Link Auth)</p>
+                          <p className="text-xs text-[var(--color-text-tertiary)]">
+                            This helper exchanges the callback code and auto-fills the inputs below. You can still edit any field manually.
                           </p>
-                        </div>
-
-                        <div className="space-y-3">
-                          <OAuthField
-                            label="Access Token"
-                            required
-                            type="password"
-                            value={claudeOAuth.accessToken}
-                            onChange={(value) => setClaudeOAuth((prev) => ({ ...prev, accessToken: value }))}
-                            placeholder="eyJ..."
-                            help={(
-                              <div className="space-y-1">
-                                <p>Lookup steps:</p>
-                                <ol className="list-decimal pl-4 space-y-0.5">
-                                  <li>
-                                    Run the command below, then copy <code>access_token</code>:
-                                    <CommandCopyLine command="cat ~/.claude/.credentials.json" />
-                                  </li>
-                                  <li>
-                                    If that file does not exist, run:
-                                    <CommandCopyLine command={'security find-generic-password -s "Claude Code-credentials" -w'} />
-                                  </li>
-                                </ol>
-                              </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={claudeLinkOAuth.loading}
+                              onClick={async () => {
+                                setClaudeLinkOAuth((prev) => ({ ...prev, loading: true, error: undefined }));
+                                try {
+                                  const result = await apiService.generateClaudeOAuthUrl();
+                                  setClaudeLinkOAuth((prev) => ({
+                                    ...prev,
+                                    sessionId: result.sessionId,
+                                    authUrl: result.authUrl,
+                                    step: 'generated',
+                                    loading: false,
+                                  }));
+                                } catch (err) {
+                                  setClaudeLinkOAuth((prev) => ({
+                                    ...prev,
+                                    loading: false,
+                                    error: err instanceof Error ? err.message : 'Failed to generate link',
+                                  }));
+                                }
+                              }}
+                              className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-[var(--color-accent)] text-white hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                            >
+                              {claudeLinkOAuth.loading && claudeLinkOAuth.step === 'idle' ? 'Generating...' : claudeLinkOAuth.step !== 'idle' ? 'Regenerate Link' : 'Generate Authorization Link'}
+                            </button>
+                            {claudeLinkOAuth.authUrl && (
+                              <a
+                                href={claudeLinkOAuth.authUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border border-[var(--color-border-subtle)] bg-[var(--color-bg-subtle)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface)] transition"
+                              >
+                                Open Authorization Link
+                              </a>
                             )}
+                          </div>
+                          <input
+                            type="text"
+                            value={claudeLinkOAuth.code}
+                            onChange={(e) => setClaudeLinkOAuth((prev) => ({ ...prev, code: e.target.value }))}
+                            placeholder="Paste callback URL or code(#state) here..."
+                            className="input-field font-mono text-xs"
+                            spellCheck={false}
+                            autoCapitalize="off"
+                            autoCorrect="off"
                           />
-
                           <button
                             type="button"
-                            className="text-xs font-medium text-[#1d4ed8] hover:text-[#1e40af] underline decoration-[#1d4ed8]/60 underline-offset-2"
-                            onClick={() => setShowClaudeOAuthAdvanced((prev) => !prev)}
+                            disabled={claudeLinkOAuth.loading || !claudeLinkOAuth.code.trim() || !claudeLinkOAuth.sessionId}
+                            onClick={async () => {
+                              setClaudeLinkOAuth((prev) => ({ ...prev, loading: true, error: undefined }));
+                              try {
+                                const parsed = parseClaudeOAuthCallbackInput(claudeLinkOAuth.code);
+                                if (!parsed.code) {
+                                  throw new Error('Please paste a valid authorization code or callback URL.');
+                                }
+                                const tokenInfo = await apiService.exchangeClaudeOAuthCode(claudeLinkOAuth.sessionId, parsed.code, parsed.state);
+                                setClaudeOAuth((prev) => ({
+                                  ...prev,
+                                  accessToken: tokenInfo.accessToken || prev.accessToken,
+                                  refreshToken: tokenInfo.refreshToken || prev.refreshToken,
+                                  clientId: tokenInfo.clientId || prev.clientId,
+                                  expiresAt: tokenInfo.expiresAt || prev.expiresAt,
+                                }));
+                                setClaudeLinkOAuth((prev) => ({ ...prev, loading: false, step: 'exchanged' }));
+                              } catch (err) {
+                                setClaudeLinkOAuth((prev) => ({
+                                  ...prev,
+                                  loading: false,
+                                  error: err instanceof Error ? err.message : 'Failed to auto fill tokens',
+                                }));
+                              }
+                            }}
+                            className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-[var(--color-accent)] text-white hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed transition"
                           >
-                            {showClaudeOAuthAdvanced ? 'Hide advanced refresh fields' : 'Show advanced refresh fields'}
+                            {claudeLinkOAuth.loading ? 'Auto Filling...' : 'Auto Fill Inputs'}
                           </button>
 
-                          {showClaudeOAuthAdvanced && (
-                            <div className="space-y-3">
-                              <OAuthField
-                                label="Refresh Token"
-                                type="password"
-                                value={claudeOAuth.refreshToken}
-                                onChange={(value) => setClaudeOAuth((prev) => ({ ...prev, refreshToken: value }))}
-                                placeholder="..."
-                                help="Optional. Required together with Client ID and Client Secret for auto refresh."
-                              />
-                              <OAuthField
-                                label="Client ID"
-                                value={claudeOAuth.clientId}
-                                onChange={(value) => setClaudeOAuth((prev) => ({ ...prev, clientId: value }))}
-                                placeholder="..."
-                                help="Optional. Used for OAuth token refresh."
-                              />
-                              <OAuthField
-                                label="Client Secret"
-                                type="password"
-                                value={claudeOAuth.clientSecret}
-                                onChange={(value) => setClaudeOAuth((prev) => ({ ...prev, clientSecret: value }))}
-                                placeholder="..."
-                                help="Optional. Used for OAuth token refresh."
-                              />
-                              <OAuthField
-                                label="Expiry Time"
-                                value={claudeOAuth.expiresAt}
-                                onChange={(value) => setClaudeOAuth((prev) => ({ ...prev, expiresAt: value }))}
-                                placeholder="1735689600000 or 2026-02-28T12:00:00Z"
-                                help="Optional. ISO time or unix milliseconds are both accepted."
-                              />
+                          {claudeLinkOAuth.step === 'exchanged' && (
+                            <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-xs text-emerald-800">
+                              Inputs auto-filled. Review values below, then click Add Provider.
                             </div>
                           )}
+                          {claudeLinkOAuth.error && (
+                            <div className="rounded-lg border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs text-rose-800">
+                              {claudeLinkOAuth.error}
+                            </div>
+                          )}
+                        </div>
+
+                        <OAuthField
+                          label="Access Token"
+                          type="password"
+                          value={claudeOAuth.accessToken}
+                          onChange={(value) => setClaudeOAuth((prev) => ({ ...prev, accessToken: value }))}
+                          placeholder="eyJ..."
+                          help="Required."
+                        />
+                        <OAuthField
+                          label="Refresh Token"
+                          type="password"
+                          value={claudeOAuth.refreshToken}
+                          onChange={(value) => setClaudeOAuth((prev) => ({ ...prev, refreshToken: value }))}
+                          placeholder="..."
+                          help="Optional. Required for auto refresh together with Client ID."
+                        />
+                        <OAuthField
+                          label="Client ID"
+                          value={claudeOAuth.clientId}
+                          onChange={(value) => setClaudeOAuth((prev) => ({ ...prev, clientId: value }))}
+                          placeholder="9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+                          help="Optional. Used for OAuth token refresh."
+                        />
+                        <OAuthField
+                          label="Expiry Time"
+                          value={claudeOAuth.expiresAt}
+                          onChange={(value) => setClaudeOAuth((prev) => ({ ...prev, expiresAt: value }))}
+                          placeholder="1735689600000 or 2026-02-28T12:00:00Z"
+                          help="Optional. Supports unix milliseconds or ISO time."
+                        />
+
+                        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-text-secondary)] space-y-1">
+                          <p className="font-medium text-[var(--color-text-primary)]">Manual Fill Notes</p>
+                          <p>Linux: Access Token / Refresh Token can be viewed via:</p>
+                          <CommandCopyLine command="cat ~/.claude/.credentials.json" />
+                          <p>macOS: Access Token / Refresh Token can be viewed via:</p>
+                          <CommandCopyLine command={'security find-generic-password -s "Claude Code-credentials" -w'} />
+                          <p>For Client ID and Expiry Time, the macOS lookup method is currently unclear.</p>
                         </div>
                       </div>
                     ) : (
@@ -773,6 +856,23 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                       </span>
                       <span className="block">2. Copy the value after `workspace/` in the address bar.</span>
                       <span className="block">3. Paste the `wrk_...` value here.</span>
+                    </p>
+                  </div>
+                )}
+
+                {selectedProvider === UsageProvider.CLAUDE && (
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--color-text-secondary)] tracking-wide mb-2">
+                      Claude Plan (optional)
+                    </label>
+                    <SelectField
+                      value={claudePlan}
+                      onChange={(value) => setClaudePlan(String(value))}
+                      options={CLAUDE_PLAN_OPTIONS}
+                      className="input-field select-field"
+                    />
+                    <p className="mt-1.5 text-xs text-[var(--color-text-muted)]">
+                      Optional. Used as stored plan metadata and to improve Claude usage window interpretation.
                     </p>
                   </div>
                 )}
@@ -874,6 +974,31 @@ function formatDateTime(date: Date): string {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
+function parseClaudeOAuthCallbackInput(input: string): { code: string; state?: string } {
+  const value = input.trim();
+  if (!value) return { code: '' };
+
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    try {
+      const callbackURL = new URL(value);
+      const code = callbackURL.searchParams.get('code')?.trim() || '';
+      const state = callbackURL.searchParams.get('state')?.trim();
+      return { code, ...(state ? { state } : {}) };
+    } catch {
+      return { code: value };
+    }
+  }
+
+  const hashIndex = value.indexOf('#');
+  if (hashIndex >= 0) {
+    const code = value.slice(0, hashIndex).trim();
+    const state = value.slice(hashIndex + 1).trim();
+    return { code, ...(state ? { state } : {}) };
+  }
+
+  return { code: value };
+}
+
 interface OAuthFieldProps {
   label: string;
   value: string;
@@ -952,11 +1077,11 @@ function CommandCopyLine({ command }: CommandCopyLineProps): JSX.Element {
     <button
       type="button"
       onClick={handleCopy}
-      className="mt-1 flex w-full items-center justify-between gap-2 rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-2.5 py-1.5 text-left font-mono text-[11px] leading-5 text-[var(--color-text-secondary)] shadow-sm transition-colors hover:bg-[var(--color-surface-hover)]"
+      className="mt-1 flex w-full items-center justify-between gap-2 rounded-md border border-[var(--color-accent)]/35 bg-[var(--color-accent-subtle)] px-2.5 py-1.5 text-left font-mono text-[11px] leading-5 text-[var(--color-text-primary)] shadow-sm transition-colors hover:border-[var(--color-accent)]/55 hover:bg-[var(--color-surface-hover)]"
       aria-label={`Copy command: ${command}`}
     >
       <span className="min-w-0 flex-1 break-all">{command}</span>
-      <span className="shrink-0 text-[var(--color-text-muted)]" aria-hidden="true">
+      <span className="shrink-0 text-[var(--color-accent)]" aria-hidden="true">
         {copied ? (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="m20 6-11 11-5-5" />

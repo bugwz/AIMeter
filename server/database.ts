@@ -159,3 +159,11 @@ export async function setPassword(password: string): Promise<void> {
 export async function verifyPassword(password: string): Promise<boolean> {
   return (await getEngine()).verifyPassword(password);
 }
+
+export async function patchProviderAttrs(uid: string, patch: Record<string, unknown>): Promise<void> {
+  return (await getEngine()).patchProviderAttrs(uid, patch);
+}
+
+export async function patchFetchState(uid: string, patch: Record<string, unknown>): Promise<void> {
+  return (await getEngine()).patchFetchState(uid, patch);
+}

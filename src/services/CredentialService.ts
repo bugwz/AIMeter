@@ -20,6 +20,7 @@ export class CredentialService {
         region: config.region,
         name: config.name,
         claudeAuthMode: config.claudeAuthMode,
+        plan: config.plan,
         opencodeWorkspaceId: config.opencodeWorkspaceId,
         defaultProgressItem: config.defaultProgressItem,
       }
@@ -78,6 +79,7 @@ export class CredentialService {
       region: config.region,
       name: config.name,
       claudeAuthMode: config.claudeAuthMode,
+      plan: config.plan,
       opencodeWorkspaceId: config.opencodeWorkspaceId,
       defaultProgressItem: config.defaultProgressItem,
     });
@@ -96,6 +98,7 @@ export class CredentialService {
         region: p.region,
         name: p.name || undefined,
         claudeAuthMode: p.claudeAuthMode,
+        plan: p.plan,
         opencodeWorkspaceId: p.opencodeWorkspaceId,
         defaultProgressItem: p.defaultProgressItem || undefined,
       }));
@@ -117,6 +120,7 @@ export class CredentialService {
         region: p.region,
         name: p.name || undefined,
         claudeAuthMode: p.claudeAuthMode,
+        plan: p.plan,
         opencodeWorkspaceId: p.opencodeWorkspaceId,
         defaultProgressItem: p.defaultProgressItem || undefined,
       }));
@@ -142,6 +146,7 @@ export class CredentialService {
         region: provider.region,
         name: provider.name || undefined,
         claudeAuthMode: provider.claudeAuthMode,
+        plan: provider.plan,
         opencodeWorkspaceId: provider.opencodeWorkspaceId,
         defaultProgressItem: provider.defaultProgressItem || undefined,
       };

@@ -18,6 +18,8 @@ import {
   setSetting as setDbSetting,
   getAuditLogs as getDbAuditLogs,
   recordAuditLog as recordDbAuditLog,
+  patchProviderAttrs as patchDbProviderAttrs,
+  patchFetchState as patchDbFetchState,
 } from './database.js';
 import { runtimeConfig } from './runtime.js';
 import { getAppConfig } from './config.js';
@@ -40,6 +42,7 @@ export interface ProviderInstance extends ProviderConfig {
   id: string;
   configSource: 'database' | 'environment' | 'config';
   storageMode: 'database' | 'env';
+  fetchState?: Record<string, unknown>;
 }
 
 export interface UsageRecordRow {
@@ -213,10 +216,11 @@ function listConfiguredProviders(): ProviderInstance[] {
   }));
 }
 
-function mapDbProvider({ id: _internalId, uid, ...rest }: Omit<ProviderConfig, 'id'> & { id: number; uid: string }): ProviderInstance {
+function mapDbProvider({ id: _internalId, uid, ...rest }: Omit<ProviderConfig, 'id'> & { id: number; uid: string; fetchState?: Record<string, unknown> }): ProviderInstance {
   return {
     ...rest,
     id: uid,
+    fetchState: rest.fetchState,
     configSource: 'database',
     storageMode: 'database',
   };
@@ -550,6 +554,16 @@ export const storage = {
       return null;
     }
     return getDbSetting(key);
+  },
+
+  async patchProviderAttrs(id: string, patch: Record<string, unknown>): Promise<void> {
+    if (runtimeConfig.storageMode === 'env') return;
+    await patchDbProviderAttrs(id, patch);
+  },
+
+  async patchFetchState(id: string, patch: Record<string, unknown>): Promise<void> {
+    if (runtimeConfig.storageMode === 'env') return;
+    await patchDbFetchState(id, patch);
   },
 
   async setSetting(key: string, value: string): Promise<void> {

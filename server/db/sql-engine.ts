@@ -21,6 +21,7 @@ interface DbProviderRow {
   refresh_interval: number;
   display_order: number;
   attrs: unknown;
+  fetch_state: unknown;
   created_at: number;
   updated_at: number;
 }
@@ -96,6 +97,9 @@ function buildProviderAttrs(config: Partial<ProviderConfig>): Record<string, unk
 
   if (config.defaultProgressItem) attrs.defaultProgressItem = config.defaultProgressItem;
   else delete attrs.defaultProgressItem;
+
+  if (typeof config.plan === 'string' && config.plan.trim()) attrs.plan = config.plan.trim();
+  else delete attrs.plan;
 
   return attrs;
 }
@@ -199,6 +203,11 @@ export async function runCommonBootstrap(client: DbClient, usageTable: string = 
     });
   }
 
+  // Add fetch_state column if not present (for existing DBs)
+  try {
+    await client.execute("ALTER TABLE providers ADD COLUMN fetch_state TEXT NOT NULL DEFAULT '{}'");
+  } catch { /* column already exists */ }
+
   // Auto-generate secrets if not yet present
   for (const key of ['cron_secret', 'endpoint_secret', 'encryption_key', 'session_secret']) {
     const existing = await client.query<{ value: string }>(
@@ -292,9 +301,11 @@ export class SqlEngine implements DatabaseEngine {
       refreshInterval: Number(row.refresh_interval),
       displayOrder: Number(row.display_order),
       attrs,
+      fetchState: parseProviderAttrs(row.fetch_state),
       region: typeof attrs.region === 'string' ? attrs.region : undefined,
       name: row.name || undefined,
       claudeAuthMode: deriveClaudeAuthMode(row.provider as UsageProvider, credentials as Credential),
+      plan: typeof attrs.plan === 'string' ? attrs.plan : undefined,
       opencodeWorkspaceId: typeof attrs.opencodeWorkspaceId === 'string' ? attrs.opencodeWorkspaceId : undefined,
       defaultProgressItem: typeof attrs.defaultProgressItem === 'string' ? attrs.defaultProgressItem : undefined,
     };
@@ -439,6 +450,48 @@ export class SqlEngine implements DatabaseEngine {
         toUnixSeconds(),
         uid,
       ]
+    );
+  }
+
+  async patchProviderAttrs(uid: string, patch: Record<string, unknown>): Promise<void> {
+    const existing = await this.getProvider(uid);
+    if (!existing) return;
+
+    const currentAttrs = (existing.attrs as Record<string, unknown>) || {};
+    const newAttrs: Record<string, unknown> = { ...currentAttrs };
+
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === null || value === undefined) {
+        delete newAttrs[key];
+      } else {
+        newAttrs[key] = value;
+      }
+    }
+
+    await this.client.execute(
+      `UPDATE ${this.providersTable()} SET attrs = ?, updated_at = ? WHERE uid = ?`,
+      [JSON.stringify(newAttrs), toUnixSeconds(), uid]
+    );
+  }
+
+  async patchFetchState(uid: string, patch: Record<string, unknown>): Promise<void> {
+    const existing = await this.getProvider(uid);
+    if (!existing) return;
+
+    const currentState = (existing.fetchState as Record<string, unknown>) || {};
+    const newState: Record<string, unknown> = { ...currentState };
+
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === null || value === undefined) {
+        delete newState[key];
+      } else {
+        newState[key] = value;
+      }
+    }
+
+    await this.client.execute(
+      `UPDATE ${this.providersTable()} SET fetch_state = ?, updated_at = ? WHERE uid = ?`,
+      [JSON.stringify(newState), toUnixSeconds(), uid]
     );
   }
 

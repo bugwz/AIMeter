@@ -380,6 +380,7 @@ export const Dashboard: React.FC = () => {
             return item;
           }
           const previousProviderData = 'progress' in item ? item : null;
+          const snapshotExtra = snapshot as unknown as Record<string, unknown>;
           return {
             id,
             provider: snapshot.provider,
@@ -389,6 +390,15 @@ export const Dashboard: React.FC = () => {
             cost: snapshot.cost,
             identity: snapshot.identity,
             updatedAt: snapshot.updatedAt,
+            stale: snapshotExtra.stale as boolean | undefined,
+            staleAt: (() => {
+              const s = snapshotExtra.staleAt;
+              if (!s) return undefined;
+              return typeof s === 'number' ? new Date(s * 1000) : undefined;
+            })(),
+            fromCache: snapshotExtra.fromCache as boolean | undefined,
+            authRequired: snapshotExtra.authRequired as boolean | undefined,
+            refreshInterval: typeof snapshotExtra.refreshInterval === 'number' ? snapshotExtra.refreshInterval : previousProviderData && 'refreshInterval' in previousProviderData ? (previousProviderData as unknown as Record<string, unknown>).refreshInterval as number | undefined : undefined,
           };
         }),
       );
@@ -614,6 +624,7 @@ export const Dashboard: React.FC = () => {
             const cardKey = id !== undefined ? `${provider}-${id}` : `${provider}-${index}`;
             const dragDisabled = savingOrder || refreshing || !capabilities || !canReorder;
             const isDraggedCard = Boolean(id && dragState?.draggedId === id);
+            const providerData = !isError ? (data as ProviderData) : undefined;
 
             return (
               <div
@@ -652,6 +663,9 @@ export const Dashboard: React.FC = () => {
                     isDragging={false}
                     isDropTarget={Boolean(id && dragState?.overId === id && dragState.draggedId !== id)}
                     dropIndicator={id && dragState?.overId === id && dragState.draggedId !== id ? dragState.placement : null}
+                    refreshInterval={providerData?.refreshInterval}
+                    staleAt={providerData?.staleAt}
+                    authRequired={providerData?.authRequired}
                   />
                 )}
               </div>

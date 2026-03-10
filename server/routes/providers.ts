@@ -2,8 +2,9 @@ import { Router, Request, Response } from 'express';
 import { UsageProvider, ProviderConfig, UsageSnapshot, Credential, AuthType } from '../../src/types/index.js';
 import { getViewerRole, requireAdminRole } from '../middleware/auth.js';
 import { copilotDeviceFlowService, FlowNotFoundError } from '../services/CopilotDeviceFlowService.js';
+import { claudeOAuthService } from '../services/ClaudeOAuthService.js';
 import { storage, tryParseReadonlyError } from '../storage.js';
-import type { ProviderInstance } from '../storage.js';
+import type { ProviderInstance, UsageRecordRow } from '../storage.js';
 import { fetchUsageForProvider, getAdapterForProvider } from '../services/ProviderUsageService.js';
 import { isMockMode } from '../runtime.js';
 import { enrichProgressTitles } from '../utils/progressTitles.js';
@@ -37,6 +38,81 @@ type SerializedUsageSnapshot = Omit<UsageSnapshot, 'progress' | 'updatedAt'> & {
   progress: SerializedProgressItem[];
   updatedAt: number;
 };
+
+type ProviderValidationContext = {
+  route: 'create' | 'update' | 'copilot-complete';
+  provider: UsageProvider;
+  providerUid?: string;
+  authType?: string;
+  region?: string;
+};
+
+function summarizeCredentialForLog(credential: Credential): Record<string, unknown> {
+  if (credential.type === AuthType.COOKIE) {
+    const value = String(credential.value || '');
+    return {
+      type: credential.type,
+      length: value.length,
+      hasSessionToken: /(?:^|;)\s*(session|sessionkey|auth|token)=/i.test(value),
+    };
+  }
+
+  if (credential.type === AuthType.API_KEY) {
+    const value = String(credential.value || '');
+    return {
+      type: credential.type,
+      length: value.length,
+      prefix: value.slice(0, 4),
+    };
+  }
+
+  if (credential.type === AuthType.JWT) {
+    const value = String(credential.value || '');
+    return {
+      type: credential.type,
+      length: value.length,
+      segmentCount: value.split('.').length,
+    };
+  }
+
+  if (credential.type === AuthType.OAUTH) {
+    return {
+      type: credential.type,
+      hasAccessToken: Boolean(credential.accessToken),
+      hasRefreshToken: Boolean(credential.refreshToken),
+      expiresAt: credential.expiresAt || null,
+    };
+  }
+
+  return { type: credential.type };
+}
+
+function logValidationEvent(
+  level: 'info' | 'warn' | 'error',
+  stage: 'start' | 'success' | 'failed' | 'thrown',
+  context: ProviderValidationContext,
+  details?: Record<string, unknown>,
+): void {
+  const payload = {
+    stage,
+    route: context.route,
+    provider: context.provider,
+    providerUid: context.providerUid || null,
+    authType: context.authType || null,
+    region: context.region || null,
+    ...details,
+  };
+  const message = `[providers][validation] ${JSON.stringify(payload)}`;
+  if (level === 'error') {
+    console.error(message);
+    return;
+  }
+  if (level === 'warn') {
+    console.warn(message);
+    return;
+  }
+  console.log(message);
+}
 
 function toUnixSeconds(value: Date | number | string | null | undefined): number | null {
   if (value === null || value === undefined) return null;
@@ -76,9 +152,34 @@ function serializeProvider(provider: ProviderInstance) {
     displayOrder: provider.displayOrder,
     region: provider.region,
     claudeAuthMode: provider.claudeAuthMode,
+    plan: provider.plan,
     opencodeWorkspaceId: provider.opencodeWorkspaceId,
     defaultProgressItem: provider.defaultProgressItem || null,
   };
+}
+
+function buildSnapshotFromRecord(provider: ProviderInstance, record: UsageRecordRow): UsageSnapshot {
+  const items = (record.progress?.items || []) as UsageSnapshot['progress'];
+  return {
+    provider: provider.provider,
+    progress: items,
+    cost: record.progress?.cost,
+    identity: record.identityData as { plan?: string } | undefined,
+    updatedAt: record.createdAt,
+  };
+}
+
+function isClaudeOAuthAuthError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const lower = error.message.toLowerCase();
+  return (
+    lower.includes('token expired') ||
+    lower.includes('access denied') ||
+    lower.includes('oauth error: 401') ||
+    lower.includes('auth invalid') ||
+    lower.includes('invalid_client') ||
+    lower.includes('invalid_grant')
+  );
 }
 
 function serializeProviderForViewer(provider: ProviderInstance, role: 'normal' | 'admin') {
@@ -161,6 +262,7 @@ router.get('/:id', async (req: Request, res: Response) => {
         displayOrder: provider.displayOrder,
         region: provider.region,
         claudeAuthMode: provider.claudeAuthMode,
+        plan: provider.plan,
         opencodeWorkspaceId: provider.opencodeWorkspaceId,
         defaultProgressItem: provider.defaultProgressItem || null,
       },
@@ -280,8 +382,33 @@ router.post('/copilot/auth/complete', async (req: Request, res: Response) => {
     }
 
     if (!isMockMode() && typeof adapter.validateCredentials === 'function') {
-      const validation = await adapter.validateCredentials(credential, config);
+      const validationContext: ProviderValidationContext = {
+        route: 'copilot-complete',
+        provider: UsageProvider.COPILOT,
+        authType: credential.type,
+        region: config.region,
+      };
+      const validationStartedAt = Date.now();
+      logValidationEvent('info', 'start', validationContext, {
+        credential: summarizeCredentialForLog(credential),
+      });
+      let validation;
+      try {
+        validation = await adapter.validateCredentials(credential, config);
+      } catch (error) {
+        logValidationEvent('error', 'thrown', validationContext, {
+          durationMs: Date.now() - validationStartedAt,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
+
       if (!validation.valid) {
+        logValidationEvent('warn', 'failed', validationContext, {
+          durationMs: Date.now() - validationStartedAt,
+          reason: validation.reason || null,
+          expiresAt: validation.expiresAt || null,
+        });
         res.status(400).json({
           success: false,
           error: {
@@ -291,6 +418,10 @@ router.post('/copilot/auth/complete', async (req: Request, res: Response) => {
         });
         return;
       }
+      logValidationEvent('info', 'success', validationContext, {
+        durationMs: Date.now() - validationStartedAt,
+        expiresAt: validation.expiresAt || null,
+      });
     }
 
     const created = await storage.createProvider(UsageProvider.COPILOT, config);
@@ -331,10 +462,53 @@ router.post('/copilot/auth/complete', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/claude/oauth/generate-auth-url', (req: Request, res: Response) => {
+  if (!requireAdminRole(req, res)) return;
+  try {
+    const result = claudeOAuthService.generateAuthUrl();
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'CLAUDE_OAUTH_GENERATE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to generate authorization URL',
+      },
+    });
+  }
+});
+
+router.post('/claude/oauth/exchange-code', async (req: Request, res: Response) => {
+  if (!requireAdminRole(req, res)) return;
+  try {
+    const { sessionId, code, state } = req.body as { sessionId?: string; code?: string; state?: string };
+    if (!sessionId || !code) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_REQUEST',
+          message: 'sessionId and code are required',
+        },
+      });
+      return;
+    }
+    const tokenInfo = await claudeOAuthService.exchangeCode(sessionId, code, state);
+    res.json({ success: true, data: tokenInfo });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'CLAUDE_OAUTH_EXCHANGE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to exchange authorization code',
+      },
+    });
+  }
+});
+
 router.post('/', async (req: Request, res: Response) => {
   if (!requireAdminRole(req, res)) return;
   try {
-    const { provider, credentials, authType, refreshInterval, region, name, claudeAuthMode, opencodeWorkspaceId, defaultProgressItem } = req.body;
+    const { provider, credentials, authType, refreshInterval, region, name, claudeAuthMode, plan, opencodeWorkspaceId, defaultProgressItem } = req.body;
     
     if (!provider || !credentials) {
       res.status(400).json({
@@ -384,6 +558,9 @@ router.post('/', async (req: Request, res: Response) => {
       claudeAuthMode: provider === UsageProvider.CLAUDE
         ? (claudeAuthMode || (authType === 'oauth' ? 'oauth' : 'cookie'))
         : undefined,
+      plan: provider === UsageProvider.CLAUDE && typeof plan === 'string' && plan.trim()
+        ? plan.trim()
+        : undefined,
       opencodeWorkspaceId: provider === UsageProvider.OPENCODE
         ? normalizeOpenCodeWorkspaceId(opencodeWorkspaceId)
         : undefined,
@@ -395,8 +572,33 @@ router.post('/', async (req: Request, res: Response) => {
     const shouldSkipLiveValidation = providerId === UsageProvider.OPENCODE || isMockMode();
 
     if (adapter && !shouldSkipLiveValidation) {
-      const validation = await adapter.validateCredentials(credential, config);
+      const validationContext: ProviderValidationContext = {
+        route: 'create',
+        provider: providerId,
+        authType: credential.type,
+        region: config.region,
+      };
+      const validationStartedAt = Date.now();
+      logValidationEvent('info', 'start', validationContext, {
+        credential: summarizeCredentialForLog(credential),
+      });
+      let validation;
+      try {
+        validation = await adapter.validateCredentials(credential, config);
+      } catch (error) {
+        logValidationEvent('error', 'thrown', validationContext, {
+          durationMs: Date.now() - validationStartedAt,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
+
       if (!validation.valid) {
+        logValidationEvent('warn', 'failed', validationContext, {
+          durationMs: Date.now() - validationStartedAt,
+          reason: validation.reason || null,
+          expiresAt: validation.expiresAt || null,
+        });
         res.status(400).json({
           success: false,
           error: {
@@ -406,6 +608,10 @@ router.post('/', async (req: Request, res: Response) => {
         });
         return;
       }
+      logValidationEvent('info', 'success', validationContext, {
+        durationMs: Date.now() - validationStartedAt,
+        expiresAt: validation.expiresAt || null,
+      });
     }
 
     const created = await storage.createProvider(providerId, config);
@@ -417,8 +623,19 @@ router.post('/', async (req: Request, res: Response) => {
       } catch (error) {
         console.warn(`Initial fetch failed for provider ${provider}:`, error);
       }
+
+      if (provider === UsageProvider.CLAUDE && credential.type === AuthType.OAUTH && !config.plan) {
+        try {
+          const account = await adapter.fetchAccount(credential);
+          if (account.plan) {
+            await storage.patchProviderAttrs(created.id, { plan: account.plan });
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch Claude account type for ${created.id}:`, error);
+        }
+      }
     }
-    
+
     res.json({
       success: true,
       data: {
@@ -429,6 +646,7 @@ router.post('/', async (req: Request, res: Response) => {
         region: config.region,
         name: config.name,
         claudeAuthMode: config.claudeAuthMode,
+        plan: config.plan,
         opencodeWorkspaceId: config.opencodeWorkspaceId,
       },
     });
@@ -502,6 +720,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       region,
       name,
       claudeAuthMode,
+      plan,
       opencodeWorkspaceId,
       defaultProgressItem,
       authType,
@@ -576,6 +795,11 @@ router.put('/:id', async (req: Request, res: Response) => {
       region: region !== undefined ? region : existing.region,
       name: name !== undefined ? name : existing.name,
       claudeAuthMode: nextClaudeAuthMode,
+      plan: existing.provider === UsageProvider.CLAUDE
+        ? (plan !== undefined
+          ? (typeof plan === 'string' && plan.trim() ? plan.trim() : undefined)
+          : existing.plan)
+        : existing.plan,
       opencodeWorkspaceId: existing.provider === UsageProvider.OPENCODE
         ? (opencodeWorkspaceId !== undefined
           ? normalizeOpenCodeWorkspaceId(opencodeWorkspaceId)
@@ -590,8 +814,34 @@ router.put('/:id', async (req: Request, res: Response) => {
     const shouldSkipLiveValidation = existing.provider === UsageProvider.OPENCODE || isMockMode();
 
     if (adapter && !shouldSkipLiveValidation) {
-      const validation = await adapter.validateCredentials(nextCredentials, nextConfig);
+      const validationContext: ProviderValidationContext = {
+        route: 'update',
+        provider: existing.provider,
+        providerUid: id,
+        authType: nextCredentials.type,
+        region: nextConfig.region,
+      };
+      const validationStartedAt = Date.now();
+      logValidationEvent('info', 'start', validationContext, {
+        credential: summarizeCredentialForLog(nextCredentials),
+      });
+      let validation;
+      try {
+        validation = await adapter.validateCredentials(nextCredentials, nextConfig);
+      } catch (error) {
+        logValidationEvent('error', 'thrown', validationContext, {
+          durationMs: Date.now() - validationStartedAt,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
+
       if (!validation.valid) {
+        logValidationEvent('warn', 'failed', validationContext, {
+          durationMs: Date.now() - validationStartedAt,
+          reason: validation.reason || null,
+          expiresAt: validation.expiresAt || null,
+        });
         res.status(400).json({
           success: false,
           error: {
@@ -601,6 +851,10 @@ router.put('/:id', async (req: Request, res: Response) => {
         });
         return;
       }
+      logValidationEvent('info', 'success', validationContext, {
+        durationMs: Date.now() - validationStartedAt,
+        expiresAt: validation.expiresAt || null,
+      });
     }
     
     const updated = await storage.updateProvider(id, {
@@ -609,6 +863,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       region: nextConfig.region,
       name: nextConfig.name,
       claudeAuthMode: nextConfig.claudeAuthMode,
+      plan: nextConfig.plan,
       opencodeWorkspaceId: nextConfig.opencodeWorkspaceId,
       defaultProgressItem: nextConfig.defaultProgressItem,
     });
@@ -682,14 +937,11 @@ router.post('/:id/refresh', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const provider = await storage.getProvider(id);
-    
+
     if (!provider) {
       res.status(404).json({
         success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Provider not found',
-        },
+        error: { code: 'NOT_FOUND', message: 'Provider not found' },
       });
       return;
     }
@@ -698,42 +950,135 @@ router.post('/:id/refresh', async (req: Request, res: Response) => {
     if (!adapter) {
       res.status(400).json({
         success: false,
-        error: {
-          code: 'ADAPTER_NOT_FOUND',
-          message: 'Provider adapter not found',
-        },
+        error: { code: 'ADAPTER_NOT_FOUND', message: 'Provider adapter not found' },
       });
       return;
     }
+
+    const now = Date.now();
+    const CACHE_TTL_MS = 3 * 60 * 1000;
+    const FAILURE_COOLDOWN_MS = 60 * 1000;
+    const LOCK_TIMEOUT_MS = 30 * 1000;
+
+    const latestRecord = await storage.getLatestUsage(id);
+    const fetchState = provider.fetchState || {};
+
+    // 1. Check recent cache
+    if (latestRecord) {
+      const ageMs = now - latestRecord.createdAt.getTime();
+      if (ageMs < CACHE_TTL_MS) {
+        const snapshot = buildSnapshotFromRecord(provider, latestRecord);
+        res.json({
+          success: true,
+          data: {
+            ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode() }),
+            fromCache: true,
+            cachedAt: Math.floor(latestRecord.createdAt.getTime() / 1000),
+            refreshInterval: provider.refreshInterval,
+          },
+        });
+        return;
+      }
+    }
+
+    // 2. Check failure cooldown
+    const lastFailedAt = typeof fetchState.lastFailedAt === 'string' ? new Date(fetchState.lastFailedAt).getTime() : null;
+    if (lastFailedAt && (now - lastFailedAt) < FAILURE_COOLDOWN_MS) {
+      if (latestRecord) {
+        const snapshot = buildSnapshotFromRecord(provider, latestRecord);
+        res.json({
+          success: true,
+          data: {
+            ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode() }),
+            stale: true,
+            staleAt: Math.floor(Date.now() / 1000),
+            refreshInterval: provider.refreshInterval,
+          },
+        });
+      } else {
+        res.status(503).json({
+          success: false,
+          error: { code: 'TEMPORARILY_UNAVAILABLE', message: 'Data temporarily unavailable due to a recent failure' },
+        });
+      }
+      return;
+    }
+
+    // 3. Check concurrent lock
+    const fetchInProgressSince = typeof fetchState.fetchInProgressSince === 'string' ? new Date(fetchState.fetchInProgressSince).getTime() : null;
+    if (fetchInProgressSince && (now - fetchInProgressSince) < LOCK_TIMEOUT_MS) {
+      if (latestRecord) {
+        const snapshot = buildSnapshotFromRecord(provider, latestRecord);
+        res.json({
+          success: true,
+          data: {
+            ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode() }),
+            stale: true,
+            staleAt: Math.floor(Date.now() / 1000),
+            refreshing: true,
+            refreshInterval: provider.refreshInterval,
+          },
+        });
+      } else {
+        res.json({ success: true, data: null, refreshing: true, refreshInterval: provider.refreshInterval });
+      }
+      return;
+    }
+
+    // 4. Set lock
+    await storage.patchFetchState(id, { fetchInProgressSince: new Date(now).toISOString() });
 
     let snapshot: UsageSnapshot;
     try {
       snapshot = await fetchUsageForProvider(provider);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      res.status(400).json({
-        success: false,
-        error: {
-          code: 'FETCH_ERROR',
-          message: errorMessage,
+      await storage.recordUsage(id, snapshot);
+      await storage.patchFetchState(id, {
+        fetchInProgressSince: null,
+        lastFailedAt: null,
+        lastFailureReason: null,
+        authRequired: null,
+      });
+      res.json({
+        success: true,
+        data: {
+          ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode() }),
+          refreshInterval: provider.refreshInterval,
         },
       });
-      return;
-    }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const isAuthErr = isClaudeOAuthAuthError(error);
+      await storage.patchFetchState(id, {
+        fetchInProgressSince: null,
+        lastFailedAt: new Date().toISOString(),
+        lastFailureReason: errorMessage.substring(0, 200),
+        ...(isAuthErr ? { authRequired: true } : {}),
+      });
 
-    await storage.recordUsage(id, snapshot);
-    
-    res.json({
-      success: true,
-      data: serializeUsageSnapshot(snapshot, { excludeCost: isMockMode() }),
-    });
+      if (latestRecord) {
+        const fallbackSnapshot = buildSnapshotFromRecord(provider, latestRecord);
+        res.json({
+          success: true,
+          data: {
+            ...serializeUsageSnapshot(fallbackSnapshot, { excludeCost: isMockMode() }),
+            stale: true,
+            staleAt: Math.floor(Date.now() / 1000),
+            fetchError: errorMessage,
+            refreshInterval: provider.refreshInterval,
+            ...(isAuthErr ? { authRequired: true } : {}),
+          },
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: { code: 'FETCH_ERROR', message: errorMessage },
+        });
+      }
+    }
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
+      error: { code: 'INTERNAL_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
     });
   }
 });

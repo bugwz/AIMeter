@@ -41,7 +41,8 @@ export const QuotaBar: React.FC<QuotaBarProps> = ({
   limit,
 }) => {
   const normalizedLabelDesc = labelDesc?.trim();
-  const color = forcedColor ?? (percent >= 90 ? 'danger' : percent >= 70 ? 'warning' : 'default');
+  const isOverquota = percent > 100;
+  const effectiveColor = isOverquota ? 'danger' : (forcedColor ?? (percent >= 90 ? 'danger' : percent >= 70 ? 'warning' : 'default'));
   
   const heights = { sm: 4, md: 6, lg: 8 };
   const h = heights[size];
@@ -78,11 +79,11 @@ export const QuotaBar: React.FC<QuotaBarProps> = ({
             <span title={normalizedLabelDesc || undefined}>{label}</span>
           </span>
               {showPercent && (
-            <span 
+            <span
               className="text-xs font-medium"
-              style={{ 
-                color: color === 'default' ? 'var(--color-text-primary)' : 
-                       color === 'warning' ? '#b45309' : '#dc2626' 
+              style={{
+                color: effectiveColor === 'default' ? 'var(--color-text-primary)' :
+                       effectiveColor === 'warning' ? '#b45309' : '#dc2626'
               }}
             >
               {hasUsedLimit ? (
@@ -93,27 +94,32 @@ export const QuotaBar: React.FC<QuotaBarProps> = ({
           )}
         </div>
       )}
-      <div 
+      <div
         className="w-full rounded-full overflow-hidden"
-        style={{ 
-          height: h, 
-          background: colors[color].bg,
+        style={{
+          height: h,
+          background: colors[effectiveColor].bg,
         }}
       >
         <div
           className="h-full rounded-full transition-all duration-700 ease-out"
-          style={{ 
+          style={{
             width: `${Math.min(100, Math.max(0, percent))}%`,
-            background: colors[color].fill,
+            background: colors[effectiveColor].fill,
           }}
         />
       </div>
       {resetsAt && (
-        <p 
+        <p
           className="mt-1.5 text-[10px]"
-          style={{ color: color === 'danger' ? '#dc2626' : color === 'warning' ? '#d97706' : 'var(--color-text-secondary)' }}
+          style={{ color: effectiveColor === 'danger' ? '#dc2626' : effectiveColor === 'warning' ? '#d97706' : 'var(--color-text-secondary)' }}
         >
           {formatResetTime(resetsAt)}
+        </p>
+      )}
+      {isOverquota && (
+        <p className="mt-1 text-[10px]" style={{ color: '#dc2626' }}>
+          Overquota
         </p>
       )}
     </div>

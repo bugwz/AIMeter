@@ -1,6 +1,6 @@
 import { ProviderConfig, Credential, UsageProvider, UsageSnapshot, ProgressData } from '../../src/types/index.js';
 
-export type StoredProviderConfig = Omit<ProviderConfig, 'id'> & { id: number; uid: string };
+export type StoredProviderConfig = Omit<ProviderConfig, 'id'> & { id: number; uid: string; fetchState?: Record<string, unknown> };
 
 export interface UsageRecordRow {
   id: number;
@@ -53,6 +53,8 @@ export interface DatabaseEngine {
   getUsageHistory(uid: string, days?: number): Promise<UsageRecordRow[]>;
   getAllUsageHistory(days?: number): Promise<Map<string, UsageRecordRow[]>>;
   getLatestUsage(uid: string): Promise<UsageRecordRow | null>;
+  patchProviderAttrs(uid: string, patch: Record<string, unknown>): Promise<void>;
+  patchFetchState(uid: string, patch: Record<string, unknown>): Promise<void>;
   getSetting(key: string): Promise<string | null>;
   setSetting(key: string, value: string): Promise<void>;
   recordAuditLog(entry: {

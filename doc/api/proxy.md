@@ -6,7 +6,7 @@ All endpoints require a **normal or admin session cookie** (`requireApiAuth(['no
 
 ### `POST /api/proxy/latest`
 
-Returns the latest cached usage data for all configured providers (reads from the database; does not trigger live fetches).
+Returns usage data for all configured providers. It prefers latest cached records; if no cached record exists for a provider, the server may fetch live data for that provider and persist it.
 
 #### Authentication
 
@@ -29,6 +29,7 @@ curl -b cookies.txt -X POST http://localhost:3001/api/proxy/latest
       "provider": "claude",
       "name": "My Claude",
       "region": null,
+      "refreshInterval": 5,
       "identity": { "plan": "Pro" },
       "progress": [
         {
@@ -66,9 +67,10 @@ Each item in the array is either a usage record (contains `progress`) or an erro
 | `provider` | string | Provider type |
 | `name` | string\|null | Custom display name |
 | `region` | string | Region identifier |
+| `refreshInterval` | number | Provider refresh interval (minutes) |
 | `identity.plan` | string | Subscription plan (e.g. Pro, Starter) |
 | `progress` | array | Progress item array |
-| `progress[].usedPercent` | number | Percentage used (0–100) |
+| `progress[].usedPercent` | number | Percentage used; may exceed 100 for overquota scenarios |
 | `progress[].resetsAt` | number\|null | Reset timestamp (Unix seconds) |
 | `updatedAt` | number | Data timestamp (Unix seconds) |
 

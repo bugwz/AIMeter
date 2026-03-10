@@ -32,6 +32,7 @@ curl -b cookies.txt http://localhost:3001/api/providers
       "displayOrder": 0,
       "region": null,
       "claudeAuthMode": "cookie",
+      "plan": "Claude Pro",
       "opencodeWorkspaceId": null,
       "defaultProgressItem": null,
       "credentials": {
@@ -111,6 +112,7 @@ curl -b cookies.txt http://localhost:3001/api/providers/prov_abc123
     "displayOrder": 0,
     "region": null,
     "claudeAuthMode": "cookie",
+    "plan": "Claude Pro",
     "opencodeWorkspaceId": null,
     "defaultProgressItem": null,
     "credentials": {
@@ -149,6 +151,7 @@ admin session cookie.
   "refreshInterval": 10,
   "region": null,
   "claudeAuthMode": null,
+  "plan": null,
   "opencodeWorkspaceId": null,
   "defaultProgressItem": null
 }
@@ -163,6 +166,7 @@ admin session cookie.
 | `refreshInterval` | number | No | Auto-refresh interval in minutes; default `5`; `0` disables auto-refresh |
 | `region` | string | No | Region identifier for multi-region providers (MiniMax, z.ai) |
 | `claudeAuthMode` | string | No | Claude only: `cookie` or `oauth` |
+| `plan` | string | No | Claude only: optional plan metadata (for display and usage interpretation) |
 | `opencodeWorkspaceId` | string | No | OpenCode only: workspace ID (`wrk_...`) |
 | `defaultProgressItem` | string | No | Progress item name to display as primary in history charts |
 
@@ -193,6 +197,7 @@ curl -b cookies.txt -X POST http://localhost:3001/api/providers \
     "region": null,
     "name": "OpenRouter Main",
     "claudeAuthMode": null,
+    "plan": null,
     "opencodeWorkspaceId": null
   }
 }
@@ -255,6 +260,7 @@ Returns the updated provider list (without credentials).
       "displayOrder": 0,
       "region": null,
       "claudeAuthMode": "cookie",
+      "plan": "Claude Pro",
       "opencodeWorkspaceId": null,
       "defaultProgressItem": null
     }
@@ -296,6 +302,7 @@ admin session cookie.
   "authType": "api_key",
   "credentials": "new_api_key",
   "claudeAuthMode": "oauth",
+  "plan": "Claude Max",
   "opencodeWorkspaceId": "wrk_xxx",
   "defaultProgressItem": "Fast Requests"
 }
@@ -361,7 +368,14 @@ curl -b cookies.txt -X DELETE http://localhost:3001/api/providers/prov_abc123
 
 ### `POST /api/providers/:id/refresh`
 
-Triggers an immediate live usage fetch for a single provider and stores the result. Admin only.
+Refreshes usage data for a single provider with built-in cache and failure control. Admin only.
+
+Behavior summary:
+
+- If latest data is younger than ~3 minutes, the endpoint returns cached data (`fromCache: true`) instead of forcing a live fetch.
+- If the previous fetch failed recently (~60s cooldown), the endpoint may return stale cached data (`stale: true`) or `503` when no cached data exists.
+- If another refresh is currently running (~30s lock timeout), the endpoint may return stale data with `refreshing: true`, or `{ data: null, refreshing: true }` when no cached data exists.
+- On live fetch failure with cached data available, the endpoint returns stale data plus `fetchError`; Claude OAuth auth failures may additionally set `authRequired: true`.
 
 #### Authentication
 
@@ -379,7 +393,7 @@ admin session cookie.
 curl -b cookies.txt -X POST http://localhost:3001/api/providers/prov_abc123/refresh
 ```
 
-#### Response Example
+#### Response Example (fresh or cached data)
 
 ```json
 {
@@ -398,12 +412,53 @@ curl -b cookies.txt -X POST http://localhost:3001/api/providers/prov_abc123/refr
         "resetDescription": "Resets weekly"
       }
     ],
-    "updatedAt": 1741824000
+    "updatedAt": 1741824000,
+    "refreshInterval": 5,
+    "fromCache": true,
+    "cachedAt": 1741824000
   }
 }
 ```
 
-`resetsAt` and `updatedAt` are Unix timestamps (seconds).
+#### Response Example (stale fallback)
+
+```json
+{
+  "success": true,
+  "data": {
+    "provider": "claude",
+    "progress": [
+      {
+        "name": "Fast Requests",
+        "usedPercent": 45,
+        "remainingPercent": 55,
+        "windowMinutes": 10080,
+        "resetsAt": 1741910400
+      }
+    ],
+    "updatedAt": 1741824000,
+    "refreshInterval": 5,
+    "stale": true,
+    "staleAt": 1741824060,
+    "refreshing": true,
+    "authRequired": true,
+    "fetchError": "Claude OAuth auth invalid: invalid_grant"
+  }
+}
+```
+
+#### Response Example (concurrent lock, no cache)
+
+```json
+{
+  "success": true,
+  "data": null,
+  "refreshing": true,
+  "refreshInterval": 5
+}
+```
+
+`resetsAt`, `updatedAt`, `cachedAt`, and `staleAt` are Unix timestamps (seconds).
 
 #### Error Codes
 
@@ -412,7 +467,8 @@ curl -b cookies.txt -X POST http://localhost:3001/api/providers/prov_abc123/refr
 | 403 | `FORBIDDEN` | Not an admin |
 | 404 | `NOT_FOUND` | Provider not found |
 | 400 | `ADAPTER_NOT_FOUND` | No adapter registered for this provider type |
-| 400 | `FETCH_ERROR` | Live fetch failed (network or credential issue) |
+| 400 | `FETCH_ERROR` | Live fetch failed and no cached fallback is available |
+| 503 | `TEMPORARILY_UNAVAILABLE` | Recent fetch failed and no cached data is available yet |
 
 ---
 
@@ -603,6 +659,100 @@ curl -b cookies.txt -X POST http://localhost:3001/api/providers/copilot/auth/com
 
 ---
 
+### `POST /api/providers/claude/oauth/generate-auth-url`
+
+Generates a one-time Claude OAuth authorization URL and session ID for PKCE code exchange. Admin only.
+
+#### Authentication
+
+admin session cookie.
+
+#### Request Example
+
+```bash
+curl -b cookies.txt -X POST http://localhost:3001/api/providers/claude/oauth/generate-auth-url
+```
+
+#### Response Example
+
+```json
+{
+  "success": true,
+  "data": {
+    "authUrl": "https://claude.ai/oauth/authorize?...",
+    "sessionId": "9b2f82b2-06ea-4f2d-8dbf-4eb6ad4cd953"
+  }
+}
+```
+
+#### Error Codes
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 403 | `FORBIDDEN` | Not an admin |
+| 500 | `CLAUDE_OAUTH_GENERATE_FAILED` | Failed to generate authorization URL |
+
+---
+
+### `POST /api/providers/claude/oauth/exchange-code`
+
+Exchanges a Claude OAuth authorization code for tokens using the previously generated `sessionId`. Admin only.
+
+#### Authentication
+
+admin session cookie.
+
+#### Request Body
+
+```json
+{
+  "sessionId": "9b2f82b2-06ea-4f2d-8dbf-4eb6ad4cd953",
+  "code": "callback_url_or_code",
+  "state": "optional_state"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `sessionId` | string | Yes | Session ID from `generate-auth-url` |
+| `code` | string | Yes | OAuth code, callback URL, or `code#state` format |
+| `state` | string | No | Optional state override |
+
+#### Request Example
+
+```bash
+curl -b cookies.txt -X POST http://localhost:3001/api/providers/claude/oauth/exchange-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "9b2f82b2-06ea-4f2d-8dbf-4eb6ad4cd953",
+    "code": "https://platform.claude.com/oauth/code/callback?code=abc&state=xyz"
+  }'
+```
+
+#### Response Example
+
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "...",
+    "refreshToken": "...",
+    "expiresAt": "2026-03-10T16:35:00.000Z",
+    "clientId": "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+  }
+}
+```
+
+#### Error Codes
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 403 | `FORBIDDEN` | Not an admin |
+| 400 | `INVALID_REQUEST` | Missing `sessionId` or `code` |
+| 400 | `CLAUDE_OAUTH_EXCHANGE_FAILED` | Code exchange failed |
+
+---
+
 ## Appendix
 
 ### Provider Types
@@ -654,6 +804,7 @@ When creating or updating, `credentials` is passed as a plain string. In API res
   "refreshToken": "ghr_xxx",
   "expiresAt": "2026-06-01T00:00:00.000Z",
   "clientId": "client_id",
+  "clientSecret": "client_secret",
   "projectId": "project_id"
 }
 ```

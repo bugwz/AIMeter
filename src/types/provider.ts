@@ -64,6 +64,7 @@ export interface ProviderConfig {
   region?: string; // Optional region configuration
   name?: string; // Custom display name
   claudeAuthMode?: 'oauth' | 'cookie'; // Claude: user-selected query mode
+  plan?: string; // Claude: optional manually selected plan
   opencodeWorkspaceId?: string; // OpenCode: optional workspace ID (wrk_...)
   defaultProgressItem?: string; // progress item name to show as primary in history
   configSource?: 'database' | 'environment' | 'config';

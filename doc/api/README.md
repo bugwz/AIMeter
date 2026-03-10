@@ -153,6 +153,8 @@ Applied to every response:
 | POST | `/api/providers/copilot/auth/start` | Start Copilot OAuth device flow | admin |
 | GET | `/api/providers/copilot/auth/status/:flowId` | Poll OAuth flow status | admin |
 | POST | `/api/providers/copilot/auth/complete` | Complete OAuth and create provider | admin |
+| POST | `/api/providers/claude/oauth/generate-auth-url` | Generate Claude OAuth authorization URL | admin |
+| POST | `/api/providers/claude/oauth/exchange-code` | Exchange Claude OAuth code for tokens | admin |
 
 ### [History `/api/history`](./history.md)
 

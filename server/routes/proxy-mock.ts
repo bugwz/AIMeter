@@ -100,6 +100,22 @@ function sanitizeIdentity(identity: Record<string, unknown> | undefined): Dashbo
   return plan ? { plan } : undefined;
 }
 
+function withPlanFallback(
+  identity: Record<string, unknown> | undefined,
+  fallbackPlan: string | undefined,
+): DashboardProviderData['identity'] | undefined {
+  const normalizedFallback = typeof fallbackPlan === 'string' ? fallbackPlan.trim() : '';
+  const mergedIdentity: Record<string, unknown> = {
+    ...(identity || {}),
+  };
+
+  if ((typeof mergedIdentity.plan !== 'string' || !mergedIdentity.plan.trim()) && normalizedFallback) {
+    mergedIdentity.plan = normalizedFallback;
+  }
+
+  return sanitizeIdentity(mergedIdentity);
+}
+
 router.post('/latest', async (req: Request, res: Response) => {
   await new Promise(resolve => setTimeout(resolve, 500));
   try {
@@ -123,10 +139,6 @@ router.post('/latest', async (req: Request, res: Response) => {
         resetsAt = dates.end;
       }
       
-      const defaultIdentity = mockConfig ? {
-        plan: mockConfig.name || 'Standard',
-      } : undefined;
-      
       if (latestRecord && latestRecord.progress) {
         const progressItems: Array<{
           name: string;
@@ -140,17 +152,15 @@ router.post('/latest', async (req: Request, res: Response) => {
         }> = latestRecord.progress.items || [];
         const identity = latestRecord.identityData as Record<string, unknown> | undefined;
         
-        const defaultIdentity = mockConfig ? {
-          plan: mockConfig.name || 'Standard',
-        } : undefined;
-
-        const finalIdentity = sanitizeIdentity(defaultIdentity || identity);
+        const fallbackPlan = provider.plan || mockConfig?.name || 'Standard';
+        const finalIdentity = withPlanFallback(identity, fallbackPlan);
         
         const snapshot: SerializedDashboardProviderData = {
           id: provider.id,
           provider: provider.provider,
           name: provider.name || null,
-          identity: finalIdentity as DashboardProviderData['identity'] || undefined,
+          refreshInterval: provider.refreshInterval,
+          identity: finalIdentity || undefined,
           progress: serializeProgressItems(provider.provider, progressItems.map((item) => ({
             ...item,
             windowMinutes: item.windowMinutes ?? windowMinutes ?? null,
@@ -229,19 +239,21 @@ router.post('/refresh', async (req: Request, res: Response) => {
           resetsAt = dates.end;
         }
         
-        const defaultIdentity = mockConfig ? {
-          plan: mockConfig.name || 'Standard',
-        } : undefined;
+        const fallbackPlan = provider.plan || mockConfig?.name || 'Standard';
         
         const items = extractSnapshotItems(snapshot);
         
-        const finalIdentity = sanitizeIdentity((snapshot.identity as Record<string, unknown> | undefined) || defaultIdentity);
+        const finalIdentity = withPlanFallback(
+          snapshot.identity as Record<string, unknown> | undefined,
+          fallbackPlan,
+        );
         
         const dashboardData: SerializedDashboardProviderData = {
           id: provider.id,
           provider: provider.provider,
           name: provider.name || null,
-          identity: finalIdentity as DashboardProviderData['identity'] || undefined,
+          refreshInterval: provider.refreshInterval,
+          identity: finalIdentity || undefined,
           progress: serializeProgressItems(provider.provider, items.map((item) => ({
             ...item,
             windowMinutes: item.windowMinutes ?? windowMinutes ?? null,

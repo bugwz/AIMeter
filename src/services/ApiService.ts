@@ -22,6 +22,7 @@ export interface ProviderSummary {
   displayOrder?: number;
   region?: string;
   claudeAuthMode?: 'oauth' | 'cookie';
+  plan?: string;
   opencodeWorkspaceId?: string;
   defaultProgressItem?: string | null;
 }
@@ -80,6 +81,13 @@ interface AuthStatus {
   authenticated?: boolean;
   authEnabled?: boolean;
   authMutable?: boolean;
+}
+
+export interface ClaudeOAuthTokenResult {
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: string;
+  clientId?: string;
 }
 
 export interface CopilotAuthStartResponse {
@@ -233,6 +241,7 @@ class ApiService {
       region?: string;
       name?: string;
       claudeAuthMode?: 'oauth' | 'cookie';
+      plan?: string;
       opencodeWorkspaceId?: string;
       defaultProgressItem?: string;
     }
@@ -245,6 +254,26 @@ class ApiService {
     });
     if (!response.data.success) {
       throw new Error(response.data.error?.message || 'Failed to add provider');
+    }
+    return response.data.data!;
+  }
+
+  async generateClaudeOAuthUrl(): Promise<{ authUrl: string; sessionId: string }> {
+    const response = await this.client.post<ApiResponse<{ authUrl: string; sessionId: string }>>('/providers/claude/oauth/generate-auth-url');
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to generate Claude OAuth URL');
+    }
+    return response.data.data!;
+  }
+
+  async exchangeClaudeOAuthCode(sessionId: string, code: string, state?: string): Promise<ClaudeOAuthTokenResult> {
+    const response = await this.client.post<ApiResponse<ClaudeOAuthTokenResult>>('/providers/claude/oauth/exchange-code', {
+      sessionId,
+      code,
+      ...(state ? { state } : {}),
+    });
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to exchange Claude OAuth code');
     }
     return response.data.data!;
   }
@@ -286,6 +315,7 @@ class ApiService {
       region?: string;
       name?: string;
       claudeAuthMode?: 'oauth' | 'cookie';
+      plan?: string;
       opencodeWorkspaceId?: string;
       defaultProgressItem?: string;
     }

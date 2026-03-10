@@ -42,6 +42,14 @@ function formatPlanLabel(plan?: string): string {
   return trimmedPlan.charAt(0).toUpperCase() + trimmedPlan.slice(1);
 }
 
+function getUpdatedAtColor(updatedAt: Date | undefined, refreshIntervalMinutes: number): string {
+  if (!updatedAt) return 'var(--color-text-secondary)';
+  const ageMin = (Date.now() - updatedAt.getTime()) / 60000;
+  if (ageMin >= refreshIntervalMinutes * 5) return '#dc2626';
+  if (ageMin >= refreshIntervalMinutes) return '#d97706';
+  return 'var(--color-text-secondary)';
+}
+
 interface ProviderCardProps {
   provider: UsageProvider;
   usage?: UsageSnapshot | UsageError;
@@ -57,6 +65,9 @@ interface ProviderCardProps {
   isDropTarget?: boolean;
   dropIndicator?: 'before' | 'after' | null;
   dragDisabled?: boolean;
+  refreshInterval?: number;
+  staleAt?: Date;
+  authRequired?: boolean;
 }
 
 export const ProviderCard: React.FC<ProviderCardProps> = ({
@@ -74,6 +85,9 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
   isDropTarget = false,
   dropIndicator = null,
   dragDisabled = false,
+  refreshInterval = 5,
+  staleAt,
+  authRequired,
 }) => {
   const isError = usage && 'code' in usage;
   const error = isError ? (usage as UsageError) : undefined;
@@ -88,7 +102,10 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
 
   const identity = snapshot?.identity;
   const planLabel = formatPlanLabel(identity?.plan);
+  const updatedAt = snapshot?.updatedAt instanceof Date ? snapshot.updatedAt : undefined;
   const updatedAtText = formatDateTime(snapshot?.updatedAt);
+  const updatedAtColor = getUpdatedAtColor(updatedAt, refreshInterval);
+  const updatedAtTitle = staleAt ? `Data as of ${formatDateTime(staleAt)}` : undefined;
   const logoStatusColor = snapshot ? '#10b981' : isLoading ? '#f59e0b' : '#ef4444';
   const logoNode = (
     <>
@@ -262,6 +279,18 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
         </div>
       ) : snapshot ? (
         <React.Fragment>
+          {authRequired && (
+            <div
+              className="mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium"
+              style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#dc2626' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v4M12 16h.01"/>
+              </svg>
+              <span>Re-authentication required</span>
+            </div>
+          )}
           <div className="flex-1 flex flex-col min-h-0">
             <div className="flex flex-col gap-4">
               {progressItems.map((item, index) => (
@@ -345,7 +374,11 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
             </svg>
           </button>
         )}
-        <span className="text-[10px] text-[var(--color-text-secondary)]">
+        <span
+          className="text-[10px]"
+          style={{ color: updatedAtColor }}
+          title={updatedAtTitle}
+        >
           Updated at {updatedAtText}
         </span>
       </div>

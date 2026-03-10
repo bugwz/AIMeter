@@ -154,6 +154,8 @@ function buildProviderAttrs(config: Partial<ProviderConfig>): Record<string, unk
   };
   if (config.region) attrs.region = config.region;
   else delete attrs.region;
+  if (typeof config.plan === 'string' && config.plan.trim()) attrs.plan = config.plan.trim();
+  else delete attrs.plan;
   return attrs;
 }
 
@@ -383,6 +385,7 @@ export function getAllMockProviders(): StoredProviderConfig[] {
       attrs,
       region: typeof attrs.region === 'string' ? attrs.region : undefined,
       name: row.name || undefined,
+      plan: typeof attrs.plan === 'string' ? attrs.plan : undefined,
     };
   });
 }

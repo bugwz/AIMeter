@@ -120,6 +120,7 @@ export class ClaudeAdapter implements IProviderAdapter {
   private readonly baseURL = 'https://claude.ai/api';
   private readonly oauthUsageURL = 'https://api.anthropic.com/api/oauth/usage';
   private readonly oauthTokenRefreshURL = 'https://platform.claude.com/v1/oauth/token';
+  private readonly oauthProfileURL = 'https://api.anthropic.com/api/oauth/profile';
 
   private buildClaudeWebHeaders(cookieHeader: string): Record<string, string> {
     return {
@@ -176,6 +177,14 @@ export class ClaudeAdapter implements IProviderAdapter {
         return {};
       }
     }
+    if (credentials.type === AuthType.OAUTH && credentials.accessToken) {
+      try {
+        const profile = await this.fetchOAuthProfile(credentials.accessToken);
+        return { plan: profile.accountType };
+      } catch {
+        return {};
+      }
+    }
     return {};
   }
 
@@ -184,7 +193,7 @@ export class ClaudeAdapter implements IProviderAdapter {
 
     if (mode === 'oauth') {
       const oauth = this.requireOAuthCredential(credentials);
-      return this.fetchOAuthUsageWithRefresh(oauth);
+      return this.fetchOAuthUsageWithRefresh(oauth, config);
     }
 
     if (mode === 'cookie') {
@@ -195,7 +204,7 @@ export class ClaudeAdapter implements IProviderAdapter {
     }
 
     if (credentials.type === AuthType.OAUTH) {
-      return this.fetchOAuthUsageWithRefresh(credentials);
+      return this.fetchOAuthUsageWithRefresh(credentials, config);
     }
     if (credentials.type === AuthType.COOKIE) {
       return this.fetchCookieUsage(credentials.value);
@@ -214,10 +223,25 @@ export class ClaudeAdapter implements IProviderAdapter {
     return credentials;
   }
 
-  private async fetchOAuthUsageWithRefresh(credentials: Extract<Credential, { type: AuthType.OAUTH }>): Promise<UsageSnapshot> {
+  private async fetchOAuthUsageWithRefresh(
+    credentials: Extract<Credential, { type: AuthType.OAUTH }>,
+    config?: ProviderConfig
+  ): Promise<UsageSnapshot> {
+    // Proactively refresh token if expiring soon (< max(refreshInterval, 5) minutes)
+    if (this.isTokenExpiringSoon(credentials, config?.refreshInterval) && this.hasRefreshBundle(credentials)) {
+      try {
+        const refreshed = await this.refreshOAuthAccessToken(credentials);
+        credentials.accessToken = refreshed.accessToken;
+        credentials.refreshToken = refreshed.refreshToken;
+        credentials.expiresAt = refreshed.expiresAt;
+      } catch {
+        // Proactive refresh failed, continue with existing token
+      }
+    }
+
     try {
       const data = await this.fetchOAuthUsage(credentials.accessToken);
-      return this.parseOAuthUsage(data);
+      return this.parseOAuthUsage(data, config?.attrs?.plan as string | undefined);
     } catch (error) {
       if (!this.isOAuthAuthError(error)) {
         throw error;
@@ -225,7 +249,7 @@ export class ClaudeAdapter implements IProviderAdapter {
 
       if (!this.hasRefreshBundle(credentials)) {
         throw new Error(
-          'Claude OAuth token is invalid/expired and refresh credentials are missing (refreshToken, clientId, clientSecret)',
+          'Claude OAuth token is invalid/expired and refresh credentials are missing (refreshToken, clientId)',
         );
       }
 
@@ -235,8 +259,18 @@ export class ClaudeAdapter implements IProviderAdapter {
       credentials.expiresAt = refreshed.expiresAt;
 
       const retryData = await this.fetchOAuthUsage(credentials.accessToken);
-      return this.parseOAuthUsage(retryData);
+      return this.parseOAuthUsage(retryData, config?.attrs?.plan as string | undefined);
     }
+  }
+
+  private isTokenExpiringSoon(credentials: Extract<Credential, { type: AuthType.OAUTH }>, refreshIntervalMinutes: number = 5): boolean {
+    if (!credentials.expiresAt) return false;
+    const thresholdMs = Math.max(refreshIntervalMinutes, 5) * 60 * 1000;
+    const expiresAtMs = credentials.expiresAt instanceof Date
+      ? credentials.expiresAt.getTime()
+      : new Date(credentials.expiresAt as string).getTime();
+    if (Number.isNaN(expiresAtMs)) return false;
+    return (expiresAtMs - Date.now()) < thresholdMs;
   }
 
   private async fetchOAuthUsage(accessToken: string): Promise<OAuthUsageResponse> {
@@ -265,23 +299,23 @@ export class ClaudeAdapter implements IProviderAdapter {
     return data;
   }
 
-  private parseOAuthUsage(data: OAuthUsageResponse): UsageSnapshot {
+  private parseOAuthUsage(data: OAuthUsageResponse, plan?: string): UsageSnapshot {
     const progress: ProgressItem[] = [];
+    const accountType = (plan || '').toLowerCase();
+    const isMax = accountType.includes('max') || accountType.includes('enterprise');
 
     const pushWindow = (
       name: string,
-      sourceKey: 'five_hour' | 'seven_day' | 'seven_day_oauth_apps',
+      sourceKey: 'five_hour' | 'seven_day' | 'seven_day_oauth_apps' | 'seven_day_sonnet',
       window: OAuthUsageWindow | undefined,
       minutes: number
     ) => {
       if (typeof window?.utilization !== 'number') return;
-      const windowDesc = sourceKey === 'five_hour'
-        ? '5 hours window'
-        : '7 days window';
+      const windowDesc = sourceKey === 'five_hour' ? '5 hours window' : '7 days window';
       progress.push({
         name,
         desc: windowDesc,
-        usedPercent: this.normalizePercent(window.utilization),
+        usedPercent: this.normalizePercent(this.utilizationToPercent(window.utilization)),
         windowMinutes: minutes,
         resetsAt: this.parseDate(window.resets_at),
       });
@@ -292,6 +326,14 @@ export class ClaudeAdapter implements IProviderAdapter {
       pushWindow('Weekly', 'seven_day', data.seven_day, 10080);
     } else {
       pushWindow('Weekly', 'seven_day_oauth_apps', data.seven_day_oauth_apps ?? undefined, 10080);
+    }
+
+    // For Max/Enterprise accounts, also show Sonnet/Opus dedicated window
+    if (isMax && data.seven_day_sonnet) {
+      pushWindow('Weekly Sonnet', 'seven_day_sonnet', data.seven_day_sonnet, 10080);
+    } else if (!isMax && !plan && data.seven_day_sonnet) {
+      // Unknown account type: show all available windows
+      pushWindow('Weekly Sonnet', 'seven_day_sonnet', data.seven_day_sonnet, 10080);
     }
 
     let cost: ProviderCostSnapshot | undefined;
@@ -326,11 +368,19 @@ export class ClaudeAdapter implements IProviderAdapter {
         grant_type: 'refresh_token',
         refresh_token: credentials.refreshToken || '',
         client_id: credentials.clientId || '',
-        client_secret: credentials.clientSecret || '',
       }).toString(),
     });
 
     if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      if (response.status === 400 || response.status === 401) {
+        let parsed: Record<string, unknown> = {};
+        try { parsed = JSON.parse(body) as Record<string, unknown>; } catch { /* ignore */ }
+        const errCode = typeof parsed.error === 'string' ? parsed.error : '';
+        if (errCode === 'invalid_client' || errCode === 'invalid_grant' || errCode === 'unauthorized_client') {
+          throw new Error(`Claude OAuth auth invalid: ${errCode}`);
+        }
+      }
       throw new Error(`Claude OAuth refresh failed: ${response.status}`);
     }
 
@@ -349,7 +399,7 @@ export class ClaudeAdapter implements IProviderAdapter {
   }
 
   private hasRefreshBundle(credentials: Extract<Credential, { type: AuthType.OAUTH }>): boolean {
-    return Boolean(credentials.refreshToken && credentials.clientId && credentials.clientSecret);
+    return Boolean(credentials.refreshToken && credentials.clientId);
   }
 
   private isOAuthAuthError(error: unknown): boolean {
@@ -470,7 +520,7 @@ export class ClaudeAdapter implements IProviderAdapter {
 
     const makePercent = (window?: { utilization?: number; used?: number; limit?: number }): number | null => {
       if (!window) return null;
-      if (typeof window.utilization === 'number') return this.normalizePercent(window.utilization);
+      if (typeof window.utilization === 'number') return this.normalizePercent(this.utilizationToPercent(window.utilization));
       if (typeof window.used === 'number' && typeof window.limit === 'number' && window.limit > 0) {
         return this.normalizePercent((window.used / window.limit) * 100);
       }
@@ -556,8 +606,31 @@ export class ClaudeAdapter implements IProviderAdapter {
     };
   }
 
+  private async fetchOAuthProfile(accessToken: string): Promise<{ accountType?: string }> {
+    const response = await fetch(this.oauthProfileURL, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+        'anthropic-beta': 'oauth-2025-04-20',
+        'User-Agent': 'AIMeter',
+      },
+    });
+    if (!response.ok) return {};
+    const data = (await response.json()) as Record<string, unknown>;
+    // Profile response may have account_type or subscription fields
+    const accountType = typeof data.account_type === 'string'
+      ? data.account_type
+      : (typeof data.subscription_type === 'string' ? data.subscription_type : undefined);
+    return { accountType };
+  }
+
   private normalizePercent(value: number): number {
-    return roundPercentage(Math.max(0, Math.min(100, value)));
+    return roundPercentage(Math.max(0, value));
+  }
+
+  private utilizationToPercent(utilization: number): number {
+    // Claude upstream may return utilization as either ratio (0-1) or percentage (0-100).
+    return utilization <= 1 ? utilization * 100 : utilization;
   }
 
   private parseDate(value?: string): Date | undefined {

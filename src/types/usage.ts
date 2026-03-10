@@ -44,6 +44,11 @@ export interface DashboardProviderData {
   cost?: ProviderCostSnapshot;
   identity?: Identity;
   updatedAt: Date;
+  stale?: boolean;
+  staleAt?: Date;
+  fromCache?: boolean;
+  authRequired?: boolean;
+  refreshInterval?: number;
 }
 
 // Complete usage snapshot
