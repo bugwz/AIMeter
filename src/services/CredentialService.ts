@@ -39,7 +39,7 @@ export class CredentialService {
     }
 
     if (credential.type === AuthType.OAUTH) {
-      if (provider === UsageProvider.CLAUDE) {
+      if (provider === UsageProvider.CLAUDE || provider === UsageProvider.CODEX) {
         const hasBundleFields = Boolean(
           credential.refreshToken
             || credential.clientId

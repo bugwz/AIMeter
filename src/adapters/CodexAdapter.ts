@@ -13,6 +13,7 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { roundPercentage } from './utils';
 
 interface CodexAuthJson {
   tokens?: {
@@ -119,6 +120,136 @@ export class CodexAdapter implements IProviderAdapter {
     const duration = this.formatWindowDesc(limitWindowSeconds);
     if (!duration) return '';
     return `${duration} window`;
+  }
+
+  private toNumber(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return undefined;
+  }
+
+  private normalizeWindow(window: CodexRateLimitWindow | null | undefined): {
+    usedPercent: number;
+    windowMinutes?: number;
+    resetsAt?: Date;
+    desc?: string;
+  } | null {
+    if (!window) return null;
+
+    const usedPercentRaw = this.toNumber(window.used_percent);
+    if (usedPercentRaw === undefined) return null;
+    const usedPercent = roundPercentage(Math.max(0, usedPercentRaw));
+
+    const windowSeconds = this.toNumber(window.limit_window_seconds);
+    const windowMinutes = windowSeconds && windowSeconds > 0
+      ? Math.max(1, Math.round(windowSeconds / 60))
+      : undefined;
+
+    let resetsAt: Date | undefined;
+    const resetAtSeconds = this.toNumber(window.reset_at);
+    if (resetAtSeconds && resetAtSeconds > 0) {
+      const resetAtMs = resetAtSeconds > 1_000_000_000_000 ? resetAtSeconds : resetAtSeconds * 1000;
+      const fromResetAt = new Date(resetAtMs);
+      if (!Number.isNaN(fromResetAt.getTime())) {
+        resetsAt = fromResetAt;
+      }
+    }
+
+    if (!resetsAt) {
+      const resetAfterSeconds = this.toNumber(window.reset_after_seconds);
+      if (resetAfterSeconds !== undefined) {
+        const fromResetAfter = new Date(Date.now() + Math.max(0, resetAfterSeconds) * 1000);
+        if (!Number.isNaN(fromResetAfter.getTime())) {
+          resetsAt = fromResetAfter;
+        }
+      }
+    }
+
+    return {
+      usedPercent,
+      windowMinutes,
+      resetsAt,
+      desc: windowSeconds ? this.formatWindowDescription(windowSeconds) : undefined,
+    };
+  }
+
+  private classifyWindowType(windowSeconds?: number): 'session' | 'weekly' | 'other' {
+    if (!windowSeconds || windowSeconds <= 0) return 'other';
+    if (windowSeconds <= 6 * 60 * 60) return 'session';
+    if (windowSeconds >= 6 * 24 * 60 * 60) return 'weekly';
+    return 'other';
+  }
+
+  private pushWindowProgress(
+    progress: ProgressItem[],
+    name: string,
+    window: CodexRateLimitWindow | null | undefined,
+    extraDesc?: string,
+  ): void {
+    const normalized = this.normalizeWindow(window);
+    if (!normalized) return;
+    const desc = [normalized.desc, extraDesc].filter(Boolean).join(' for ');
+    progress.push({
+      name,
+      desc: desc || undefined,
+      usedPercent: normalized.usedPercent,
+      remainingPercent: roundPercentage(Math.max(0, 100 - normalized.usedPercent)),
+      windowMinutes: normalized.windowMinutes,
+      resetsAt: normalized.resetsAt,
+    });
+  }
+
+  private pushRateLimitWindows(
+    progress: ProgressItem[],
+    rateLimit: CodexRateLimit | null | undefined,
+    labels: { session: string; weekly: string; fallbackPrimary?: string; fallbackSecondary?: string },
+    extraDesc?: string,
+  ): void {
+    if (!rateLimit) return;
+
+    const primaryWindow = rateLimit.primary_window;
+    const secondaryWindow = rateLimit.secondary_window || undefined;
+    const primarySeconds = this.toNumber(primaryWindow?.limit_window_seconds);
+    const secondarySeconds = this.toNumber(secondaryWindow?.limit_window_seconds);
+    const primaryType = this.classifyWindowType(primarySeconds);
+    const secondaryType = this.classifyWindowType(secondarySeconds);
+
+    if (primaryType === 'session') {
+      this.pushWindowProgress(progress, labels.session, primaryWindow, extraDesc);
+    } else if (primaryType === 'weekly') {
+      this.pushWindowProgress(progress, labels.weekly, primaryWindow, extraDesc);
+    } else if (labels.fallbackPrimary) {
+      this.pushWindowProgress(progress, labels.fallbackPrimary, primaryWindow, extraDesc);
+    }
+
+    if (secondaryType === 'session') {
+      this.pushWindowProgress(progress, labels.session, secondaryWindow, extraDesc);
+    } else if (secondaryType === 'weekly') {
+      this.pushWindowProgress(progress, labels.weekly, secondaryWindow, extraDesc);
+    } else if (labels.fallbackSecondary) {
+      this.pushWindowProgress(progress, labels.fallbackSecondary, secondaryWindow, extraDesc);
+    }
+  }
+
+  private sortProgressItems(progress: ProgressItem[]): ProgressItem[] {
+    const orderWeight = (name: string): number => {
+      const normalized = name.trim().toLowerCase();
+      if (normalized === 'session') return 1;
+      if (normalized === 'weekly') return 2;
+      if (normalized === 'additional session') return 3;
+      if (normalized === 'additional weekly') return 4;
+      if (normalized === 'code review') return 5;
+      return 10;
+    };
+
+    return [...progress].sort((a, b) => {
+      const diff = orderWeight(a.name) - orderWeight(b.name);
+      if (diff !== 0) return diff;
+      return a.name.localeCompare(b.name);
+    });
   }
   
   async validateCredentials(credentials: Credential): Promise<ValidationResult> {
@@ -256,83 +387,35 @@ export class CodexAdapter implements IProviderAdapter {
 
   private parseOAuthUsage(data: CodexOAuthUsageResponse): UsageSnapshot {
     const progress: ProgressItem[] = [];
-    
-    // 1. Session (main primary_window - 5-hour window)
-    if (data.rate_limit?.primary_window) {
-      const primary = data.rate_limit.primary_window;
-      progress.push({
-        name: 'Session',
-        desc: this.formatWindowDescription(primary.limit_window_seconds),
-        usedPercent: primary.used_percent,
-        remainingPercent: 100 - primary.used_percent,
-        windowMinutes: Math.round(primary.limit_window_seconds / 60),
-        resetsAt: primary.reset_at ? new Date(primary.reset_at * 1000) : undefined
-      });
-    }
-    
-    // 2. Weekly (main secondary_window - 7-day window)
-    if (data.rate_limit?.secondary_window) {
-      const secondary = data.rate_limit.secondary_window;
-      progress.push({
-        name: 'Weekly',
-        desc: this.formatWindowDescription(secondary.limit_window_seconds),
-        usedPercent: secondary.used_percent,
-        remainingPercent: 100 - secondary.used_percent,
-        windowMinutes: Math.round(secondary.limit_window_seconds / 60),
-        resetsAt: secondary.reset_at ? new Date(secondary.reset_at * 1000) : undefined
-      });
-    }
 
-    // 3. Additional Session and Additional Weekly (extra model quota for Plus members)
+    this.pushRateLimitWindows(progress, data.rate_limit, {
+      session: 'Session',
+      weekly: 'Weekly',
+      fallbackPrimary: 'Primary',
+      fallbackSecondary: 'Secondary',
+    });
+
+    // Additional Session / Weekly (extra model quota)
     if (data.additional_rate_limits && data.additional_rate_limits.length > 0) {
       for (const additional of data.additional_rate_limits) {
         const rawLimitName = typeof additional.limit_name === 'string' ? additional.limit_name.trim() : '';
         const limitName = rawLimitName || (typeof additional.metered_feature === 'string' ? additional.metered_feature.trim() : '');
 
-        // Additional Session (primary_window - 5-hour window)
-        if (additional.rate_limit?.primary_window) {
-          const window = additional.rate_limit.primary_window;
-          progress.push({
-            name: 'Additional Session',
-            desc: limitName
-              ? `${this.formatWindowDescription(window.limit_window_seconds)} for ${limitName}`
-              : this.formatWindowDescription(window.limit_window_seconds),
-            usedPercent: window.used_percent,
-            remainingPercent: 100 - window.used_percent,
-            windowMinutes: Math.round(window.limit_window_seconds / 60),
-            resetsAt: window.reset_at ? new Date(window.reset_at * 1000) : undefined
-          });
-        }
-        
-        // Additional Weekly (secondary_window - 7-day window)
-        if (additional.rate_limit?.secondary_window) {
-          const window = additional.rate_limit.secondary_window;
-          progress.push({
-            name: 'Additional Weekly',
-            desc: limitName
-              ? `${this.formatWindowDescription(window.limit_window_seconds)} for ${limitName}`
-              : this.formatWindowDescription(window.limit_window_seconds),
-            usedPercent: window.used_percent,
-            remainingPercent: 100 - window.used_percent,
-            windowMinutes: Math.round(window.limit_window_seconds / 60),
-            resetsAt: window.reset_at ? new Date(window.reset_at * 1000) : undefined
-          });
-        }
+        this.pushRateLimitWindows(progress, additional.rate_limit, {
+          session: 'Additional Session',
+          weekly: 'Additional Weekly',
+          fallbackPrimary: 'Additional Primary',
+          fallbackSecondary: 'Additional Secondary',
+        }, limitName || undefined);
       }
     }
-    
-    // 4. Code Review (Codex-specific) - keep last
-    if (data.code_review_rate_limit?.primary_window) {
-      const codeReview = data.code_review_rate_limit.primary_window;
-      progress.push({
-        name: 'Code Review',
-        desc: this.formatWindowDescription(codeReview.limit_window_seconds),
-        usedPercent: codeReview.used_percent,
-        remainingPercent: 100 - codeReview.used_percent,
-        windowMinutes: Math.round(codeReview.limit_window_seconds / 60),
-        resetsAt: codeReview.reset_at ? new Date(codeReview.reset_at * 1000) : undefined
-      });
-    }
+
+    this.pushRateLimitWindows(progress, data.code_review_rate_limit, {
+      session: 'Code Review',
+      weekly: 'Code Review',
+      fallbackPrimary: 'Code Review',
+      fallbackSecondary: 'Code Review Secondary',
+    });
 
     // Parse credits (hide when has_credits is false or credits is null)
     let cost: ProviderCostSnapshot | undefined;
@@ -362,7 +445,7 @@ export class CodexAdapter implements IProviderAdapter {
 
     return {
       provider: UsageProvider.CODEX,
-      progress,
+      progress: this.sortProgressItems(progress),
       cost,
       identity,
       updatedAt: new Date()
@@ -412,30 +495,13 @@ export class CodexAdapter implements IProviderAdapter {
   private parseWebUsage(data: CodexWebUsageResponse, cookie: string): UsageSnapshot {
     const progress: ProgressItem[] = [];
     const rateLimit = data?.data?.rate_limit;
-    
-    if (rateLimit?.primary_window) {
-      const primary = rateLimit.primary_window;
-      progress.push({
-        name: 'Primary',
-        desc: this.formatWindowDescription(primary.limit_window_seconds),
-        usedPercent: primary.used_percent,
-        remainingPercent: 100 - primary.used_percent,
-        windowMinutes: Math.round(primary.limit_window_seconds / 60),
-        resetsAt: primary.reset_at ? new Date(primary.reset_at * 1000) : undefined
-      });
-    }
-    
-    if (rateLimit?.secondary_window) {
-      const secondary = rateLimit.secondary_window;
-      progress.push({
-        name: 'Weekly',
-        desc: this.formatWindowDescription(secondary.limit_window_seconds),
-        usedPercent: secondary.used_percent,
-        remainingPercent: 100 - secondary.used_percent,
-        windowMinutes: Math.round(secondary.limit_window_seconds / 60),
-        resetsAt: secondary.reset_at ? new Date(secondary.reset_at * 1000) : undefined
-      });
-    }
+
+    this.pushRateLimitWindows(progress, rateLimit, {
+      session: 'Session',
+      weekly: 'Weekly',
+      fallbackPrimary: 'Primary',
+      fallbackSecondary: 'Secondary',
+    });
 
     let cost: ProviderCostSnapshot | undefined;
     if (data?.data?.credits && data.data.credits.has_credits && !data.data.credits.unlimited && data.data.credits.balance !== null && data.data.credits.balance !== undefined) {
@@ -462,7 +528,7 @@ export class CodexAdapter implements IProviderAdapter {
 
     return {
       provider: UsageProvider.CODEX,
-      progress,
+      progress: this.sortProgressItems(progress),
       cost,
       identity,
       updatedAt: new Date()
@@ -474,7 +540,7 @@ export class CodexAdapter implements IProviderAdapter {
       throw new Error('Cannot refresh: invalid credential type or missing refresh token');
     }
 
-    const newTokens = await this.refreshToken(credentials.refreshToken);
+    const newTokens = await this.refreshToken(credentials.refreshToken, credentials.clientId);
     
     return {
       type: AuthType.OAUTH,
@@ -485,16 +551,17 @@ export class CodexAdapter implements IProviderAdapter {
     };
   }
 
-  private async refreshToken(refreshToken: string): Promise<{
+  private async refreshToken(refreshToken: string, clientId?: string): Promise<{
     accessToken: string;
     refreshToken: string;
     expiresAt?: Date;
   }> {
+    const resolvedClientId = clientId || 'app_EMoamEEZ73f0CkXaXp7hrann';
     const response = await fetch(this.tokenRefreshURL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        client_id: 'app_EMoamEEZ73f0CkXaXp7hrann',
+        client_id: resolvedClientId,
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
         scope: 'openid profile email'

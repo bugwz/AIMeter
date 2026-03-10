@@ -3,6 +3,7 @@ import { UsageProvider, ProviderConfig, UsageSnapshot, Credential, AuthType } fr
 import { getViewerRole, requireAdminRole } from '../middleware/auth.js';
 import { copilotDeviceFlowService, FlowNotFoundError } from '../services/CopilotDeviceFlowService.js';
 import { claudeOAuthService } from '../services/ClaudeOAuthService.js';
+import { codexOAuthService } from '../services/CodexOAuthService.js';
 import { storage, tryParseReadonlyError } from '../storage.js';
 import type { ProviderInstance, UsageRecordRow } from '../storage.js';
 import { fetchUsageForProvider, getAdapterForProvider } from '../services/ProviderUsageService.js';
@@ -189,7 +190,7 @@ function buildSnapshotFromRecord(provider: ProviderInstance, record: UsageRecord
   };
 }
 
-function isClaudeOAuthAuthError(error: unknown): boolean {
+function isOAuthAuthError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   const lower = error.message.toLowerCase();
   return (
@@ -197,9 +198,17 @@ function isClaudeOAuthAuthError(error: unknown): boolean {
     lower.includes('access denied') ||
     lower.includes('oauth error: 401') ||
     lower.includes('auth invalid') ||
+    lower.includes('oauth token expired') ||
     lower.includes('invalid_client') ||
     lower.includes('invalid_grant')
   );
+}
+
+function isProviderAuthError(provider: UsageProvider, error: unknown): boolean {
+  if (provider !== UsageProvider.CLAUDE && provider !== UsageProvider.CODEX) {
+    return false;
+  }
+  return isOAuthAuthError(error);
 }
 
 function serializeProviderForViewer(provider: ProviderInstance, role: 'normal' | 'admin') {
@@ -519,6 +528,49 @@ router.post('/claude/oauth/exchange-code', async (req: Request, res: Response) =
       success: false,
       error: {
         code: 'CLAUDE_OAUTH_EXCHANGE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to exchange authorization code',
+      },
+    });
+  }
+});
+
+router.post('/codex/oauth/generate-auth-url', (req: Request, res: Response) => {
+  if (!requireAdminRole(req, res)) return;
+  try {
+    const result = codexOAuthService.generateAuthUrl();
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'CODEX_OAUTH_GENERATE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to generate authorization URL',
+      },
+    });
+  }
+});
+
+router.post('/codex/oauth/exchange-code', async (req: Request, res: Response) => {
+  if (!requireAdminRole(req, res)) return;
+  try {
+    const { sessionId, code, state } = req.body as { sessionId?: string; code?: string; state?: string };
+    if (!sessionId || !code) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_REQUEST',
+          message: 'sessionId and code are required',
+        },
+      });
+      return;
+    }
+    const tokenInfo = await codexOAuthService.exchangeCode(sessionId, code, state);
+    res.json({ success: true, data: tokenInfo });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'CODEX_OAUTH_EXCHANGE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to exchange authorization code',
       },
     });
@@ -1067,7 +1119,7 @@ router.post('/:id/refresh', async (req: Request, res: Response) => {
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const isAuthErr = isClaudeOAuthAuthError(error);
+      const isAuthErr = isProviderAuthError(provider.provider, error);
       await storage.patchFetchState(id, {
         fetchInProgressSince: null,
         lastFailedAt: new Date().toISOString(),
@@ -1140,7 +1192,10 @@ function createCredential(provider: UsageProvider, type: string, value: string):
       };
     case 'oauth':
       if (provider === UsageProvider.CLAUDE) {
-        return createClaudeOAuthCredential(value);
+        return createOAuthCredentialFromJSON(value, 'Claude');
+      }
+      if (provider === UsageProvider.CODEX) {
+        return createOAuthCredentialFromJSON(value, 'Codex');
       }
       return { type: AuthType.OAUTH, accessToken: value };
     case 'jwt':
@@ -1153,10 +1208,10 @@ function createCredential(provider: UsageProvider, type: string, value: string):
   }
 }
 
-function createClaudeOAuthCredential(value: string): Credential {
+function createOAuthCredentialFromJSON(value: string, providerName: 'Claude' | 'Codex'): Credential {
   const raw = value.trim();
   if (!raw) {
-    throw new Error('Claude OAuth token is required');
+    throw new Error(`${providerName} OAuth token is required`);
   }
 
   if (!raw.startsWith('{')) {
@@ -1167,23 +1222,23 @@ function createClaudeOAuthCredential(value: string): Credential {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error('Claude OAuth JSON must be a valid JSON object');
+    throw new Error(`${providerName} OAuth JSON must be a valid JSON object`);
   }
 
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('Claude OAuth JSON must be a JSON object');
+    throw new Error(`${providerName} OAuth JSON must be a JSON object`);
   }
 
   const data = parsed as Record<string, unknown>;
   const accessToken = getString(data, ['accessToken', 'access_token']);
   if (!accessToken) {
-    throw new Error('Claude OAuth JSON is missing access_token');
+    throw new Error(`${providerName} OAuth JSON is missing access_token`);
   }
 
   const rawExpiresAt = data.expiresAt ?? data.expiry_date;
   const expiresAt = parseCredentialDate(rawExpiresAt);
   if (rawExpiresAt !== undefined && rawExpiresAt !== null && rawExpiresAt !== '' && !expiresAt) {
-    throw new Error('Claude OAuth expiry_date/expiresAt is invalid');
+    throw new Error(`${providerName} OAuth expiry_date/expiresAt is invalid`);
   }
 
   return {

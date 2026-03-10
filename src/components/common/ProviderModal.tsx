@@ -40,7 +40,7 @@ interface ClaudeOAuthFormState {
   expiresAt: string;
 }
 
-interface ClaudeLinkOAuthState {
+interface LinkOAuthState {
   sessionId: string;
   authUrl: string;
   code: string;
@@ -49,7 +49,7 @@ interface ClaudeLinkOAuthState {
   error?: string;
 }
 
-const EMPTY_CLAUDE_LINK_OAUTH: ClaudeLinkOAuthState = {
+const EMPTY_LINK_OAUTH: LinkOAuthState = {
   sessionId: '',
   authUrl: '',
   code: '',
@@ -121,7 +121,9 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
   const copiedIndicatorTimerRef = React.useRef<number | null>(null);
   const [claudeOAuth, setClaudeOAuth] = useState<ClaudeOAuthFormState>(EMPTY_CLAUDE_OAUTH_FORM);
   const [claudePlan, setClaudePlan] = useState<string>('');
-  const [claudeLinkOAuth, setClaudeLinkOAuth] = useState<ClaudeLinkOAuthState>(EMPTY_CLAUDE_LINK_OAUTH);
+  const [claudeLinkOAuth, setClaudeLinkOAuth] = useState<LinkOAuthState>(EMPTY_LINK_OAUTH);
+  const [codexOAuth, setCodexOAuth] = useState<ClaudeOAuthFormState>(EMPTY_CLAUDE_OAUTH_FORM);
+  const [codexLinkOAuth, setCodexLinkOAuth] = useState<LinkOAuthState>(EMPTY_LINK_OAUTH);
   const [defaultProgressItem, setDefaultProgressItem] = useState('');
 
   const availableProviders = React.useMemo(
@@ -158,6 +160,13 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
           )
           : '',
       );
+      setCodexOAuth(
+        editConfig.provider === UsageProvider.CODEX && editConfig.credentials.type === AuthType.OAUTH
+          ? toClaudeOAuthFormState(editConfig.credentials)
+          : EMPTY_CLAUDE_OAUTH_FORM
+      );
+      setClaudeLinkOAuth(EMPTY_LINK_OAUTH);
+      setCodexLinkOAuth(EMPTY_LINK_OAUTH);
       setError(null);
       setShowCredentialValue(false);
       setCopilotAuth({ status: 'idle', loading: false });
@@ -180,7 +189,9 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
       setCopilotCodeCopied(false);
       setClaudeOAuth(EMPTY_CLAUDE_OAUTH_FORM);
       setClaudePlan('');
-      setClaudeLinkOAuth(EMPTY_CLAUDE_LINK_OAUTH);
+      setClaudeLinkOAuth(EMPTY_LINK_OAUTH);
+      setCodexOAuth(EMPTY_CLAUDE_OAUTH_FORM);
+      setCodexLinkOAuth(EMPTY_LINK_OAUTH);
     }
   }, [isOpen, isEditMode]);
 
@@ -236,7 +247,9 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
     setCopilotAuth({ status: 'idle', loading: false });
     setClaudeOAuth(EMPTY_CLAUDE_OAUTH_FORM);
     setClaudePlan('');
-    setClaudeLinkOAuth(EMPTY_CLAUDE_LINK_OAUTH);
+    setClaudeLinkOAuth(EMPTY_LINK_OAUTH);
+    setCodexOAuth(EMPTY_CLAUDE_OAUTH_FORM);
+    setCodexLinkOAuth(EMPTY_LINK_OAUTH);
 
     const providerAdapters = getAdaptersForProvider(provider);
     if (providerAdapters.length > 0) {
@@ -255,7 +268,9 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
     setShowCredentialValue(false);
     setClaudeOAuth(EMPTY_CLAUDE_OAUTH_FORM);
     setClaudePlan('');
-    setClaudeLinkOAuth(EMPTY_CLAUDE_LINK_OAUTH);
+    setClaudeLinkOAuth(EMPTY_LINK_OAUTH);
+    setCodexOAuth(EMPTY_CLAUDE_OAUTH_FORM);
+    setCodexLinkOAuth(EMPTY_LINK_OAUTH);
     setCopilotAuth({ status: 'idle', loading: false });
     setError(null);
   };
@@ -268,6 +283,15 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
         refreshToken: claudeOAuth.refreshToken.trim() || undefined,
         expiresAt: claudeOAuth.expiresAt.trim() || undefined,
         clientId: claudeOAuth.clientId.trim() || undefined,
+      };
+    }
+    if (selectedProvider === UsageProvider.CODEX && selectedAuthType === AuthType.OAUTH) {
+      return {
+        type: AuthType.OAUTH,
+        accessToken: codexOAuth.accessToken.trim(),
+        refreshToken: codexOAuth.refreshToken.trim() || undefined,
+        expiresAt: codexOAuth.expiresAt.trim() || undefined,
+        clientId: codexOAuth.clientId.trim() || undefined,
       };
     }
 
@@ -348,14 +372,30 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
       setError('Name is required');
       return;
     }
+    if (selectedProvider === UsageProvider.CLAUDE
+      && selectedAuthType === AuthType.OAUTH
+      && claudeOAuth.accessToken.trim().length === 0) {
+      setError('Claude Access Token is required');
+      return;
+    }
+    if (selectedProvider === UsageProvider.CODEX
+      && selectedAuthType === AuthType.OAUTH
+      && codexOAuth.accessToken.trim().length === 0) {
+      setError('Codex Access Token is required');
+      return;
+    }
     const hasClaudeOAuthInput = selectedProvider === UsageProvider.CLAUDE
       && selectedAuthType === AuthType.OAUTH
       && claudeOAuth.accessToken.trim().length > 0;
+    const hasCodexOAuthInput = selectedProvider === UsageProvider.CODEX
+      && selectedAuthType === AuthType.OAUTH
+      && codexOAuth.accessToken.trim().length > 0;
 
     if (!isEditMode
       && !(selectedProvider === UsageProvider.COPILOT && selectedAuthType === AuthType.OAUTH)
       && !credentialValue
-      && !hasClaudeOAuthInput) {
+      && !hasClaudeOAuthInput
+      && !hasCodexOAuthInput) {
       return;
     }
     
@@ -426,6 +466,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
 
   const isCopilotOAuth = selectedProvider === UsageProvider.COPILOT && selectedAuthType === AuthType.OAUTH;
   const isClaudeOAuth = selectedProvider === UsageProvider.CLAUDE && selectedAuthType === AuthType.OAUTH;
+  const isCodexOAuth = selectedProvider === UsageProvider.CODEX && selectedAuthType === AuthType.OAUTH;
   const isCookieInput = selectedAuthType === AuthType.COOKIE;
   const isSensitiveCredential = selectedAuthType === AuthType.COOKIE
     || selectedAuthType === AuthType.API_KEY
@@ -434,10 +475,12 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
   const showCopilotDeviceFlow = !isEditMode && isCopilotOAuth;
   const requiresCredentialInput = !showCopilotDeviceFlow;
   const hasClaudeAccessToken = claudeOAuth.accessToken.trim().length > 0;
+  const hasCodexAccessToken = codexOAuth.accessToken.trim().length > 0;
   const isSubmitDisabled = !selectedProvider
     || !name.trim()
-    || (requiresCredentialInput && !isClaudeOAuth && !credentialValue)
+    || (requiresCredentialInput && !isClaudeOAuth && !isCodexOAuth && !credentialValue)
     || (isClaudeOAuth && !hasClaudeAccessToken)
+    || (isCodexOAuth && !hasCodexAccessToken)
     || (showCopilotDeviceFlow && !copilotAuth.tempCredentialId)
     || saving;
 
@@ -708,7 +751,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                             onClick={async () => {
                               setClaudeLinkOAuth((prev) => ({ ...prev, loading: true, error: undefined }));
                               try {
-                                const parsed = parseClaudeOAuthCallbackInput(claudeLinkOAuth.code);
+                                const parsed = parseOAuthCallbackInput(claudeLinkOAuth.code);
                                 if (!parsed.code) {
                                   throw new Error('Please paste a valid authorization code or callback URL.');
                                 }
@@ -752,6 +795,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                           value={claudeOAuth.accessToken}
                           onChange={(value) => setClaudeOAuth((prev) => ({ ...prev, accessToken: value }))}
                           placeholder="eyJ..."
+                          required
                           help="Required."
                         />
                         <OAuthField
@@ -784,6 +828,144 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                           <p>macOS: Access Token / Refresh Token can be viewed via:</p>
                           <CommandCopyLine command={'security find-generic-password -s "Claude Code-credentials" -w'} />
                           <p>For Client ID and Expiry Time, the macOS lookup method is currently unclear.</p>
+                        </div>
+                      </div>
+                    ) : isCodexOAuth ? (
+                      <div className="rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-subtle)] p-4 space-y-4">
+                        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-3 space-y-2">
+                          <p className="text-xs font-medium text-[var(--color-text-secondary)]">Auto Fill (Link Auth)</p>
+                          <p className="text-xs text-[var(--color-text-tertiary)]">
+                            Paste callback URL or code(#state), then auto-fill OAuth fields below.
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={codexLinkOAuth.loading}
+                              onClick={async () => {
+                                setCodexLinkOAuth((prev) => ({ ...prev, loading: true, error: undefined }));
+                                try {
+                                  const result = await apiService.generateCodexOAuthUrl();
+                                  setCodexLinkOAuth((prev) => ({
+                                    ...prev,
+                                    sessionId: result.sessionId,
+                                    authUrl: result.authUrl,
+                                    step: 'generated',
+                                    loading: false,
+                                  }));
+                                } catch (err) {
+                                  setCodexLinkOAuth((prev) => ({
+                                    ...prev,
+                                    loading: false,
+                                    error: err instanceof Error ? err.message : 'Failed to generate link',
+                                  }));
+                                }
+                              }}
+                              className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-[var(--color-accent)] text-white hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                            >
+                              {codexLinkOAuth.loading && codexLinkOAuth.step === 'idle' ? 'Generating...' : codexLinkOAuth.step !== 'idle' ? 'Regenerate Link' : 'Generate Authorization Link'}
+                            </button>
+                            {codexLinkOAuth.authUrl && (
+                              <a
+                                href={codexLinkOAuth.authUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border border-[var(--color-border-subtle)] bg-[var(--color-bg-subtle)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface)] transition"
+                              >
+                                Open Authorization Link
+                              </a>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            value={codexLinkOAuth.code}
+                            onChange={(e) => setCodexLinkOAuth((prev) => ({ ...prev, code: e.target.value }))}
+                            placeholder="Paste callback URL or code(#state) here..."
+                            className="input-field font-mono text-xs"
+                            spellCheck={false}
+                            autoCapitalize="off"
+                            autoCorrect="off"
+                          />
+                          <button
+                            type="button"
+                            disabled={codexLinkOAuth.loading || !codexLinkOAuth.code.trim() || !codexLinkOAuth.sessionId}
+                            onClick={async () => {
+                              setCodexLinkOAuth((prev) => ({ ...prev, loading: true, error: undefined }));
+                              try {
+                                const parsed = parseOAuthCallbackInput(codexLinkOAuth.code);
+                                if (!parsed.code) {
+                                  throw new Error('Please paste a valid authorization code or callback URL.');
+                                }
+                                const tokenInfo = await apiService.exchangeCodexOAuthCode(codexLinkOAuth.sessionId, parsed.code, parsed.state);
+                                setCodexOAuth((prev) => ({
+                                  ...prev,
+                                  accessToken: tokenInfo.accessToken || prev.accessToken,
+                                  refreshToken: tokenInfo.refreshToken || prev.refreshToken,
+                                  clientId: tokenInfo.clientId || prev.clientId,
+                                  expiresAt: tokenInfo.expiresAt || prev.expiresAt,
+                                }));
+                                setCodexLinkOAuth((prev) => ({ ...prev, loading: false, step: 'exchanged' }));
+                              } catch (err) {
+                                setCodexLinkOAuth((prev) => ({
+                                  ...prev,
+                                  loading: false,
+                                  error: err instanceof Error ? err.message : 'Failed to auto fill tokens',
+                                }));
+                              }
+                            }}
+                            className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-[var(--color-accent)] text-white hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                          >
+                            {codexLinkOAuth.loading ? 'Auto Filling...' : 'Auto Fill Inputs'}
+                          </button>
+
+                          {codexLinkOAuth.step === 'exchanged' && (
+                            <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-xs text-emerald-800">
+                              Inputs auto-filled. Review values below, then click Add Provider.
+                            </div>
+                          )}
+                          {codexLinkOAuth.error && (
+                            <div className="rounded-lg border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs text-rose-800">
+                              {codexLinkOAuth.error}
+                            </div>
+                          )}
+                        </div>
+
+                        <OAuthField
+                          label="Access Token"
+                          type="password"
+                          value={codexOAuth.accessToken}
+                          onChange={(value) => setCodexOAuth((prev) => ({ ...prev, accessToken: value }))}
+                          placeholder="eyJ..."
+                          required
+                          help="Required."
+                        />
+                        <OAuthField
+                          label="Refresh Token"
+                          type="password"
+                          value={codexOAuth.refreshToken}
+                          onChange={(value) => setCodexOAuth((prev) => ({ ...prev, refreshToken: value }))}
+                          placeholder="..."
+                          help="Optional. Required for token auto refresh."
+                        />
+                        <OAuthField
+                          label="Client ID"
+                          value={codexOAuth.clientId}
+                          onChange={(value) => setCodexOAuth((prev) => ({ ...prev, clientId: value }))}
+                          placeholder="app_EMoamEEZ73f0CkXaXp7hrann"
+                          help="Optional. Defaults to Codex official OAuth client if empty."
+                        />
+                        <OAuthField
+                          label="Expiry Time"
+                          value={codexOAuth.expiresAt}
+                          onChange={(value) => setCodexOAuth((prev) => ({ ...prev, expiresAt: value }))}
+                          placeholder="1735689600000 or 2026-02-28T12:00:00Z"
+                          help="Optional. Supports unix milliseconds or ISO time."
+                        />
+
+                        <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-text-secondary)] space-y-1">
+                          <p className="font-medium text-[var(--color-text-primary)]">Manual Fill Notes</p>
+                          <p>You can read token data from:</p>
+                          <CommandCopyLine command="cat ~/.codex/auth.json" />
+                          <p>Or paste callback URL / code(#state) above to auto-fill.</p>
                         </div>
                       </div>
                     ) : (
@@ -974,7 +1156,7 @@ function formatDateTime(date: Date): string {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
-function parseClaudeOAuthCallbackInput(input: string): { code: string; state?: string } {
+function parseOAuthCallbackInput(input: string): { code: string; state?: string } {
   const value = input.trim();
   if (!value) return { code: '' };
 
@@ -1401,7 +1583,7 @@ function getCredentialHelp(provider: UsageProvider, authType: AuthType, region?:
 
   if (provider === UsageProvider.CODEX) {
     if (authType === AuthType.OAUTH) {
-      return 'Find access_token in ~/.codex/auth.json.';
+      return 'Use Link Auth above, or paste access_token from ~/.codex/auth.json.';
     }
     return 'Copy the session cookie from chatgpt.com (browser developer tools).';
   }

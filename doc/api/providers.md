@@ -170,6 +170,12 @@ admin session cookie.
 | `opencodeWorkspaceId` | string | No | OpenCode only: workspace ID (`wrk_...`) |
 | `defaultProgressItem` | string | No | Progress item name to display as primary in history charts |
 
+OAuth requirement notes:
+
+- For `provider=codex` + `authType=oauth`, `accessToken` is required.
+- For `provider=claude` + `authType=oauth`, `accessToken` is required.
+- `refreshToken`, `clientId`, and `expiresAt` are optional.
+
 #### Request Example
 
 ```bash
@@ -282,6 +288,8 @@ Returns the updated provider list (without credentials).
 
 Updates an existing provider. All fields are optional. `authType` and `credentials` must be provided together or both omitted. Credentials are re-validated and a usage refresh is triggered on update. Admin only.
 
+When updating OAuth credentials for Codex or Claude, `accessToken` is required if `authType=oauth` is provided.
+
 #### Authentication
 
 admin session cookie.
@@ -375,7 +383,7 @@ Behavior summary:
 - If latest data is younger than ~3 minutes, the endpoint returns cached data (`fromCache: true`) instead of forcing a live fetch.
 - If the previous fetch failed recently (~60s cooldown), the endpoint may return stale cached data (`stale: true`) or `503` when no cached data exists.
 - If another refresh is currently running (~30s lock timeout), the endpoint may return stale data with `refreshing: true`, or `{ data: null, refreshing: true }` when no cached data exists.
-- On live fetch failure with cached data available, the endpoint returns stale data plus `fetchError`; Claude OAuth auth failures may additionally set `authRequired: true`.
+- On live fetch failure with cached data available, the endpoint returns stale data plus `fetchError`; Claude/Codex OAuth auth failures may additionally set `authRequired: true`.
 
 #### Authentication
 
@@ -753,6 +761,100 @@ curl -b cookies.txt -X POST http://localhost:3001/api/providers/claude/oauth/exc
 
 ---
 
+### `POST /api/providers/codex/oauth/generate-auth-url`
+
+Generates a one-time Codex OAuth authorization URL and session ID for PKCE code exchange. Admin only.
+
+#### Authentication
+
+admin session cookie.
+
+#### Request Example
+
+```bash
+curl -b cookies.txt -X POST http://localhost:3001/api/providers/codex/oauth/generate-auth-url
+```
+
+#### Response Example
+
+```json
+{
+  "success": true,
+  "data": {
+    "authUrl": "https://auth.openai.com/oauth/authorize?...",
+    "sessionId": "4d8407d0-a9fd-4a8f-b804-5ee9b1019ad2"
+  }
+}
+```
+
+#### Error Codes
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 403 | `FORBIDDEN` | Not an admin |
+| 500 | `CODEX_OAUTH_GENERATE_FAILED` | Failed to generate authorization URL |
+
+---
+
+### `POST /api/providers/codex/oauth/exchange-code`
+
+Exchanges a Codex OAuth authorization code for tokens using the previously generated `sessionId`. Admin only.
+
+#### Authentication
+
+admin session cookie.
+
+#### Request Body
+
+```json
+{
+  "sessionId": "4d8407d0-a9fd-4a8f-b804-5ee9b1019ad2",
+  "code": "callback_url_or_code",
+  "state": "optional_state"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `sessionId` | string | Yes | Session ID from `generate-auth-url` |
+| `code` | string | Yes | OAuth code, callback URL, or `code#state` format |
+| `state` | string | No | Optional state override |
+
+#### Request Example
+
+```bash
+curl -b cookies.txt -X POST http://localhost:3001/api/providers/codex/oauth/exchange-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "4d8407d0-a9fd-4a8f-b804-5ee9b1019ad2",
+    "code": "http://localhost:1455/auth/callback?code=abc&state=xyz"
+  }'
+```
+
+#### Response Example
+
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "...",
+    "refreshToken": "...",
+    "expiresAt": "2026-03-10T16:35:00.000Z",
+    "clientId": "app_EMoamEEZ73f0CkXaXp7hrann"
+  }
+}
+```
+
+#### Error Codes
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 403 | `FORBIDDEN` | Not an admin |
+| 400 | `INVALID_REQUEST` | Missing `sessionId` or `code` |
+| 400 | `CODEX_OAUTH_EXCHANGE_FAILED` | Code exchange failed |
+
+---
+
 ## Appendix
 
 ### Provider Types
@@ -808,6 +910,13 @@ When creating or updating, `credentials` is passed as a plain string. In API res
   "projectId": "project_id"
 }
 ```
+
+Notes for Codex OAuth credentials:
+
+- `credentials` can be either a plain access token string or a JSON object string.
+- JSON keys accept both camelCase and snake_case (`accessToken`/`access_token`, `refreshToken`/`refresh_token`, `clientId`/`client_id`, `expiresAt`/`expiry_date`, etc.).
+- `accessToken` is required for create/update.
+- `clientId` is an OAuth app identifier, not a user identifier.
 
 **jwt**
 ```json

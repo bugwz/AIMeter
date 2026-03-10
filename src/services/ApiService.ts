@@ -90,6 +90,13 @@ export interface ClaudeOAuthTokenResult {
   clientId?: string;
 }
 
+export interface CodexOAuthTokenResult {
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: string;
+  clientId?: string;
+}
+
 export interface CopilotAuthStartResponse {
   flowId: string;
   userCode: string;
@@ -274,6 +281,26 @@ class ApiService {
     });
     if (!response.data.success) {
       throw new Error(response.data.error?.message || 'Failed to exchange Claude OAuth code');
+    }
+    return response.data.data!;
+  }
+
+  async generateCodexOAuthUrl(): Promise<{ authUrl: string; sessionId: string }> {
+    const response = await this.client.post<ApiResponse<{ authUrl: string; sessionId: string }>>('/providers/codex/oauth/generate-auth-url');
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to generate Codex OAuth URL');
+    }
+    return response.data.data!;
+  }
+
+  async exchangeCodexOAuthCode(sessionId: string, code: string, state?: string): Promise<CodexOAuthTokenResult> {
+    const response = await this.client.post<ApiResponse<CodexOAuthTokenResult>>('/providers/codex/oauth/exchange-code', {
+      sessionId,
+      code,
+      ...(state ? { state } : {}),
+    });
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to exchange Codex OAuth code');
     }
     return response.data.data!;
   }
