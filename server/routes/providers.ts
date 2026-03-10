@@ -126,9 +126,28 @@ function toUnixSeconds(value: Date | number | string | null | undefined): number
   return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null;
 }
 
-function serializeUsageSnapshot(snapshot: UsageSnapshot, options?: { excludeCost?: boolean }): SerializedUsageSnapshot {
+function resolveSnapshotIdentityWithPlan(
+  identity: UsageSnapshot['identity'] | undefined,
+  fallbackPlan?: string,
+): UsageSnapshot['identity'] | undefined {
+  const currentPlan = typeof identity?.plan === 'string' ? identity.plan.trim() : '';
+  if (currentPlan) {
+    return { plan: currentPlan };
+  }
+  const normalizedFallback = typeof fallbackPlan === 'string' ? fallbackPlan.trim() : '';
+  if (!normalizedFallback) {
+    return undefined;
+  }
+  return { plan: normalizedFallback };
+}
+
+function serializeUsageSnapshot(
+  snapshot: UsageSnapshot,
+  options?: { excludeCost?: boolean; fallbackPlan?: string },
+): SerializedUsageSnapshot {
   const payload: SerializedUsageSnapshot = {
     ...snapshot,
+    identity: resolveSnapshotIdentityWithPlan(snapshot.identity, options?.fallbackPlan),
     progress: enrichProgressTitles(snapshot.provider, snapshot.progress || []).map((item) => ({
       ...item,
       resetsAt: toUnixSeconds(item.resetsAt) ?? null,
@@ -971,7 +990,7 @@ router.post('/:id/refresh', async (req: Request, res: Response) => {
         res.json({
           success: true,
           data: {
-            ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode() }),
+            ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode(), fallbackPlan: provider.plan }),
             fromCache: true,
             cachedAt: Math.floor(latestRecord.createdAt.getTime() / 1000),
             refreshInterval: provider.refreshInterval,
@@ -989,7 +1008,7 @@ router.post('/:id/refresh', async (req: Request, res: Response) => {
         res.json({
           success: true,
           data: {
-            ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode() }),
+            ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode(), fallbackPlan: provider.plan }),
             stale: true,
             staleAt: Math.floor(Date.now() / 1000),
             refreshInterval: provider.refreshInterval,
@@ -1012,7 +1031,7 @@ router.post('/:id/refresh', async (req: Request, res: Response) => {
         res.json({
           success: true,
           data: {
-            ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode() }),
+            ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode(), fallbackPlan: provider.plan }),
             stale: true,
             staleAt: Math.floor(Date.now() / 1000),
             refreshing: true,
@@ -1041,7 +1060,7 @@ router.post('/:id/refresh', async (req: Request, res: Response) => {
       res.json({
         success: true,
         data: {
-          ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode() }),
+          ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode(), fallbackPlan: provider.plan }),
           refreshInterval: provider.refreshInterval,
         },
       });
@@ -1060,7 +1079,7 @@ router.post('/:id/refresh', async (req: Request, res: Response) => {
         res.json({
           success: true,
           data: {
-            ...serializeUsageSnapshot(fallbackSnapshot, { excludeCost: isMockMode() }),
+            ...serializeUsageSnapshot(fallbackSnapshot, { excludeCost: isMockMode(), fallbackPlan: provider.plan }),
             stale: true,
             staleAt: Math.floor(Date.now() / 1000),
             fetchError: errorMessage,
