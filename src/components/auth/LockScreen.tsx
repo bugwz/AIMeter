@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { apiService } from '../../services/ApiService';
 import { getRuntimeEntry } from '../../runtimeContext';
 import { AppTheme, applyTheme, getStoredTheme, persistTheme } from '../../theme';
@@ -40,6 +40,82 @@ function generateAdminRoutePath(): string {
   return result;
 }
 
+function LabelWithHint({ label, hint }: { label: string; hint: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [mobileTop, setMobileTop] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 639px)').matches);
+  const hintButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const updateMobilePosition = () => {
+    if (!hintButtonRef.current) return;
+    const rect = hintButtonRef.current.getBoundingClientRect();
+    setMobileTop(rect.bottom + 8);
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    updateMobilePosition();
+    const handleViewportChange = () => updateMobilePosition();
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 639px)');
+    const update = () => setIsMobile(media.matches);
+    update();
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', update);
+      return () => media.removeEventListener('change', update);
+    }
+    media.addListener(update);
+    return () => media.removeListener(update);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <label className="block text-xs font-medium text-[var(--color-text-secondary)]">{label}</label>
+      <span className="relative inline-flex items-center" onMouseLeave={() => setIsOpen(false)}>
+        <button
+          ref={hintButtonRef}
+          type="button"
+          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)] focus:outline-none focus-visible:text-[var(--color-text-secondary)]"
+          aria-label={`${label} description`}
+          onMouseEnter={() => {
+            updateMobilePosition();
+            setIsOpen(true);
+          }}
+          onFocus={() => {
+            updateMobilePosition();
+            setIsOpen(true);
+          }}
+          onBlur={() => setIsOpen(false)}
+          onTouchStart={() => {
+            updateMobilePosition();
+            setIsOpen((prev) => !prev);
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4" />
+            <path d="M12 8h.01" />
+          </svg>
+        </button>
+        <span
+          className={`pointer-events-none fixed left-2 right-2 z-40 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-2 text-[11px] font-medium leading-relaxed text-[var(--color-text-secondary)] shadow-lg transition-opacity duration-150 sm:pointer-events-none sm:absolute sm:left-1/2 sm:right-auto sm:top-full sm:z-30 sm:mt-2 sm:w-80 sm:-translate-x-1/2 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
+          style={isMobile && mobileTop ? { top: `${mobileTop}px` } : undefined}
+        >
+          {hint}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 export function LockScreen({ onUnlock }: LockScreenProps) {
   const role = getRuntimeEntry().role;
   const sessionKey = role === 'admin' ? 'aimeter_admin_authenticated' : 'aimeter_normal_authenticated';
@@ -51,6 +127,8 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
   const [authMutable, setAuthMutable] = useState(true);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdminRouteCopied, setIsAdminRouteCopied] = useState(false);
+  const adminRoutePathRef = useRef<HTMLTextAreaElement | null>(null);
   const [passwordVisible, setPasswordVisible] = useState({
     password: false,
     adminPassword: false,
@@ -116,6 +194,12 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
     checkAuthStatus();
   }, []);
 
+  useEffect(() => {
+    if (!adminRoutePathRef.current) return;
+    adminRoutePathRef.current.style.height = '0px';
+    adminRoutePathRef.current.style.height = `${adminRoutePathRef.current.scrollHeight}px`;
+  }, [adminRoutePath]);
+
   const sleep = (ms: number) => new Promise<void>((resolve) => {
     window.setTimeout(resolve, ms);
   });
@@ -151,6 +235,30 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
       setError(lastError instanceof Error ? lastError.message : 'Failed to check auth status');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCopyAdminRoutePath = async () => {
+    const value = adminRoutePath.trim();
+    if (!value) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const input = document.createElement('textarea');
+        input.value = value;
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.focus();
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+      setIsAdminRouteCopied(true);
+      window.setTimeout(() => setIsAdminRouteCopied(false), 1400);
+    } catch {
+      setError('Failed to copy admin route path');
     }
   };
 
@@ -238,7 +346,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
       : (role === 'admin' ? 'Enter Admin Password' : 'Enter Password');
 
   const subtitle = mode === 'bootstrap'
-    ? 'Create the normal password, admin password, and 64-character admin route path'
+    ? ''
     : mode === 'setup'
       ? (role === 'admin' ? 'Create a password to protect the admin console' : 'Create a password to protect your dashboard')
       : (role === 'admin' ? 'Enter your admin password to access the full management console' : 'Enter your password to access the dashboard');
@@ -280,7 +388,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
         </button>
       </div>
 
-      <div className="relative z-10 w-full max-w-md animate-fade-in">
+      <div className="relative z-10 w-full max-w-md -mt-4 sm:-mt-8 animate-fade-in">
         <div className="text-center mb-10">
           <div
             className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6 shadow-lg"
@@ -302,7 +410,9 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
           {mode === 'bootstrap' ? (
             <>
               <div>
-                <label className="mb-2 block text-xs font-medium text-[var(--color-text-secondary)]">Normal Password</label>
+                <div className="mb-2">
+                  <LabelWithHint label="Normal Password" hint="Password for normal dashboard access. Must be at least 12 characters and include letters and digits." />
+                </div>
                 {renderPasswordInput({
                   value: password,
                   onChange: setPassword,
@@ -316,7 +426,9 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
                 )}
               </div>
               <div>
-                <label className="mb-2 block text-xs font-medium text-[var(--color-text-secondary)]">Admin Password</label>
+                <div className="mb-2">
+                  <LabelWithHint label="Admin Password" hint="Password for admin access. Must be at least 12 characters and different from the normal password." />
+                </div>
                 {renderPasswordInput({
                   value: adminPassword,
                   onChange: setAdminPassword,
@@ -333,40 +445,56 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
               </div>
               <div>
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <label className="block text-xs font-medium text-[var(--color-text-secondary)]">Admin Route Path</label>
+                  <LabelWithHint label="Admin Route Path" hint="Secret route segment for entering the admin interface. Keep it safe; losing it may block admin access." />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAdminRouteCopied(false);
+                        setAdminRoutePath(generateAdminRoutePath());
+                      }}
+                      className="text-xs font-medium text-[var(--color-accent)] hover:opacity-80"
+                    >
+                      Regenerate
+                    </button>
+                  </div>
+                </div>
+                <div className="relative">
+                  <textarea
+                    ref={adminRoutePathRef}
+                    value={adminRoutePath}
+                    readOnly
+                    placeholder="64-character alphanumeric secret"
+                    className="input-field w-full resize-none overflow-hidden cursor-not-allowed font-mono text-xs"
+                    style={{ paddingRight: '50px' }}
+                  />
                   <button
                     type="button"
-                    onClick={() => setAdminRoutePath(generateAdminRoutePath())}
-                    className="text-xs font-medium text-[var(--color-accent)] hover:opacity-80"
+                    onClick={handleCopyAdminRoutePath}
+                    className={`absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${isAdminRouteCopied ? 'border-[var(--color-accent)] bg-[var(--color-accent-subtle)] text-[var(--color-accent)]' : 'border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-primary)]'}`}
+                    aria-label={isAdminRouteCopied ? 'Copied' : 'Copy admin route path'}
+                    title={isAdminRouteCopied ? 'Copied' : 'Copy admin route path'}
                   >
-                    Regenerate
+                    {isAdminRouteCopied ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                    )}
                   </button>
                 </div>
-                <textarea
-                  value={adminRoutePath}
-                  onChange={(e) => setAdminRoutePath(e.target.value)}
-                  placeholder="64-character alphanumeric secret"
-                  className="input-field w-full min-h-[112px] resize-y font-mono text-xs"
-                />
                 {(() => {
                   const secretError = validateRouteSecret(adminRoutePath);
-                  const trimmed = adminRoutePath.trim();
-                  const isValid = !secretError && trimmed.length === ROUTE_SECRET_LENGTH;
-                  return (
-                    <p className={`mt-2 rounded-md border px-3 py-2 text-xs font-medium ${isValid ? 'border-[var(--color-accent)]/40 bg-[var(--color-accent-subtle)] text-[var(--color-text-primary)]' : 'border-[#f87171]/40 bg-[#f87171]/10 text-[#f87171]'}`}>
-                      {secretError ? (
-                        <span>{secretError}</span>
-                      ) : (
-                        <>
-                          <span>Admin route path length: {trimmed.length}/{ROUTE_SECRET_LENGTH}. Letters and numbers only.</span>
-                          <span className="mt-1 block font-mono text-[11px] break-all">
-                            Admin console path preview: /{trimmed || '<admin-route-secret>'}
-                          </span>
-                        </>
-                      )}
-                    </p>
-                  );
+                  if (!secretError) return null;
+                  return <p className="mt-2 rounded-md border border-[#f87171]/40 bg-[#f87171]/10 px-3 py-2 text-xs font-medium text-[#f87171]">{secretError}</p>;
                 })()}
+                <p className="mt-2 rounded-md border border-[#f59e0b]/40 bg-[#f59e0b]/10 px-3 py-2 text-xs font-medium text-[#f59e0b]">
+                  Important: Save this Admin Route Path securely. If it is lost, you may be unable to enter the admin interface.
+                </p>
               </div>
             </>
           ) : (
