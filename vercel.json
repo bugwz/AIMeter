@@ -4,11 +4,12 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
-      "memory": 512
+      "memory": 512,
+      "includeFiles": "dist/index.html"
     }
   },
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/index" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/api/index" }
   ]
 }
