@@ -133,6 +133,17 @@ function toUnixSecondsValue(value: Date | number | string | undefined): number |
   return toUnixSeconds(value);
 }
 
+function isDuplicateKeyError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { code?: string; message?: string };
+  if (err.code === 'ER_DUP_ENTRY') return true; // MySQL
+  if (err.code === '23505') return true; // Postgres unique_violation
+  if (typeof err.code === 'string' && err.code.startsWith('SQLITE_CONSTRAINT')) return true; // SQLite
+  return typeof err.message === 'string'
+    && err.message.toLowerCase().includes('duplicate')
+    && err.message.toLowerCase().includes('key');
+}
+
 function fromUnixSeconds(value: number | string | null | undefined): Date {
   return new Date(toUnixSeconds(value ?? Date.now()) * 1000);
 }
@@ -210,10 +221,18 @@ export async function runCommonBootstrap(
       const secretBytes = 16;
       const secret = configuredSecret || crypto.randomBytes(secretBytes).toString('hex');
       const now = Math.floor(Date.now() / 1000);
-      await client.execute(
-        `INSERT INTO settings (${settingsKeyColumn}, value, updated_at) VALUES (?, ?, ?)`,
-        [key, secret, now]
-      );
+      try {
+        await client.execute(
+          `INSERT INTO settings (${settingsKeyColumn}, value, updated_at) VALUES (?, ?, ?)`,
+          [key, secret, now]
+        );
+      } catch (error) {
+        // Concurrent cold starts can race on first-write bootstrap inserts.
+        // Duplicate-key here means another instance inserted the same key first.
+        if (!isDuplicateKeyError(error)) {
+          throw error;
+        }
+      }
     }
   }
 }
