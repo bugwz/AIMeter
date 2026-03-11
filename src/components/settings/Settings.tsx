@@ -44,6 +44,7 @@ export const Settings: React.FC = () => {
   const [changingPassword, setChangingPassword] = useState(false);
   const [capabilities, setCapabilities] = useState<RuntimeCapabilities | null>(null);
   const [secrets, setSecrets] = useState<{ cronSecret: string | null; endpointSecret: string | null } | null>(null);
+  const [secretsLoaded, setSecretsLoaded] = useState(false);
   const [secretsVisible, setSecretsVisible] = useState<Record<SecretKey, boolean>>({ cron: false, endpoint: false });
   const [copied, setCopied] = useState<Record<SecretKey, boolean>>({ cron: false, endpoint: false });
   const [confirmReset, setConfirmReset] = useState<SecretKey | null>(null);
@@ -53,9 +54,10 @@ export const Settings: React.FC = () => {
   useEffect(() => {
     apiService.getCapabilities().then((caps) => {
       setCapabilities(caps);
-      if (caps.secrets?.managedInDb) {
-        apiService.getSecrets().then(setSecrets).catch(() => undefined);
-      }
+      apiService.getSecrets()
+        .then(setSecrets)
+        .catch(() => setSecrets({ cronSecret: null, endpointSecret: null }))
+        .finally(() => setSecretsLoaded(true));
     }).catch(() => undefined);
   }, []);
 
@@ -316,7 +318,7 @@ export const Settings: React.FC = () => {
         )}
       </div>
 
-      {capabilities?.secrets?.managedInDb && (
+      {capabilities?.secrets && (
         <div className="bg-[var(--color-surface)] rounded-xl p-6 gradient-border animate-fade-in mt-6" style={{ boxShadow: 'var(--shadow-card)' }}>
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[var(--color-bg-subtle)]">
@@ -330,7 +332,7 @@ export const Settings: React.FC = () => {
                 API Secrets
               </h2>
               <p className="text-xs text-[var(--color-text-tertiary)]">
-                Auto-generated secrets for external integrations
+                Secrets used for external integrations
               </p>
             </div>
           </div>
@@ -348,7 +350,11 @@ export const Settings: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <div className="flex-1 font-mono text-xs bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--color-text-secondary)] min-h-[36px] flex items-center overflow-hidden">
                     {value === null ? (
-                      <span className="text-[var(--color-text-muted)] italic">Loading...</span>
+                      secretsLoaded ? (
+                        <span className="text-[var(--color-text-muted)] italic">Not configured</span>
+                      ) : (
+                        <span className="text-[var(--color-text-muted)] italic">Loading...</span>
+                      )
                     ) : secretsVisible[key] ? (
                       <span className="break-all">{value}</span>
                     ) : (
@@ -391,14 +397,22 @@ export const Settings: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    disabled={resetting[key]}
-                    onClick={() => setConfirmReset(key)}
+                    disabled={resetting[key] || capabilities.secrets.mutable !== true}
+                    onClick={() => {
+                      if (capabilities.secrets.mutable !== true) return;
+                      setConfirmReset(key);
+                    }}
                     className="text-[#dc2626] transition-colors hover:text-[#b91c1c] p-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] disabled:opacity-40 text-xs font-medium px-3"
                     title={`Reset ${label}`}
                   >
                     {resetting[key] ? 'Resetting...' : 'Reset'}
                   </button>
                 </div>
+                {capabilities.secrets.mutable !== true && (
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    Not editable in env mode; modify config and restart.
+                  </p>
+                )}
                 {confirmReset === key && (
                   <div className="flex items-center gap-2 rounded-lg border border-[#fca5a5] bg-[var(--color-error-subtle)] px-3 py-2 animate-fade-in">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">

@@ -187,7 +187,11 @@ function verifyHashedPassword(password: string, storedHash: string): boolean {
   return safeEqual(legacyHash, storedHash);
 }
 
-export async function runCommonBootstrap(client: DbClient, usageTable: string = 'usage_records'): Promise<void> {
+export async function runCommonBootstrap(
+  client: DbClient,
+  usageTable: string = 'usage_records',
+  initialSecrets?: Partial<Record<'cron_secret' | 'endpoint_secret', string>>,
+): Promise<void> {
   await client.execute(`DELETE FROM ${usageTable} WHERE provider_id IN (SELECT id FROM providers WHERE provider = 'factory')`);
   await client.execute("DELETE FROM providers WHERE provider = 'factory'");
 
@@ -197,8 +201,13 @@ export async function runCommonBootstrap(client: DbClient, usageTable: string = 
       'SELECT value FROM settings WHERE key = ?', [key]
     );
     if (existing.length === 0) {
+      const configuredSecret = (
+        (key === 'cron_secret' || key === 'endpoint_secret')
+          ? initialSecrets?.[key]?.trim()
+          : undefined
+      );
       const secretBytes = (key === 'cron_secret' || key === 'endpoint_secret') ? 16 : 32;
-      const secret = crypto.randomBytes(secretBytes).toString('hex');
+      const secret = configuredSecret || crypto.randomBytes(secretBytes).toString('hex');
       const now = Math.floor(Date.now() / 1000);
       await client.execute(
         'INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)',

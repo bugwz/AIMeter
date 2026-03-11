@@ -145,6 +145,8 @@ AIMeter 提供单容器部署方案：**nginx**（HTTPS，端口 3000）终止 T
 生产部署建议：
 
 - 数据库模式下，`AIMETER_ENCRYPTION_KEY` 和 `AIMETER_AUTH_SESSION_SECRET` 在首次启动时自动生成并持久化，仅多实例共享数据库时需手动覆盖。
+- 在无数据库模式下，`AIMETER_CRON_SECRET` 与 `AIMETER_ENDPOINT_SECRET` 可不配置，但未配置时对应的 secret 鉴权接口不可用。
+- 在数据库模式下，`AIMETER_CRON_SECRET` 与 `AIMETER_ENDPOINT_SECRET` 仅用于首次初始化，后续以数据库中的值为准。
 - 在 HTTPS 后启用安全 Cookie。
 - 严格限制 CORS 来源。
 - 妥善保管 admin/cron/endpoint 等敏感密钥。

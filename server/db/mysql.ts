@@ -60,7 +60,10 @@ class MysqlClient implements DbClient {
   }
 }
 
-async function initSchema(client: DbClient): Promise<void> {
+async function initSchema(
+  client: DbClient,
+  initialSecrets?: Partial<Record<'cron_secret' | 'endpoint_secret', string>>,
+): Promise<void> {
   const legacyUsage = await client.queryOne<{ count: number }>(
     `SELECT COUNT(*) as count
      FROM INFORMATION_SCHEMA.TABLES
@@ -131,7 +134,7 @@ async function initSchema(client: DbClient): Promise<void> {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
-  await runCommonBootstrap(client, 'usage_records');
+  await runCommonBootstrap(client, 'usage_records', initialSecrets);
 }
 
 export async function createMysqlEngine(): Promise<DatabaseEngine> {
@@ -140,7 +143,10 @@ export async function createMysqlEngine(): Promise<DatabaseEngine> {
   const pool = mysqlModule.createPool(appConfig.database.connection);
   const client = new MysqlClient(pool);
 
-  await initSchema(client);
+  await initSchema(client, {
+    cron_secret: appConfig.auth.cronSecret,
+    endpoint_secret: appConfig.auth.endpointSecret,
+  });
 
   const encryptionKey = appConfig.database.encryptionKey
     || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE key = ?', ['encryption_key']))?.value;

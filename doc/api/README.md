@@ -36,7 +36,7 @@ x-aimeter-endpoint-secret: <configured_secret>
 
 Secret source by deployment mode:
 - **Database mode**: auto-generated at first startup and stored in the `settings` table; retrieve the value from the admin Settings page or via `GET /api/system/secrets`.
-- **Env/config mode**: must match the `AIMETER_ENDPOINT_SECRET` environment variable (or `auth.endpointSecret` in `config.yaml`) and should be exactly 32 random characters.
+- **Env/config mode**: must match the configured `endpointSecret` value. Configuration priority is `config.yaml` > environment variables (`AIMETER_ENDPOINT_SECRET`) > defaults.
 
 If no secret is configured or found, secret-based authentication is unavailable.
 
@@ -48,7 +48,7 @@ x-aimeter-cron-secret: <configured_secret>
 
 Secret source by deployment mode:
 - **Database mode**: auto-generated at first startup and stored in the `settings` table; retrieve the value from the admin Settings page or via `GET /api/system/secrets`.
-- **Env/config mode**: must match the `AIMETER_CRON_SECRET` environment variable (or `auth.cronSecret` in `config.yaml`) and should be exactly 32 random characters.
+- **Env/config mode**: must match the configured `cronSecret` value. Configuration priority is `config.yaml` > environment variables (`AIMETER_CRON_SECRET`) > defaults.
 
 If not configured, the endpoint returns 503.
 
@@ -182,9 +182,9 @@ Applied to every response:
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | GET | `/api/system/capabilities` | Get runtime capabilities | normal/admin |
-| GET | `/api/system/secrets` | Get cron & endpoint secrets (DB mode only) | admin |
-| POST | `/api/system/secrets/cron/reset` | Rotate cron secret (DB mode only) | admin |
-| POST | `/api/system/secrets/endpoint/reset` | Rotate endpoint secret (DB mode only) | admin |
+| GET | `/api/system/secrets` | Get effective cron & endpoint secrets | admin |
+| POST | `/api/system/secrets/cron/reset` | Rotate cron secret (DB mode only; env mode read-only) | admin |
+| POST | `/api/system/secrets/endpoint/reset` | Rotate endpoint secret (DB mode only; env mode read-only) | admin |
 | POST | `/api/system/jobs/refresh` | Cron batch refresh | Cron Secret |
 
 ### [Miscellaneous](./misc.md)

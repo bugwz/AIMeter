@@ -1,5 +1,5 @@
 # AIMeter main configuration file example
-# Priority: environment variables > this file > built-in defaults
+# Priority: this file > environment variables > built-in defaults
 
 server:
   # API base path or absolute API URL.
@@ -118,12 +118,16 @@ auth:
   # Shared secret for external cron/webhook refresh in serverless deployments.
   # Allowed:
   # - exactly 32 random characters: caller must send this value in X-AIMETER-CRON-SECRET
-  # Default when unset in both env and this file: unset (cron endpoint disabled)
+  # Default when unset in both env and this file:
+  # - env storage mode: unset (cron endpoint disabled)
+  # - database storage mode: auto-generated on first start and stored in database
   # cronSecret: replace-with-32-char-random-secret
   # Shared secret for external script access to /api/endpoint/subscriptions.
   # Allowed:
   # - exactly 32 random characters: caller must send this value in x-aimeter-endpoint-secret
-  # Default when unset in both env and this file: unset (secret-based access disabled)
+  # Default when unset in both env and this file:
+  # - env storage mode: unset (secret-based access disabled)
+  # - database storage mode: auto-generated on first start and stored in database
   # endpointSecret: replace-with-32-char-random-secret
   rateLimit:
     # Rate-limit evaluation window length.

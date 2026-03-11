@@ -166,6 +166,7 @@ export interface RuntimeCapabilities {
   };
   secrets: {
     managedInDb: boolean;
+    mutable: boolean;
   };
 }
 

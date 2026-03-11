@@ -147,6 +147,8 @@ For full details see [deploy/container/README.md](deploy/container/README.md).
 For production deployment:
 
 - In database mode, `AIMETER_ENCRYPTION_KEY` and `AIMETER_AUTH_SESSION_SECRET` are auto-generated on first start and stored in the database. Override them only for multi-instance deployments.
+- `AIMETER_CRON_SECRET` and `AIMETER_ENDPOINT_SECRET` are optional in env-only mode, but the related secret-auth endpoint stays unavailable until configured.
+- In database mode, `AIMETER_CRON_SECRET` and `AIMETER_ENDPOINT_SECRET` are used only for first-time initialization; after that, values are managed in DB.
 - Enable secure cookies behind HTTPS.
 - Restrict CORS origins.
 - Keep admin/cron/endpoint secrets private.

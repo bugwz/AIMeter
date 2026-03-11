@@ -38,6 +38,10 @@ export class ReadonlyAdminRouteError extends Error {
   code = 'READ_ONLY_ADMIN_ROUTE';
 }
 
+export class ReadonlySecretError extends Error {
+  code = 'READ_ONLY_SECRET';
+}
+
 export interface ProviderInstance extends ProviderConfig {
   id: string;
   configSource: 'database' | 'environment' | 'config';
@@ -79,6 +83,7 @@ export interface RuntimeCapabilities {
   };
   secrets: {
     managedInDb: boolean;
+    mutable: boolean;
   };
 }
 
@@ -314,6 +319,7 @@ async function getCapabilities(viewerRole: AuthRole): Promise<RuntimeCapabilitie
     },
     secrets: {
       managedInDb: runtimeConfig.storageMode === 'database',
+      mutable: runtimeConfig.storageMode === 'database',
     },
   };
 }
@@ -357,12 +363,18 @@ export const storage = {
   },
 
   async resetCronSecret(): Promise<string> {
+    if (runtimeConfig.storageMode !== 'database') {
+      throw new ReadonlySecretError('Not editable in env mode; modify config and restart.');
+    }
     const secret = crypto.randomBytes(16).toString('hex');
     await setDbSetting(CRON_SECRET_KEY, secret);
     return secret;
   },
 
   async resetEndpointSecret(): Promise<string> {
+    if (runtimeConfig.storageMode !== 'database') {
+      throw new ReadonlySecretError('Not editable in env mode; modify config and restart.');
+    }
     const secret = crypto.randomBytes(16).toString('hex');
     await setDbSetting(ENDPOINT_SECRET_KEY, secret);
     return secret;
@@ -626,7 +638,12 @@ export const storage = {
 };
 
 export function tryParseReadonlyError(error: unknown): { code: string; message: string } | null {
-  if (error instanceof ReadonlyStoreError || error instanceof ReadonlyAuthError || error instanceof ReadonlyAdminRouteError) {
+  if (
+    error instanceof ReadonlyStoreError
+    || error instanceof ReadonlyAuthError
+    || error instanceof ReadonlyAdminRouteError
+    || error instanceof ReadonlySecretError
+  ) {
     return {
       code: error.code,
       message: error.message,

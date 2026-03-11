@@ -21,7 +21,7 @@ x-aimeter-endpoint-secret: <configured_secret>
 
 Secret source by deployment mode:
 - **Database mode**: auto-generated at first startup; retrieve the current value from the admin Settings page or `GET /api/system/secrets`.
-- **Env/config mode**: must match the `AIMETER_ENDPOINT_SECRET` environment variable (or `auth.endpointSecret` in `config.yaml`) and should be exactly 32 random characters.
+- **Env/config mode**: must match the configured `endpointSecret` value. Configuration priority is `config.yaml` > environment variables (`AIMETER_ENDPOINT_SECRET`) > defaults.
 
 > Endpoint secret authentication is fixed to the `normal` role. If no secret is configured or found, secret-based authentication is unavailable.
 

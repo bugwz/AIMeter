@@ -303,6 +303,13 @@ function parseEnvBoolean(value: string | undefined): boolean | undefined {
   return undefined;
 }
 
+function parseEnvNumber(value: string | undefined): number | undefined {
+  if (!value || !value.trim()) return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  return parsed;
+}
+
 function isProductionRuntime(): boolean {
   return (process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
 }
@@ -483,73 +490,73 @@ export function getAppConfig(): AppConfig {
   const isProduction = isProductionRuntime();
   const yamlProviders = parseYamlProviders(config);
   const envProviders = parseEnvProviders();
-  const databaseEngine = (process.env.AIMETER_DATABASE_ENGINE
-    || asString(database.engine)
+  const databaseEngine = (asString(database.engine)
+    || process.env.AIMETER_DATABASE_ENGINE
     || 'sqlite') as AppConfig['database']['engine'];
-  const databaseEnabled = parseEnvBoolean(process.env.AIMETER_DATABASE_ENABLED)
-    ?? asBoolean(database.enabled)
+  const databaseEnabled = asBoolean(database.enabled)
+    ?? parseEnvBoolean(process.env.AIMETER_DATABASE_ENABLED)
     ?? true;
+  const configCorsOrigins = asStringArray(server.corsOrigins);
+  const envCorsOrigins = asStringArray(process.env.AIMETER_CORS_ORIGIN);
 
   cachedConfig = {
     configFilePath,
     server: {
-      apiUrl: process.env.AIMETER_API_URL || asString(server.apiUrl) || '/api',
-      frontendPort: Number(process.env.AIMETER_FRONTEND_PORT) || asNumber(server.frontendPort) || 3000,
-      backendPort: Number(process.env.AIMETER_BACKEND_PORT) || asNumber(server.backendPort) || 3001,
-      corsOrigins: (process.env.AIMETER_CORS_ORIGIN
-        ? asStringArray(process.env.AIMETER_CORS_ORIGIN)
-        : asStringArray(server.corsOrigins)),
-      trustProxy: parseEnvBoolean(process.env.AIMETER_TRUST_PROXY)
-        ?? asBoolean(server.trustProxy)
+      apiUrl: asString(server.apiUrl) || process.env.AIMETER_API_URL || '/api',
+      frontendPort: asNumber(server.frontendPort) ?? parseEnvNumber(process.env.AIMETER_FRONTEND_PORT) ?? 3000,
+      backendPort: asNumber(server.backendPort) ?? parseEnvNumber(process.env.AIMETER_BACKEND_PORT) ?? 3001,
+      corsOrigins: (Object.prototype.hasOwnProperty.call(server, 'corsOrigins')
+        ? configCorsOrigins
+        : envCorsOrigins),
+      trustProxy: asBoolean(server.trustProxy)
+        ?? parseEnvBoolean(process.env.AIMETER_TRUST_PROXY)
         ?? isProduction,
     },
     runtime: {
-      mockEnabled: parseEnvBoolean(process.env.AIMETER_MOCK_ENABLED)
-        ?? asBoolean(runtime.mockEnabled)
+      mockEnabled: asBoolean(runtime.mockEnabled)
+        ?? parseEnvBoolean(process.env.AIMETER_MOCK_ENABLED)
         ?? false,
-      mode: (process.env.AIMETER_RUNTIME_MODE || asString(runtime.mode) || 'node') as 'node' | 'serverless',
+      mode: (asString(runtime.mode) || process.env.AIMETER_RUNTIME_MODE || 'node') as 'node' | 'serverless',
       isProduction,
     },
     database: {
       enabled: databaseEnabled,
       engine: databaseEngine,
-      connection: process.env.AIMETER_DATABASE_CONNECTION
-        || asString(database.connection)
+      connection: asString(database.connection)
+        || process.env.AIMETER_DATABASE_CONNECTION
         || path.join(projectRoot, 'data/aimeter.db'),
-      encryptionKey: process.env.AIMETER_ENCRYPTION_KEY || asString(database.encryptionKey),
+      encryptionKey: asString(database.encryptionKey) || process.env.AIMETER_ENCRYPTION_KEY,
     },
     auth: {
-      sessionSecret: process.env.AIMETER_AUTH_SESSION_SECRET || asString(auth.sessionSecret),
-      sessionTtlSeconds: Number(process.env.AIMETER_AUTH_SESSION_TTL_SECONDS)
-        || asNumber(auth.sessionTtlSeconds)
-        || 4 * 60 * 60,
-      secureCookie: process.env.AIMETER_SECURE_COOKIE === 'true'
-        ? true
-        : (process.env.AIMETER_SECURE_COOKIE === 'false'
-          ? false
-          : (asBoolean(auth.secureCookie) ?? isProduction)),
-      normalPasswordHash: process.env.AIMETER_NORMAL_PASSWORD_HASH
-        || asString(auth.normalPasswordHash),
-      adminPasswordHash: process.env.AIMETER_ADMIN_PASSWORD_HASH
-        || asString(auth.adminPasswordHash),
-      adminRoutePath: process.env.AIMETER_ADMIN_ROUTE_PATH
-        || asString(auth.adminRoutePath),
-      cronSecret: process.env.AIMETER_CRON_SECRET
-        || asString(auth.cronSecret),
-      endpointSecret: process.env.AIMETER_ENDPOINT_SECRET?.trim() || asString(auth.endpointSecret) || undefined,
+      sessionSecret: asString(auth.sessionSecret) || process.env.AIMETER_AUTH_SESSION_SECRET,
+      sessionTtlSeconds: asNumber(auth.sessionTtlSeconds)
+        ?? parseEnvNumber(process.env.AIMETER_AUTH_SESSION_TTL_SECONDS)
+        ?? 4 * 60 * 60,
+      secureCookie: asBoolean(auth.secureCookie)
+        ?? parseEnvBoolean(process.env.AIMETER_SECURE_COOKIE)
+        ?? isProduction,
+      normalPasswordHash: asString(auth.normalPasswordHash)
+        || process.env.AIMETER_NORMAL_PASSWORD_HASH,
+      adminPasswordHash: asString(auth.adminPasswordHash)
+        || process.env.AIMETER_ADMIN_PASSWORD_HASH,
+      adminRoutePath: asString(auth.adminRoutePath)
+        || process.env.AIMETER_ADMIN_ROUTE_PATH,
+      cronSecret: asString(auth.cronSecret)
+        || process.env.AIMETER_CRON_SECRET,
+      endpointSecret: asString(auth.endpointSecret)?.trim() || process.env.AIMETER_ENDPOINT_SECRET?.trim() || undefined,
       rateLimit: {
-        windowMs: Number(process.env.AIMETER_AUTH_RATE_LIMIT_WINDOW_MS)
-          || asNumber(authRateLimit.windowMs)
-          || 60_000,
-        maxAttempts: Number(process.env.AIMETER_AUTH_RATE_LIMIT_MAX_ATTEMPTS)
-          || asNumber(authRateLimit.maxAttempts)
-          || 5,
-        blockMs: Number(process.env.AIMETER_AUTH_RATE_LIMIT_BLOCK_MS)
-          || asNumber(authRateLimit.blockMs)
-          || 300_000,
+        windowMs: asNumber(authRateLimit.windowMs)
+          ?? parseEnvNumber(process.env.AIMETER_AUTH_RATE_LIMIT_WINDOW_MS)
+          ?? 60_000,
+        maxAttempts: asNumber(authRateLimit.maxAttempts)
+          ?? parseEnvNumber(process.env.AIMETER_AUTH_RATE_LIMIT_MAX_ATTEMPTS)
+          ?? 5,
+        blockMs: asNumber(authRateLimit.blockMs)
+          ?? parseEnvNumber(process.env.AIMETER_AUTH_RATE_LIMIT_BLOCK_MS)
+          ?? 300_000,
       },
     },
-    providers: envProviders || yamlProviders,
+    providers: yamlProviders.length > 0 ? yamlProviders : (envProviders || []),
   };
 
   validateSecurityConfig(cachedConfig);

@@ -145,6 +145,8 @@ AIMeter поставляется с конфигурацией одного ко
 Для production-развертывания:
 
 - В режиме базы данных `AIMETER_ENCRYPTION_KEY` и `AIMETER_AUTH_SESSION_SECRET` автоматически генерируются при первом запуске и сохраняются. Ручная настройка нужна только при нескольких инстансах с общей базой данных.
+- `AIMETER_CRON_SECRET` и `AIMETER_ENDPOINT_SECRET` в env-only режиме опциональны, но соответствующие secret-auth endpoints недоступны, пока значения не заданы.
+- В режиме базы данных `AIMETER_CRON_SECRET` и `AIMETER_ENDPOINT_SECRET` используются только при первичной инициализации; далее значения управляются в БД.
 - Включайте secure cookies за HTTPS.
 - Ограничивайте CORS origins.
 - Защищайте admin/cron/endpoint secrets.

@@ -68,7 +68,10 @@ class PostgresClient implements DbClient {
   }
 }
 
-async function initSchema(client: DbClient): Promise<void> {
+async function initSchema(
+  client: DbClient,
+  initialSecrets?: Partial<Record<'cron_secret' | 'endpoint_secret', string>>,
+): Promise<void> {
   const legacyUsage = await client.queryOne<{ to_regclass: string | null }>(
     "SELECT to_regclass('public.usage')"
   );
@@ -132,7 +135,7 @@ async function initSchema(client: DbClient): Promise<void> {
   await client.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp)');
   await client.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_path ON audit_logs(path)');
 
-  await runCommonBootstrap(client, 'usage_records');
+  await runCommonBootstrap(client, 'usage_records', initialSecrets);
 }
 
 export async function createPostgresEngine(): Promise<DatabaseEngine> {
@@ -141,7 +144,10 @@ export async function createPostgresEngine(): Promise<DatabaseEngine> {
   const pool = new pgModule.Pool({ connectionString: appConfig.database.connection });
   const client = new PostgresClient(pool);
 
-  await initSchema(client);
+  await initSchema(client, {
+    cron_secret: appConfig.auth.cronSecret,
+    endpoint_secret: appConfig.auth.endpointSecret,
+  });
 
   const encryptionKey = appConfig.database.encryptionKey
     || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE key = ?', ['encryption_key']))?.value;

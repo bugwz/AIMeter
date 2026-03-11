@@ -85,7 +85,7 @@ Request header: `x-aimeter-cron-secret: <secret>`.
 
 Secret source by deployment mode:
 - **Database mode**: auto-generated at first startup; retrieve the current value from the admin Settings page or `GET /api/system/secrets`.
-- **Env/config mode**: must match the `AIMETER_CRON_SECRET` environment variable (or `auth.cronSecret` in `config.yaml`) and should be exactly 32 random characters.
+- **Env/config mode**: must match the configured `cronSecret` value. Configuration priority is `config.yaml` > environment variables (`AIMETER_CRON_SECRET`) > defaults.
 
 Returns 503 if no cron secret is available.
 
@@ -231,7 +231,7 @@ Add to `vercel.json`:
 }
 ```
 
-Set the `AIMETER_CRON_SECRET` environment variable in your Vercel project settings and include it in your cron request headers.
+Set `AIMETER_CRON_SECRET` (or `auth.cronSecret` in `config.yaml`) and include it in your cron request headers.
 
 #### Error Codes
 
@@ -244,7 +244,7 @@ Set the `AIMETER_CRON_SECRET` environment variable in your Vercel project settin
 
 ### `GET /api/system/secrets`
 
-Returns the current cron secret and endpoint secret. Only available when the server is running in **database mode** — in env/config mode, secrets are managed externally and this endpoint is not useful.
+Returns the current effective cron secret and endpoint secret. In env/config mode, values come directly from the active runtime config; in database mode, values come from the `settings` table.
 
 #### Authentication
 
@@ -279,7 +279,7 @@ curl -b cookies.txt http://localhost:3001/api/system/secrets
 
 ### `POST /api/system/secrets/cron/reset`
 
-Rotates the cron secret — generates a new 32-character hex secret and overwrites the value in the `settings` table. **The old secret stops working immediately.** Only available in database mode.
+Rotates the cron secret — generates a new 32-character hex secret and overwrites the value in the `settings` table. **The old secret stops working immediately.** In env/config mode this endpoint is read-only and returns `409`.
 
 #### Authentication
 
@@ -308,6 +308,7 @@ curl -X POST -b cookies.txt http://localhost:3001/api/system/secrets/cron/reset
 |--------|------|-------------|
 | 401 | `UNAUTHORIZED` | Not authenticated |
 | 403 | `FORBIDDEN` | Authenticated but not admin |
+| 409 | `READ_ONLY_SECRET` | Secrets are managed by config/env in env storage mode |
 
 ---
 
@@ -342,3 +343,4 @@ curl -X POST -b cookies.txt http://localhost:3001/api/system/secrets/endpoint/re
 |--------|------|-------------|
 | 401 | `UNAUTHORIZED` | Not authenticated |
 | 403 | `FORBIDDEN` | Authenticated but not admin |
+| 409 | `READ_ONLY_SECRET` | Secrets are managed by config/env in env storage mode |

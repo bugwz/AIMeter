@@ -47,7 +47,10 @@ function resolveSqliteConnectionPath(): string {
   return path.resolve(process.cwd(), baseConnection);
 }
 
-async function initSchema(client: DbClient): Promise<void> {
+async function initSchema(
+  client: DbClient,
+  initialSecrets?: Partial<Record<'cron_secret' | 'endpoint_secret', string>>,
+): Promise<void> {
   const legacyUsage = await client.queryOne<{ name: string }>(
     "SELECT name FROM sqlite_master WHERE type='table' AND name='usage'"
   );
@@ -148,7 +151,7 @@ async function initSchema(client: DbClient): Promise<void> {
     }
   }
 
-  await runCommonBootstrap(client, 'usage_records');
+  await runCommonBootstrap(client, 'usage_records', initialSecrets);
 }
 
 export async function createSqliteEngine(): Promise<SqliteRuntime> {
@@ -157,7 +160,10 @@ export async function createSqliteEngine(): Promise<SqliteRuntime> {
   raw.pragma('journal_mode = WAL');
 
   const client = new SqliteClient(raw);
-  await initSchema(client);
+  await initSchema(client, {
+    cron_secret: appConfig.auth.cronSecret,
+    endpoint_secret: appConfig.auth.endpointSecret,
+  });
 
   const encryptionKey = appConfig.database.encryptionKey
     || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE key = ?', ['encryption_key']))?.value;
