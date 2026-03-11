@@ -78,9 +78,13 @@ export async function resolveRuntimeEntry(): Promise<RuntimeEntry> {
       await sleep(retryDelays[i]);
     }
     try {
-      const response = await fetch(`/api/entry-context?path=${encodeURIComponent(window.location.pathname)}`, {
+      const response = await fetch(
+        `/api/entry-context?path=${encodeURIComponent(window.location.pathname)}&t=${Date.now()}`,
+        {
         credentials: 'same-origin',
-      });
+          cache: 'no-store',
+        },
+      );
       if (!response.ok) {
         continue;
       }
