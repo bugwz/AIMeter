@@ -1,4 +1,4 @@
-import { UsageProvider } from '../../src/types';
+import type { UsageProvider } from '../../src/types/index.js';
 
 export interface DbProvider {
   id: string;

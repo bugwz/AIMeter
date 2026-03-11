@@ -1,4 +1,4 @@
-import { IProviderAdapter, ValidationResult } from './interface';
+import { IProviderAdapter, ValidationResult } from './interface.js';
 import {
   UsageProvider,
   AuthType,
@@ -7,8 +7,8 @@ import {
   ProviderMeta,
   ProgressItem,
   ProviderConfig,
-} from '../types';
-import { roundPercentage } from './utils';
+} from '../types/index.js';
+import { roundPercentage } from './utils.js';
 
 type ZaiLimitType = 'TOKENS_LIMIT' | 'TIME_LIMIT';
 

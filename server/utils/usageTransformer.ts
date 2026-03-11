@@ -1,4 +1,4 @@
-import { UsageSnapshot, UsageError } from '../../src/types/usage';
+import type { UsageSnapshot, UsageError } from '../../src/types/usage.js';
 
 export function roundPercentage(value: number): number {
   return Math.round(value);

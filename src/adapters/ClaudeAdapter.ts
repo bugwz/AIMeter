@@ -1,5 +1,5 @@
 // Claude provider adapter implementation
-import { IProviderAdapter, ValidationResult } from './interface';
+import { IProviderAdapter, ValidationResult } from './interface.js';
 import {
   UsageProvider,
   AuthType,
@@ -9,8 +9,8 @@ import {
   ProgressItem,
   ProviderCostSnapshot,
   ProviderConfig,
-} from '../types';
-import { roundPercentage } from './utils';
+} from '../types/index.js';
+import { roundPercentage } from './utils.js';
 
 interface ClaudeOrganization {
   uuid: string;

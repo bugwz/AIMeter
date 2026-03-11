@@ -1,5 +1,5 @@
 // Ollama provider adapter implementation
-import { IProviderAdapter, ValidationResult } from './interface';
+import { IProviderAdapter, ValidationResult } from './interface.js';
 import { 
   UsageProvider, 
   AuthType, 
@@ -7,8 +7,8 @@ import {
   UsageSnapshot, 
   ProviderMeta,
   ProgressItem,
-} from '../types';
-import { roundPercentage } from './utils';
+} from '../types/index.js';
+import { roundPercentage } from './utils.js';
 
 const OLLAMA_META: ProviderMeta = {
   id: UsageProvider.OLLAMA,

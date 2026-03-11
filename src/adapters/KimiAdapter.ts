@@ -1,5 +1,5 @@
 // Kimi provider adapter implementation
-import { IProviderAdapter, ValidationResult } from './interface';
+import { IProviderAdapter, ValidationResult } from './interface.js';
 import {
   UsageProvider, 
   AuthType, 
@@ -8,8 +8,8 @@ import {
   ProviderMeta,
   ProgressItem,
   Identity,
-} from '../types';
-import { formatWindowDurationFromMinutes, roundPercentage } from './utils';
+} from '../types/index.js';
+import { formatWindowDurationFromMinutes, roundPercentage } from './utils.js';
 
 interface KimiJWTPayload {
   device_id?: string;

@@ -14,8 +14,8 @@ const SESSION_TTL_SECONDS = Math.max(appConfig.auth.sessionTtlSeconds || 12 * 60
 let SESSION_SECRET = appConfig.auth.sessionSecret || crypto.randomBytes(32).toString('hex');
 const USE_SECURE_COOKIE = appConfig.server.protocol === 'https';
 
-if (!appConfig.auth.sessionSecret) {
-  console.warn('[SECURITY] AIMETER_AUTH_SESSION_SECRET is not set. In database mode it will be loaded from the database; otherwise sessions will be invalidated on restart.');
+if (!appConfig.auth.sessionSecret && !appConfig.database.enabled) {
+  console.warn('[SECURITY] AIMETER_AUTH_SESSION_SECRET is not set in env-only mode; sessions will be invalidated on restart.');
 }
 
 export function initSessionSecret(secret: string): void {

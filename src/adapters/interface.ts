@@ -1,5 +1,5 @@
 // Provider adapter interface definitions
-import { UsageProvider, Credential, ProviderMeta, AuthType, ProviderConfig } from '../types';
+import { UsageProvider, Credential, ProviderMeta, AuthType, ProviderConfig } from '../types/index.js';
 
 /**
  * Provider adapter interface

@@ -1,6 +1,6 @@
 // Provider adapter registry implementation
-import { IProviderAdapter, IProviderRegistry } from './interface';
-import { UsageProvider, AuthType } from '../types';
+import { IProviderAdapter, IProviderRegistry } from './interface.js';
+import { UsageProvider, AuthType } from '../types/index.js';
 
 // Adapter registry implementation
 class ProviderRegistry implements IProviderRegistry {

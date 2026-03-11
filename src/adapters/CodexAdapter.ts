@@ -1,5 +1,5 @@
 // Codex provider adapter implementation
-import { IProviderAdapter, ValidationResult } from './interface';
+import { IProviderAdapter, ValidationResult } from './interface.js';
 import { 
   UsageProvider, 
   AuthType, 
@@ -9,11 +9,11 @@ import {
   ProgressItem,
   ProviderCostSnapshot,
   Identity
-} from '../types';
+} from '../types/index.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { formatWindowDurationFromSeconds, roundPercentage } from './utils';
+import { formatWindowDurationFromSeconds, roundPercentage } from './utils.js';
 
 interface CodexAuthJson {
   tokens?: {

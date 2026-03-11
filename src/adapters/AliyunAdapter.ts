@@ -1,4 +1,4 @@
-import { IProviderAdapter, ValidationResult } from './interface';
+import { IProviderAdapter, ValidationResult } from './interface.js';
 import {
   AuthType,
   Credential,
@@ -7,8 +7,8 @@ import {
   ProviderMeta,
   UsageProvider,
   UsageSnapshot,
-} from '../types';
-import { roundPercentage } from './utils';
+} from '../types/index.js';
+import { roundPercentage } from './utils.js';
 
 const ALIYUN_GATEWAY_URL = 'https://bailian-cs.console.aliyun.com/data/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2&_v=undefined';
 const ALIYUN_API = 'zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2';

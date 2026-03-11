@@ -1,5 +1,5 @@
 // MiniMax provider adapter implementation
-import { IProviderAdapter, ValidationResult } from './interface';
+import { IProviderAdapter, ValidationResult } from './interface.js';
 import { 
   UsageProvider, 
   AuthType, 
@@ -8,8 +8,8 @@ import {
   ProviderMeta,
   ProgressItem,
   ProviderConfig,
-} from '../types';
-import { formatWindowDurationFromMinutes, roundPercentage } from './utils';
+} from '../types/index.js';
+import { formatWindowDurationFromMinutes, roundPercentage } from './utils.js';
 
 interface MiniMaxUsageResponse {
   model_remains?: {

@@ -1,17 +1,17 @@
 // Adapter exports and registration
-import { providerRegistry } from './registry';
-import { claudeAdapter } from './ClaudeAdapter';
-import { aliyunAdapter } from './AliyunAdapter';
-import { codexAdapter } from './CodexAdapter';
-import { kimiAdapter } from './KimiAdapter';
-import { openRouterAdapter } from './OpenRouterAdapter';
-import { miniMaxAdapter } from './MiniMaxAdapter';
-import { copilotAdapter } from './CopilotAdapter';
-import { ollamaAdapter } from './OllamaAdapter';
-import { cursorAdapter } from './CursorAdapter';
-import { openCodeAdapter } from './OpenCodeAdapter';
-import { zaiAdapter } from './ZaiAdapter';
-import { antigravityAdapter } from './AntigravityAdapter';
+import { providerRegistry } from './registry.js';
+import { claudeAdapter } from './ClaudeAdapter.js';
+import { aliyunAdapter } from './AliyunAdapter.js';
+import { codexAdapter } from './CodexAdapter.js';
+import { kimiAdapter } from './KimiAdapter.js';
+import { openRouterAdapter } from './OpenRouterAdapter.js';
+import { miniMaxAdapter } from './MiniMaxAdapter.js';
+import { copilotAdapter } from './CopilotAdapter.js';
+import { ollamaAdapter } from './OllamaAdapter.js';
+import { cursorAdapter } from './CursorAdapter.js';
+import { openCodeAdapter } from './OpenCodeAdapter.js';
+import { zaiAdapter } from './ZaiAdapter.js';
+import { antigravityAdapter } from './AntigravityAdapter.js';
 
 // Register all adapters
 providerRegistry.registerAdapter(aliyunAdapter);
@@ -28,17 +28,17 @@ providerRegistry.registerAdapter(zaiAdapter);
 providerRegistry.registerAdapter(antigravityAdapter);
 
 // Export all adapters
-export * from './interface';
-export * from './registry';
-export { aliyunAdapter } from './AliyunAdapter';
-export { claudeAdapter } from './ClaudeAdapter';
-export { codexAdapter } from './CodexAdapter';
-export { kimiAdapter } from './KimiAdapter';
-export { openRouterAdapter } from './OpenRouterAdapter';
-export { miniMaxAdapter } from './MiniMaxAdapter';
-export { copilotAdapter } from './CopilotAdapter';
-export { ollamaAdapter } from './OllamaAdapter';
-export { cursorAdapter } from './CursorAdapter';
-export { openCodeAdapter } from './OpenCodeAdapter';
-export { zaiAdapter } from './ZaiAdapter';
-export { antigravityAdapter } from './AntigravityAdapter';
+export * from './interface.js';
+export * from './registry.js';
+export { aliyunAdapter } from './AliyunAdapter.js';
+export { claudeAdapter } from './ClaudeAdapter.js';
+export { codexAdapter } from './CodexAdapter.js';
+export { kimiAdapter } from './KimiAdapter.js';
+export { openRouterAdapter } from './OpenRouterAdapter.js';
+export { miniMaxAdapter } from './MiniMaxAdapter.js';
+export { copilotAdapter } from './CopilotAdapter.js';
+export { ollamaAdapter } from './OllamaAdapter.js';
+export { cursorAdapter } from './CursorAdapter.js';
+export { openCodeAdapter } from './OpenCodeAdapter.js';
+export { zaiAdapter } from './ZaiAdapter.js';
+export { antigravityAdapter } from './AntigravityAdapter.js';
