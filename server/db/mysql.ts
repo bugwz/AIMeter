@@ -80,15 +80,16 @@ async function initSchema(client: DbClient): Promise<void> {
   await client.execute(`
     CREATE TABLE IF NOT EXISTS providers (
       id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      uid VARCHAR(32) NOT NULL,
       provider VARCHAR(255) NOT NULL,
       name VARCHAR(255) NULL,
       \`key\` LONGTEXT NOT NULL,
-      refresh_interval INT NOT NULL DEFAULT 5,
-      display_order INT NOT NULL DEFAULT 0,
       attrs JSON NOT NULL,
+      fetch_state JSON NOT NULL,
       created_at BIGINT NOT NULL DEFAULT (UNIX_TIMESTAMP()),
       updated_at BIGINT NOT NULL DEFAULT (UNIX_TIMESTAMP()),
-      UNIQUE KEY uq_provider_name (provider, name)
+      UNIQUE KEY uq_provider_name (provider, name),
+      UNIQUE KEY uq_provider_uid (uid)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
@@ -129,15 +130,6 @@ async function initSchema(client: DbClient): Promise<void> {
       INDEX idx_audit_logs_path (path(191))
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
-
-  // Add uid column to providers if not present
-  const uidCol = await client.queryOne<{ count: string }>(
-    "SELECT COUNT(*) AS count FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'providers' AND column_name = 'uid'"
-  );
-  if (Number(uidCol?.count || 0) === 0) {
-    await client.execute('ALTER TABLE providers ADD COLUMN uid VARCHAR(32) NULL');
-    await client.execute('CREATE UNIQUE INDEX idx_providers_uid ON providers(uid)');
-  }
 
   await runCommonBootstrap(client, 'usage_records');
 }

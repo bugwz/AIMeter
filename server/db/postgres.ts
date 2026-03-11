@@ -82,12 +82,12 @@ async function initSchema(client: DbClient): Promise<void> {
   await client.execute(`
     CREATE TABLE IF NOT EXISTS providers (
       id BIGSERIAL PRIMARY KEY,
+      uid TEXT NOT NULL UNIQUE,
       provider TEXT NOT NULL,
       name TEXT,
       key TEXT NOT NULL,
-      refresh_interval INTEGER NOT NULL DEFAULT 5,
-      display_order INTEGER NOT NULL DEFAULT 0,
       attrs JSONB NOT NULL DEFAULT '{}'::jsonb,
+      fetch_state JSONB NOT NULL DEFAULT '{}'::jsonb,
       created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW())::BIGINT),
       updated_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW())::BIGINT),
       UNIQUE(provider, name)
@@ -131,15 +131,6 @@ async function initSchema(client: DbClient): Promise<void> {
   await client.execute('CREATE INDEX IF NOT EXISTS idx_usage_provider_created ON usage_records(provider_id, created_at)');
   await client.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp)');
   await client.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_path ON audit_logs(path)');
-
-  // Add uid column to providers if not present
-  const uidCol = await client.queryOne<{ count: string }>(
-    "SELECT COUNT(*) AS count FROM information_schema.columns WHERE table_name = 'providers' AND column_name = 'uid'"
-  );
-  if (Number(uidCol?.count || 0) === 0) {
-    await client.execute('ALTER TABLE providers ADD COLUMN uid TEXT');
-    await client.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_providers_uid ON providers(uid)');
-  }
 
   await runCommonBootstrap(client, 'usage_records');
 }

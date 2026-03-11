@@ -18,8 +18,6 @@ interface DbProviderRow {
   provider: string;
   name: string | null;
   key: string;
-  refresh_interval: number;
-  display_order: number;
   attrs: unknown;
   fetch_state: unknown;
   created_at: number;
@@ -89,6 +87,14 @@ function buildProviderAttrs(config: Partial<ProviderConfig>): Record<string, unk
     ...((config.attrs && typeof config.attrs === 'object' && !Array.isArray(config.attrs)) ? config.attrs : {}),
   };
 
+  const refreshInterval = Number(config.refreshInterval);
+  if (Number.isFinite(refreshInterval) && refreshInterval > 0) attrs.refreshInterval = refreshInterval;
+  else if (typeof attrs.refreshInterval !== 'number') attrs.refreshInterval = 5;
+
+  const displayOrder = Number(config.displayOrder);
+  if (Number.isFinite(displayOrder) && displayOrder > 0) attrs.displayOrder = displayOrder;
+  else if (typeof attrs.displayOrder !== 'number') attrs.displayOrder = 0;
+
   if (config.region) attrs.region = config.region;
   else delete attrs.region;
 
@@ -102,6 +108,12 @@ function buildProviderAttrs(config: Partial<ProviderConfig>): Record<string, unk
   else delete attrs.plan;
 
   return attrs;
+}
+
+function readPositiveNumber(value: unknown, fallback: number): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return fallback;
+  return Math.floor(numeric);
 }
 
 function toUnixSeconds(value?: Date | number | string): number {
@@ -176,37 +188,8 @@ function verifyHashedPassword(password: string, storedHash: string): boolean {
 }
 
 export async function runCommonBootstrap(client: DbClient, usageTable: string = 'usage_records'): Promise<void> {
-  const missingOrders = await client.query<{ id: number }>(
-    'SELECT id FROM providers WHERE display_order IS NULL OR display_order <= 0 ORDER BY id ASC'
-  );
-
-  if (missingOrders.length > 0) {
-    await client.transaction(async (tx) => {
-      for (let i = 0; i < missingOrders.length; i += 1) {
-        await tx.execute('UPDATE providers SET display_order = ?, updated_at = ? WHERE id = ?', [i + 1, toUnixSeconds(), missingOrders[i].id]);
-      }
-    });
-  }
-
   await client.execute(`DELETE FROM ${usageTable} WHERE provider_id IN (SELECT id FROM providers WHERE provider = 'factory')`);
   await client.execute("DELETE FROM providers WHERE provider = 'factory'");
-
-  // Backfill uid for any existing providers that don't have one yet
-  const missingUids = await client.query<{ id: number }>(
-    'SELECT id FROM providers WHERE uid IS NULL ORDER BY id ASC'
-  );
-  if (missingUids.length > 0) {
-    await client.transaction(async (tx) => {
-      for (const row of missingUids) {
-        await tx.execute('UPDATE providers SET uid = ? WHERE id = ?', [generateProviderUid(), row.id]);
-      }
-    });
-  }
-
-  // Add fetch_state column if not present (for existing DBs)
-  try {
-    await client.execute("ALTER TABLE providers ADD COLUMN fetch_state TEXT NOT NULL DEFAULT '{}'");
-  } catch { /* column already exists */ }
 
   // Auto-generate secrets if not yet present
   for (const key of ['cron_secret', 'endpoint_secret', 'encryption_key', 'session_secret']) {
@@ -292,14 +275,16 @@ export class SqlEngine implements DatabaseEngine {
 
   private mapProviderRow(row: DbProviderRow): StoredProviderConfig {
     const attrs = parseProviderAttrs(row.attrs);
+    const refreshInterval = readPositiveNumber(attrs.refreshInterval, 5);
+    const displayOrder = readPositiveNumber(attrs.displayOrder, 0);
     const credentials = JSON.parse(this.decrypt(row.key));
     return {
       id: Number(row.id),
       uid: row.uid || '',
       provider: row.provider as UsageProvider,
       credentials: credentials as Credential,
-      refreshInterval: Number(row.refresh_interval),
-      displayOrder: Number(row.display_order),
+      refreshInterval,
+      displayOrder,
       attrs,
       fetchState: parseProviderAttrs(row.fetch_state),
       region: typeof attrs.region === 'string' ? attrs.region : undefined,
@@ -345,23 +330,25 @@ export class SqlEngine implements DatabaseEngine {
   async saveProvider(provider: UsageProvider, config: ProviderConfig): Promise<string> {
     const uid = generateProviderUid();
     const encryptedKey = this.encrypt(JSON.stringify(config.credentials));
-    const attrs = buildProviderAttrs(config);
+    const existing = await this.getAllProviders();
     const now = toUnixSeconds();
-    const maxOrderRow = await this.client.queryOne<{ maxOrder: number | null }>(`SELECT COALESCE(MAX(display_order), 0) AS maxOrder FROM ${this.providersTable()}`);
-    const maxOrder = Number(maxOrderRow?.maxOrder || 0);
+    const maxOrder = existing.reduce((max, item) => Math.max(max, Number(item.displayOrder) || 0), 0);
+    const attrs = buildProviderAttrs({
+      ...config,
+      displayOrder: config.displayOrder || maxOrder + 1,
+    });
 
     if (this.engine === 'postgres') {
       await this.client.execute(
-        `INSERT INTO ${this.providersTable()} (uid, provider, name, ${this.providerKeyColumn()}, refresh_interval, display_order, attrs, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO ${this.providersTable()} (uid, provider, name, ${this.providerKeyColumn()}, attrs, fetch_state, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           uid,
           provider,
           config.name || null,
           encryptedKey,
-          config.refreshInterval,
-          config.displayOrder || maxOrder + 1,
           JSON.stringify(attrs),
+          '{}',
           now,
           now,
         ]
@@ -370,16 +357,15 @@ export class SqlEngine implements DatabaseEngine {
     }
 
     await this.client.execute(
-      `INSERT INTO ${this.providersTable()} (uid, provider, name, ${this.providerKeyColumn()}, refresh_interval, display_order, attrs, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO ${this.providersTable()} (uid, provider, name, ${this.providerKeyColumn()}, attrs, fetch_state, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         uid,
         provider,
         config.name || null,
         encryptedKey,
-        config.refreshInterval,
-        config.displayOrder || maxOrder + 1,
         JSON.stringify(attrs),
+        '{}',
         now,
         now,
       ]
@@ -389,8 +375,14 @@ export class SqlEngine implements DatabaseEngine {
   }
 
   async getAllProviders(): Promise<StoredProviderConfig[]> {
-    const rows = await this.client.query<DbProviderRow>(`SELECT * FROM ${this.providersTable()} ORDER BY display_order ASC, id ASC`);
-    return rows.map((row) => this.mapProviderRow(row));
+    const rows = await this.client.query<DbProviderRow>(`SELECT * FROM ${this.providersTable()} ORDER BY id ASC`);
+    return rows
+      .map((row) => this.mapProviderRow(row))
+      .sort((left, right) => {
+        const orderDiff = (left.displayOrder || 0) - (right.displayOrder || 0);
+        if (orderDiff !== 0) return orderDiff;
+        return left.id - right.id;
+      });
   }
 
   async getProvider(uid: string): Promise<StoredProviderConfig | null> {
@@ -399,8 +391,16 @@ export class SqlEngine implements DatabaseEngine {
   }
 
   async getFirstProviderByType(provider: UsageProvider): Promise<StoredProviderConfig | null> {
-    const row = await this.client.queryOne<DbProviderRow>(`SELECT * FROM ${this.providersTable()} WHERE provider = ? ORDER BY display_order ASC, id ASC LIMIT 1`, [provider]);
-    return row ? this.mapProviderRow(row) : null;
+    const rows = await this.client.query<DbProviderRow>(`SELECT * FROM ${this.providersTable()} WHERE provider = ? ORDER BY id ASC`, [provider]);
+    if (rows.length === 0) return null;
+    const sorted = rows
+      .map((row) => this.mapProviderRow(row))
+      .sort((left, right) => {
+        const orderDiff = (left.displayOrder || 0) - (right.displayOrder || 0);
+        if (orderDiff !== 0) return orderDiff;
+        return left.id - right.id;
+      });
+    return sorted[0] || null;
   }
 
   async getProviderByName(provider: UsageProvider, name: string): Promise<StoredProviderConfig | null> {
@@ -410,10 +410,25 @@ export class SqlEngine implements DatabaseEngine {
 
   async deleteProvider(uid: string): Promise<void> {
     await this.client.transaction(async (tx) => {
-      const existing = await tx.queryOne<{ display_order: number }>(`SELECT display_order FROM ${this.providersTable()} WHERE uid = ?`, [uid]);
+      const existing = await tx.queryOne<DbProviderRow>(`SELECT * FROM ${this.providersTable()} WHERE uid = ?`, [uid]);
       if (!existing) return;
+
+      const deletedOrder = readPositiveNumber(parseProviderAttrs(existing.attrs).displayOrder, 0);
       await tx.execute(`DELETE FROM ${this.providersTable()} WHERE uid = ?`, [uid]);
-      await tx.execute(`UPDATE ${this.providersTable()} SET display_order = display_order - 1, updated_at = ? WHERE display_order > ?`, [toUnixSeconds(), existing.display_order]);
+
+      const rows = await tx.query<DbProviderRow>(`SELECT uid, attrs FROM ${this.providersTable()} ORDER BY id ASC`);
+      const now = toUnixSeconds();
+      for (const row of rows) {
+        const attrs = parseProviderAttrs(row.attrs);
+        const displayOrder = readPositiveNumber(attrs.displayOrder, 0);
+        if (displayOrder > deletedOrder) {
+          attrs.displayOrder = displayOrder - 1;
+          await tx.execute(
+            `UPDATE ${this.providersTable()} SET attrs = ?, updated_at = ? WHERE uid = ?`,
+            [JSON.stringify(attrs), now, row.uid]
+          );
+        }
+      }
     });
   }
 
@@ -436,16 +451,12 @@ export class SqlEngine implements DatabaseEngine {
       `UPDATE ${this.providersTable()} SET
         name = ?,
         ${this.providerKeyColumn()} = ?,
-        refresh_interval = ?,
-        display_order = ?,
         attrs = ?,
         updated_at = ?
       WHERE uid = ?`,
       [
         updated.name || null,
         encryptedKey,
-        updated.refreshInterval,
-        updated.displayOrder || existing.displayOrder || 0,
         JSON.stringify(attrs),
         toUnixSeconds(),
         uid,
@@ -499,7 +510,17 @@ export class SqlEngine implements DatabaseEngine {
     await this.client.transaction(async (tx) => {
       const now = toUnixSeconds();
       for (const row of items) {
-        await tx.execute(`UPDATE ${this.providersTable()} SET display_order = ?, updated_at = ? WHERE uid = ?`, [row.displayOrder, now, row.uid]);
+        const existing = await tx.queryOne<{ attrs: unknown }>(
+          `SELECT attrs FROM ${this.providersTable()} WHERE uid = ?`,
+          [row.uid]
+        );
+        if (!existing) continue;
+        const attrs = parseProviderAttrs(existing.attrs);
+        attrs.displayOrder = readPositiveNumber(row.displayOrder, 0);
+        await tx.execute(
+          `UPDATE ${this.providersTable()} SET attrs = ?, updated_at = ? WHERE uid = ?`,
+          [JSON.stringify(attrs), now, row.uid]
+        );
       }
     });
   }

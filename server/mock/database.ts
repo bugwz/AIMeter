@@ -152,6 +152,15 @@ function buildProviderAttrs(config: Partial<ProviderConfig>): Record<string, unk
   const attrs: Record<string, unknown> = {
     ...((config.attrs && typeof config.attrs === 'object' && !Array.isArray(config.attrs)) ? config.attrs : {}),
   };
+
+  const refreshInterval = Number(config.refreshInterval);
+  if (Number.isFinite(refreshInterval) && refreshInterval > 0) attrs.refreshInterval = refreshInterval;
+  else if (typeof attrs.refreshInterval !== 'number') attrs.refreshInterval = 5;
+
+  const displayOrder = Number(config.displayOrder);
+  if (Number.isFinite(displayOrder) && displayOrder > 0) attrs.displayOrder = displayOrder;
+  else if (typeof attrs.displayOrder !== 'number') attrs.displayOrder = 0;
+
   if (config.region) attrs.region = config.region;
   else delete attrs.region;
   if (typeof config.plan === 'string' && config.plan.trim()) attrs.plan = config.plan.trim();
@@ -190,7 +199,6 @@ export function initMockDatabase(): Database.Database {
       provider TEXT NOT NULL,
       name TEXT,
       key TEXT NOT NULL,
-      refresh_interval INTEGER DEFAULT 5,
       attrs TEXT NOT NULL DEFAULT '{}',
       mock_initial_usage REAL DEFAULT 0,
       mock_limit REAL DEFAULT 100,
@@ -340,17 +348,16 @@ export function saveMockProvider(provider: UsageProvider, config: ProviderConfig
   
   const stmt = database.prepare(`
     INSERT INTO mock_providers (
-      provider, name, key, refresh_interval, attrs,
+      provider, name, key, attrs,
       mock_initial_usage, mock_limit, mock_period_start, mock_period_end, mock_last_updated, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())
   `);
   
   const result = stmt.run(
     provider,
     config.name || null,
     encryptedKey,
-    config.refreshInterval,
     JSON.stringify(attrs),
     currentUsage,
     mockConfig.limit,
@@ -369,6 +376,7 @@ export function getAllMockProviders(): StoredProviderConfig[] {
   return rows.map(row => {
     const { decrypt: decryptFn } = getEncryptionHelpers();
     const attrs = parseProviderAttrs(row.attrs);
+    const refreshInterval = Number(attrs.refreshInterval);
     let credentials: Credential;
     try {
       const decrypted = decryptFn(row.key);
@@ -381,7 +389,7 @@ export function getAllMockProviders(): StoredProviderConfig[] {
       id: row.id,
       provider: row.provider as UsageProvider,
       credentials,
-      refreshInterval: row.refresh_interval,
+      refreshInterval: Number.isFinite(refreshInterval) && refreshInterval > 0 ? Math.floor(refreshInterval) : 5,
       attrs,
       region: typeof attrs.region === 'string' ? attrs.region : undefined,
       name: row.name || undefined,

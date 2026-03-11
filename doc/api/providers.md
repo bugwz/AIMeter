@@ -2,6 +2,8 @@
 
 All endpoints require a **normal or admin session cookie** (`requireApiAuth(['normal', 'admin'])`). Some endpoints additionally require the `admin` role.
 
+Storage note (database mode): `refreshInterval` and `displayOrder` are persisted inside `providers.attrs` (`attrs.refreshInterval`, `attrs.displayOrder`). API responses still expose them as top-level fields.
+
 ---
 
 ### `GET /api/providers`
@@ -166,13 +168,13 @@ admin session cookie.
 | `authType` | string | Yes | Auth type — see [Auth Types](#auth-types) |
 | `credentials` | string | Yes | Credential value (format depends on `authType`) |
 | `name` | string | No | Custom display name; must be unique within the same provider type |
-| `refreshInterval` | number | No | Auto-refresh interval in minutes; default `5`; `0` disables auto-refresh |
+| `refreshInterval` | number | No | Auto-refresh interval in minutes; default `5`; `0` disables auto-refresh (persisted as `attrs.refreshInterval`) |
 | `region` | string | No | Region identifier for multi-region providers (MiniMax, z.ai) |
 | `claudeAuthMode` | string | No | Claude only: `cookie` or `oauth` |
 | `plan` | string | No | Claude only: optional plan metadata (for display and usage interpretation) |
 | `opencodeWorkspaceId` | string | No | OpenCode only: workspace ID (`wrk_...`) |
 | `defaultProgressItem` | string | No | Progress item name to display as primary in history charts |
-| `attrs` | object | No | Provider-specific extension settings (e.g. Antigravity display mode/pool rules) |
+| `attrs` | object | No | Provider extension settings (e.g. Antigravity display mode/pool rules). `refreshInterval` and `displayOrder` are reserved internal keys in this object. |
 
 OAuth requirement notes:
 
@@ -637,7 +639,7 @@ admin session cookie.
 |-------|------|----------|-------------|
 | `tempCredentialId` | string | Yes | Temporary credential ID from the status endpoint |
 | `name` | string | Yes | Display name for the new provider (cannot be empty) |
-| `refreshInterval` | number | No | Auto-refresh interval in minutes; default `5` |
+| `refreshInterval` | number | No | Auto-refresh interval in minutes; default `5` (persisted as `attrs.refreshInterval`) |
 
 #### Request Example
 
