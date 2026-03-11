@@ -357,13 +357,13 @@ export const storage = {
   },
 
   async resetCronSecret(): Promise<string> {
-    const secret = crypto.randomBytes(32).toString('hex');
+    const secret = crypto.randomBytes(16).toString('hex');
     await setDbSetting(CRON_SECRET_KEY, secret);
     return secret;
   },
 
   async resetEndpointSecret(): Promise<string> {
-    const secret = crypto.randomBytes(32).toString('hex');
+    const secret = crypto.randomBytes(16).toString('hex');
     await setDbSetting(ENDPOINT_SECRET_KEY, secret);
     return secret;
   },

@@ -326,6 +326,15 @@ function isWeakAdminRoutePath(value: string | undefined): boolean {
   return false;
 }
 
+function isWeakIntegrationSecret(value: string | undefined): boolean {
+  const trimmed = value?.trim();
+  if (!trimmed) return true;
+  if (trimmed.length !== 32) return true;
+  const lower = trimmed.toLowerCase();
+  if (lower.includes('replace-with') || lower.includes('change-me')) return true;
+  return false;
+}
+
 function validateSecurityConfig(config: AppConfig): void {
   if (!config.runtime.isProduction) {
     // Emit warnings so developers catch misconfigurations before going to production.
@@ -337,6 +346,12 @@ function validateSecurityConfig(config: AppConfig): void {
     }
     if (config.auth.adminRoutePath && isWeakAdminRoutePath(config.auth.adminRoutePath)) {
       console.warn('[SECURITY] adminRoutePath is weak or invalid. Set AIMETER_ADMIN_ROUTE_PATH to exactly 32 random characters before deploying to production.');
+    }
+    if (config.auth.cronSecret && isWeakIntegrationSecret(config.auth.cronSecret)) {
+      console.warn('[SECURITY] cronSecret is weak or invalid. Set AIMETER_CRON_SECRET to exactly 32 random characters before deploying to production.');
+    }
+    if (config.auth.endpointSecret && isWeakIntegrationSecret(config.auth.endpointSecret)) {
+      console.warn('[SECURITY] endpointSecret is weak or invalid. Set AIMETER_ENDPOINT_SECRET to exactly 32 random characters before deploying to production.');
     }
     return;
   }
@@ -360,6 +375,12 @@ function validateSecurityConfig(config: AppConfig): void {
 
   if (config.auth.adminRoutePath && isWeakAdminRoutePath(config.auth.adminRoutePath)) {
     throw new Error('Security check failed: AIMETER_ADMIN_ROUTE_PATH must be exactly 32 random characters in production.');
+  }
+  if (config.auth.cronSecret && isWeakIntegrationSecret(config.auth.cronSecret)) {
+    throw new Error('Security check failed: AIMETER_CRON_SECRET must be exactly 32 random characters in production when set.');
+  }
+  if (config.auth.endpointSecret && isWeakIntegrationSecret(config.auth.endpointSecret)) {
+    throw new Error('Security check failed: AIMETER_ENDPOINT_SECRET must be exactly 32 random characters in production when set.');
   }
 
 }

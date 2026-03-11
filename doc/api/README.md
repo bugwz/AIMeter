@@ -36,7 +36,7 @@ x-aimeter-endpoint-secret: <configured_secret>
 
 Secret source by deployment mode:
 - **Database mode**: auto-generated at first startup and stored in the `settings` table; retrieve the value from the admin Settings page or via `GET /api/system/secrets`.
-- **Env/config mode**: must match the `AIMETER_ENDPOINT_SECRET` environment variable (or `auth.endpointSecret` in `config.yaml`).
+- **Env/config mode**: must match the `AIMETER_ENDPOINT_SECRET` environment variable (or `auth.endpointSecret` in `config.yaml`) and should be exactly 32 random characters.
 
 If no secret is configured or found, secret-based authentication is unavailable.
 
@@ -48,7 +48,7 @@ x-aimeter-cron-secret: <configured_secret>
 
 Secret source by deployment mode:
 - **Database mode**: auto-generated at first startup and stored in the `settings` table; retrieve the value from the admin Settings page or via `GET /api/system/secrets`.
-- **Env/config mode**: must match the `AIMETER_CRON_SECRET` environment variable (or `auth.cronSecret` in `config.yaml`).
+- **Env/config mode**: must match the `AIMETER_CRON_SECRET` environment variable (or `auth.cronSecret` in `config.yaml`) and should be exactly 32 random characters.
 
 If not configured, the endpoint returns 503.
 

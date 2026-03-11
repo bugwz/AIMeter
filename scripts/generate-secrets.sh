@@ -43,7 +43,9 @@ TIMESTAMP="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date)"
 
 ENCRYPTION_KEY="$(rand_hex 32)"        # 64 hex chars
 SESSION_SECRET="$(rand_hex 32)"        # 64 hex chars
-ADMIN_ROUTE_PATH="$(rand_hex 16)"    # 32 hex chars (exactly 32 required)
+ADMIN_ROUTE_PATH="$(rand_hex 16)"      # 32 hex chars (exactly 32 required)
+CRON_SECRET="$(rand_hex 16)"           # 32 hex chars (exactly 32 required)
+ENDPOINT_SECRET="$(rand_hex 16)"       # 32 hex chars (exactly 32 required)
 
 printf '# AIMeter secrets — generated %s\n' "$TIMESTAMP"
 printf '# Copy the values you need into your config file or environment.\n'
@@ -54,3 +56,7 @@ printf 'AIMETER_AUTH_SESSION_SECRET=%s\n' "$SESSION_SECRET"
 printf '\n'
 printf '# Optional — protects the admin route (must be exactly 32 characters):\n'
 printf 'AIMETER_ADMIN_ROUTE_PATH=%s\n' "$ADMIN_ROUTE_PATH"
+printf '# Optional — secret for /api/system/jobs/refresh (must be exactly 32 characters in env/config mode):\n'
+printf 'AIMETER_CRON_SECRET=%s\n' "$CRON_SECRET"
+printf '# Optional — secret for /api/endpoint/subscriptions (must be exactly 32 characters in env/config mode):\n'
+printf 'AIMETER_ENDPOINT_SECRET=%s\n' "$ENDPOINT_SECRET"

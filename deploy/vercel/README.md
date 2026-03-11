@@ -30,7 +30,7 @@ openssl rand -hex 32
 For cron secret:
 
 ```bash
-openssl rand -hex 24
+openssl rand -hex 16
 ```
 
 ---

@@ -337,8 +337,8 @@ export const Settings: React.FC = () => {
 
           <div className="space-y-4">
             {([
-              { key: 'cron' as SecretKey, label: 'Cron Secret', desc: 'Used to authenticate scheduled job requests via X-AIMeter-Cron-Secret header', value: secrets?.cronSecret ?? null },
-              { key: 'endpoint' as SecretKey, label: 'Endpoint Secret', desc: 'Used to authenticate external API requests via X-AIMeter-Endpoint-Secret header', value: secrets?.endpointSecret ?? null },
+              { key: 'cron' as SecretKey, label: 'Cron Secret', desc: '32-character secret used to authenticate scheduled job requests via X-AIMeter-Cron-Secret header', value: secrets?.cronSecret ?? null },
+              { key: 'endpoint' as SecretKey, label: 'Endpoint Secret', desc: '32-character secret used to authenticate external API requests via X-AIMeter-Endpoint-Secret header', value: secrets?.endpointSecret ?? null },
             ]).map(({ key, label, desc, value }) => (
               <div key={key} className="rounded-lg bg-[var(--color-bg-subtle)] p-4 space-y-3">
                 <div>

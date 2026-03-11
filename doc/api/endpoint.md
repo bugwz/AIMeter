@@ -21,7 +21,7 @@ x-aimeter-endpoint-secret: <configured_secret>
 
 Secret source by deployment mode:
 - **Database mode**: auto-generated at first startup; retrieve the current value from the admin Settings page or `GET /api/system/secrets`.
-- **Env/config mode**: must match the `AIMETER_ENDPOINT_SECRET` environment variable (or `auth.endpointSecret` in `config.yaml`).
+- **Env/config mode**: must match the `AIMETER_ENDPOINT_SECRET` environment variable (or `auth.endpointSecret` in `config.yaml`) and should be exactly 32 random characters.
 
 > Endpoint secret authentication is fixed to the `normal` role. If no secret is configured or found, secret-based authentication is unavailable.
 
@@ -40,7 +40,7 @@ Secret source by deployment mode:
 
 ```bash
 # JSON — endpoint secret
-curl -H "x-aimeter-endpoint-secret: mysecret" \
+curl -H "x-aimeter-endpoint-secret: your_32_char_endpoint_secret" \
   "http://localhost:3001/api/endpoint/subscriptions"
 
 # JSON — session cookie
@@ -48,20 +48,20 @@ curl -b cookies.txt \
   "http://localhost:3001/api/endpoint/subscriptions"
 
 # XML, pretty-printed
-curl -H "x-aimeter-endpoint-secret: mysecret" \
+curl -H "x-aimeter-endpoint-secret: your_32_char_endpoint_secret" \
   "http://localhost:3001/api/endpoint/subscriptions?format=xml&pretty=true"
 
 # CSV, save to file
-curl -H "x-aimeter-endpoint-secret: mysecret" \
+curl -H "x-aimeter-endpoint-secret: your_32_char_endpoint_secret" \
   "http://localhost:3001/api/endpoint/subscriptions?format=csv" \
   --output usage.csv
 
 # Markdown, specific providers, custom timezone
-curl -H "x-aimeter-endpoint-secret: mysecret" \
+curl -H "x-aimeter-endpoint-secret: your_32_char_endpoint_secret" \
   "http://localhost:3001/api/endpoint/subscriptions?format=markdown&providers=claude,kimi&timezone=America/New_York"
 
 # ASCII table in terminal
-curl -H "x-aimeter-endpoint-secret: mysecret" \
+curl -H "x-aimeter-endpoint-secret: your_32_char_endpoint_secret" \
   "http://localhost:3001/api/endpoint/subscriptions?format=table&timezone=America/New_York"
 ```
 
@@ -71,7 +71,7 @@ curl -H "x-aimeter-endpoint-secret: mysecret" \
 import requests
 
 BASE_URL = "http://localhost:3001"
-headers = {"x-aimeter-endpoint-secret": "mysecret"}
+headers = {"x-aimeter-endpoint-secret": "your_32_char_endpoint_secret"}
 
 # JSON — all providers
 response = requests.get(f"{BASE_URL}/api/endpoint/subscriptions", headers=headers)
@@ -101,7 +101,7 @@ response = requests.get(
 
 ```js
 const BASE_URL = "http://localhost:3001";
-const headers = { "x-aimeter-endpoint-secret": "mysecret" };
+const headers = { "x-aimeter-endpoint-secret": "your_32_char_endpoint_secret" };
 
 // JSON — all providers
 const res = await fetch(`${BASE_URL}/api/endpoint/subscriptions`, { headers });
@@ -296,7 +296,7 @@ curl -s -H "x-aimeter-endpoint-secret: $AIMETER_ENDPOINT_SECRET" \
 ```python
 import requests
 
-headers = {"x-aimeter-endpoint-secret": "mysecret"}
+headers = {"x-aimeter-endpoint-secret": "your_32_char_endpoint_secret"}
 res = requests.get(
     "http://localhost:3001/api/endpoint/subscriptions",
     headers=headers,

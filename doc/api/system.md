@@ -85,7 +85,7 @@ Request header: `x-aimeter-cron-secret: <secret>`.
 
 Secret source by deployment mode:
 - **Database mode**: auto-generated at first startup; retrieve the current value from the admin Settings page or `GET /api/system/secrets`.
-- **Env/config mode**: must match the `AIMETER_CRON_SECRET` environment variable (or `auth.cronSecret` in `config.yaml`).
+- **Env/config mode**: must match the `AIMETER_CRON_SECRET` environment variable (or `auth.cronSecret` in `config.yaml`) and should be exactly 32 random characters.
 
 Returns 503 if no cron secret is available.
 
@@ -108,12 +108,12 @@ Returns 503 if no cron secret is available.
 ```bash
 # Refresh all providers
 curl -X POST http://localhost:3001/api/system/jobs/refresh \
-  -H "x-aimeter-cron-secret: your_cron_secret_here" \
+  -H "x-aimeter-cron-secret: your_32_char_cron_secret" \
   -H "Content-Type: application/json"
 
 # Refresh specific providers only
 curl -X POST http://localhost:3001/api/system/jobs/refresh \
-  -H "x-aimeter-cron-secret: your_cron_secret_here" \
+  -H "x-aimeter-cron-secret: your_32_char_cron_secret" \
   -H "Content-Type: application/json" \
   -d '{"providerIds": ["prov_abc123", "prov_xyz789"]}'
 ```
@@ -124,7 +124,7 @@ curl -X POST http://localhost:3001/api/system/jobs/refresh \
 import requests
 
 BASE_URL = "http://localhost:3001"
-CRON_SECRET = "your_cron_secret_here"
+CRON_SECRET = "your_32_char_cron_secret"
 
 headers = {
     "x-aimeter-cron-secret": CRON_SECRET,
@@ -148,7 +148,7 @@ response = requests.post(
 
 ```js
 const BASE_URL = "http://localhost:3001";
-const CRON_SECRET = "your_cron_secret_here";
+const CRON_SECRET = "your_32_char_cron_secret";
 
 // Refresh all providers
 const res = await fetch(`${BASE_URL}/api/system/jobs/refresh`, {
@@ -262,8 +262,8 @@ curl -b cookies.txt http://localhost:3001/api/system/secrets
 {
   "success": true,
   "data": {
-    "cronSecret": "a3f8c2...(64 hex chars)",
-    "endpointSecret": "9d1e74...(64 hex chars)"
+    "cronSecret": "a3f8c2...(32 hex chars)",
+    "endpointSecret": "9d1e74...(32 hex chars)"
   }
 }
 ```
@@ -279,7 +279,7 @@ curl -b cookies.txt http://localhost:3001/api/system/secrets
 
 ### `POST /api/system/secrets/cron/reset`
 
-Rotates the cron secret — generates a new 64-character hex secret and overwrites the value in the `settings` table. **The old secret stops working immediately.** Only available in database mode.
+Rotates the cron secret — generates a new 32-character hex secret and overwrites the value in the `settings` table. **The old secret stops working immediately.** Only available in database mode.
 
 #### Authentication
 
@@ -297,7 +297,7 @@ curl -X POST -b cookies.txt http://localhost:3001/api/system/secrets/cron/reset
 {
   "success": true,
   "data": {
-    "cronSecret": "new_64_hex_secret..."
+    "cronSecret": "new_32_hex_secret..."
   }
 }
 ```
@@ -331,7 +331,7 @@ curl -X POST -b cookies.txt http://localhost:3001/api/system/secrets/endpoint/re
 {
   "success": true,
   "data": {
-    "endpointSecret": "new_64_hex_secret..."
+    "endpointSecret": "new_32_hex_secret..."
   }
 }
 ```

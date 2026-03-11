@@ -197,7 +197,8 @@ export async function runCommonBootstrap(client: DbClient, usageTable: string = 
       'SELECT value FROM settings WHERE key = ?', [key]
     );
     if (existing.length === 0) {
-      const secret = crypto.randomBytes(32).toString('hex');
+      const secretBytes = (key === 'cron_secret' || key === 'endpoint_secret') ? 16 : 32;
+      const secret = crypto.randomBytes(secretBytes).toString('hex');
       const now = Math.floor(Date.now() / 1000);
       await client.execute(
         'INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)',

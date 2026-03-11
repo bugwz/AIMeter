@@ -117,14 +117,14 @@ auth:
   # adminRoutePath: replace-with-32-char-random-secret
   # Shared secret for external cron/webhook refresh in serverless deployments.
   # Allowed:
-  # - any non-empty string: caller must send this value in X-AIMETER-CRON-SECRET
+  # - exactly 32 random characters: caller must send this value in X-AIMETER-CRON-SECRET
   # Default when unset in both env and this file: unset (cron endpoint disabled)
-  # cronSecret: replace-with-strong-random-cron-secret
+  # cronSecret: replace-with-32-char-random-secret
   # Shared secret for external script access to /api/endpoint/subscriptions.
   # Allowed:
-  # - any non-empty string: caller must send this value in x-aimeter-endpoint-secret
+  # - exactly 32 random characters: caller must send this value in x-aimeter-endpoint-secret
   # Default when unset in both env and this file: unset (secret-based access disabled)
-  # endpointSecret: replace-with-strong-random-endpoint-secret
+  # endpointSecret: replace-with-32-char-random-secret
   rateLimit:
     # Rate-limit evaluation window length.
     # Allowed:
