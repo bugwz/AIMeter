@@ -136,7 +136,7 @@ async function initSchema(
   await client.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp)');
   await client.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_path ON audit_logs(path)');
 
-  await runCommonBootstrap(client, 'usage_records', initialSecrets);
+  await runCommonBootstrap(client, 'usage_records', initialSecrets, '"key"');
 }
 
 export async function createPostgresEngine(): Promise<DatabaseEngine> {
@@ -152,7 +152,7 @@ export async function createPostgresEngine(): Promise<DatabaseEngine> {
   });
 
   const encryptionKey = appConfig.database.encryptionKey
-    || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE key = ?', ['encryption_key']))?.value;
+    || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE "key" = ?', ['encryption_key']))?.value;
 
   return new SqlEngine(client, 'postgres', encryptionKey);
 }

@@ -134,7 +134,7 @@ async function initSchema(
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
-  await runCommonBootstrap(client, 'usage_records', initialSecrets);
+  await runCommonBootstrap(client, 'usage_records', initialSecrets, '`key`');
 }
 
 export async function createMysqlEngine(): Promise<DatabaseEngine> {
@@ -149,7 +149,7 @@ export async function createMysqlEngine(): Promise<DatabaseEngine> {
   });
 
   const encryptionKey = appConfig.database.encryptionKey
-    || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE key = ?', ['encryption_key']))?.value;
+    || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE `key` = ?', ['encryption_key']))?.value;
 
   return new SqlEngine(client, 'mysql', encryptionKey);
 }

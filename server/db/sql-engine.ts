@@ -191,6 +191,7 @@ export async function runCommonBootstrap(
   client: DbClient,
   usageTable: string = 'usage_records',
   initialSecrets?: Partial<Record<'cron_secret' | 'endpoint_secret', string>>,
+  settingsKeyColumn: string = 'key',
 ): Promise<void> {
   await client.execute(`DELETE FROM ${usageTable} WHERE provider_id IN (SELECT id FROM providers WHERE provider = 'factory')`);
   await client.execute("DELETE FROM providers WHERE provider = 'factory'");
@@ -198,7 +199,7 @@ export async function runCommonBootstrap(
   // Auto-generate secrets if not yet present
   for (const key of ['cron_secret', 'endpoint_secret', 'encryption_key', 'session_secret']) {
     const existing = await client.query<{ value: string }>(
-      'SELECT value FROM settings WHERE key = ?', [key]
+      `SELECT value FROM settings WHERE ${settingsKeyColumn} = ?`, [key]
     );
     if (existing.length === 0) {
       const configuredSecret = (
@@ -210,7 +211,7 @@ export async function runCommonBootstrap(
       const secret = configuredSecret || crypto.randomBytes(secretBytes).toString('hex');
       const now = Math.floor(Date.now() / 1000);
       await client.execute(
-        'INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)',
+        `INSERT INTO settings (${settingsKeyColumn}, value, updated_at) VALUES (?, ?, ?)`,
         [key, secret, now]
       );
     }
