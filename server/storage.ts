@@ -253,9 +253,18 @@ function normalizeSnapshot(snapshot: UsageSnapshot): UsageRecordRow {
     const primary = legacy.primary as ProgressItem | undefined;
     const secondary = legacy.secondary as ProgressItem | undefined;
     const tertiary = legacy.tertiary as ProgressItem | undefined;
-    if (primary) items.push({ name: 'Primary', ...primary });
-    if (secondary) items.push({ name: 'Secondary', ...secondary });
-    if (tertiary) items.push({ name: 'Tertiary', ...tertiary });
+    if (primary) {
+      const { name: _name, ...rest } = primary;
+      items.push({ name: 'Primary', ...rest });
+    }
+    if (secondary) {
+      const { name: _name, ...rest } = secondary;
+      items.push({ name: 'Secondary', ...rest });
+    }
+    if (tertiary) {
+      const { name: _name, ...rest } = tertiary;
+      items.push({ name: 'Tertiary', ...rest });
+    }
   }
 
   return {

@@ -1,5 +1,5 @@
 // Usage-related type definitions
-import { UsageProvider, Identity } from './provider';
+import { UsageProvider, Identity } from './provider.js';
 
 // Rate window
 export interface RateWindow {

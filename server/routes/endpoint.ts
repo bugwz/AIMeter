@@ -611,7 +611,7 @@ function formatAsCsv(items: EndpointItem[]): string {
 
 router.get('/subscriptions', async (req: Request, res: Response) => {
   const parsed = parseQuery(req);
-  if (!parsed.ok) {
+  if (parsed.ok === false) {
     sendError(res, parsed.status, parsed.code, parsed.message, parsed.details);
     return;
   }

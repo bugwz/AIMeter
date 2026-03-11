@@ -101,6 +101,12 @@ router.post('/bootstrap', async (req, res) => {
     adminPassword?: string;
     adminRoutePath?: string;
   };
+  if (typeof normalPassword !== 'string' || typeof adminPassword !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_PASSWORD', message: 'Both normal and admin passwords are required' },
+    });
+  }
 
   const passwordError = validatePasswordStrength(normalPassword) || validatePasswordStrength(adminPassword);
   if (passwordError) {
@@ -187,7 +193,7 @@ router.post('/:role/setup', async (req, res) => {
       success: false,
       error: {
         code: 'RATE_LIMITED',
-        message: `Too many attempts. Try again in ${Math.ceil((limitCheck.retryAfter ?? 0) / 1000)} seconds.`,
+        message: `Too many attempts. Try again in ${limitCheck.retryAfterSeconds ?? 60} seconds.`,
       },
     });
   }

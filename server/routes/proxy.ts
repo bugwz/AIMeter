@@ -42,7 +42,10 @@ function isMiniMaxCNRegion(region: string | undefined): boolean {
   return normalized === 'cn' || normalized === 'china' || normalized === 'minimax_cn';
 }
 
-function calculateMiniMaxPlan(region: string | undefined, progressItems: Array<{ name: string; limit?: number }>): string | undefined {
+function calculateMiniMaxPlan(
+  region: string | undefined,
+  progressItems: Array<{ name: string; limit?: number | null }>,
+): string | undefined {
   const promptItem = progressItems.find(item => item.name === 'Prompt' || item.name === 'Prompts');
   if (!promptItem || !promptItem.limit) return undefined;
 
@@ -73,7 +76,7 @@ type ProgressLike = {
   limit?: number | null;
   windowMinutes?: number | null;
   resetsAt?: Date | string | number | null;
-  resetDescription?: string;
+  resetDescription?: string | null;
 };
 
 type AntigravityDisplayMode = 'pool' | 'models';
@@ -125,12 +128,12 @@ function serializeProgressItems(provider: UsageProvider, items: ProgressLike[]):
     name: item.name,
     desc: item.desc,
     usedPercent: item.usedPercent ?? 0,
-    remainingPercent: item.remainingPercent ?? null,
-    used: item.used ?? null,
-    limit: item.limit ?? null,
-    windowMinutes: item.windowMinutes ?? null,
-    resetsAt: toUnixSeconds(item.resetsAt) ?? null,
-    resetDescription: item.resetDescription,
+    remainingPercent: item.remainingPercent ?? undefined,
+    used: item.used ?? undefined,
+    limit: item.limit ?? undefined,
+    windowMinutes: item.windowMinutes ?? undefined,
+    resetsAt: toUnixSeconds(item.resetsAt),
+    resetDescription: item.resetDescription ?? undefined,
   }));
 }
 
