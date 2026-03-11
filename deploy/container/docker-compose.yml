@@ -28,5 +28,5 @@ services:
       AIMETER_SECURE_COOKIE: "true"
       AIMETER_TRUST_PROXY: "true"
       # Optional configuration
-      # AIMETER_ADMIN_ROUTE_PATH: change-me-64-char-admin-secret
+      # AIMETER_ADMIN_ROUTE_PATH: change-me-32-char-admin-secret
     restart: unless-stopped

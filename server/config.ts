@@ -320,7 +320,7 @@ function isWeakSecret(value: string | undefined, placeholders: string[] = []): b
 function isWeakAdminRoutePath(value: string | undefined): boolean {
   const trimmed = value?.trim();
   if (!trimmed) return true;
-  if (trimmed.length !== 64) return true;
+  if (trimmed.length !== 32) return true;
   const lower = trimmed.toLowerCase();
   if (lower.includes('replace-with')) return true;
   return false;
@@ -336,7 +336,7 @@ function validateSecurityConfig(config: AppConfig): void {
       console.warn('[SECURITY] encryptionKey is set but weak. Set AIMETER_ENCRYPTION_KEY to a strong random secret.');
     }
     if (config.auth.adminRoutePath && isWeakAdminRoutePath(config.auth.adminRoutePath)) {
-      console.warn('[SECURITY] adminRoutePath is weak or invalid. Set AIMETER_ADMIN_ROUTE_PATH to exactly 64 random characters before deploying to production.');
+      console.warn('[SECURITY] adminRoutePath is weak or invalid. Set AIMETER_ADMIN_ROUTE_PATH to exactly 32 random characters before deploying to production.');
     }
     return;
   }
@@ -359,7 +359,7 @@ function validateSecurityConfig(config: AppConfig): void {
   }
 
   if (config.auth.adminRoutePath && isWeakAdminRoutePath(config.auth.adminRoutePath)) {
-    throw new Error('Security check failed: AIMETER_ADMIN_ROUTE_PATH must be exactly 64 random characters in production.');
+    throw new Error('Security check failed: AIMETER_ADMIN_ROUTE_PATH must be exactly 32 random characters in production.');
   }
 
 }

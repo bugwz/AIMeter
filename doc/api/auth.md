@@ -73,7 +73,7 @@ None (public, one-time endpoint).
 {
   "normalPassword": "mypassword123",
   "adminPassword": "adminpass456",
-  "adminRoutePath": "abcdefghij1234567890abcdefghij1234567890abcdefghij1234567890abcd"
+  "adminRoutePath": "abcd1234efgh5678ijkl9012mnop3456"
 }
 ```
 
@@ -81,7 +81,7 @@ None (public, one-time endpoint).
 |-------|------|----------|-------------|
 | `normalPassword` | string | Yes | At least 12 characters, must contain letters and digits |
 | `adminPassword` | string | Yes | Same rules; must differ from `normalPassword` |
-| `adminRoutePath` | string | Yes | Exactly 64 alphanumeric characters (no special characters) |
+| `adminRoutePath` | string | Yes | Exactly 32 alphanumeric characters (no special characters) |
 
 #### Request Example
 
@@ -91,7 +91,7 @@ curl -X POST http://localhost:3001/api/auth/bootstrap \
   -d '{
     "normalPassword": "mypassword123",
     "adminPassword": "adminpass456",
-    "adminRoutePath": "abcdefghij1234567890abcdefghij1234567890abcdefghij1234567890abcd"
+    "adminRoutePath": "abcd1234efgh5678ijkl9012mnop3456"
   }'
 ```
 
@@ -101,7 +101,7 @@ curl -X POST http://localhost:3001/api/auth/bootstrap \
 {
   "success": true,
   "data": {
-    "adminBasePath": "/abcdefghij1234567890abcdefghij1234567890abcdefghij1234567890abcd",
+    "adminBasePath": "/abcd1234efgh5678ijkl9012mnop3456",
     "message": "Initial setup completed successfully"
   }
 }
@@ -116,7 +116,7 @@ A session cookie for the `normal` role is automatically set on success.
 | 410 | `BOOTSTRAP_DISABLED` | Setup already completed; endpoint is permanently disabled |
 | 429 | `RATE_LIMITED` | Too many requests |
 | 400 | `INVALID_PASSWORD` | Password fails length/character/uniqueness rule |
-| 400 | `INVALID_ADMIN_ROUTE_PATH` | Secret is not exactly 64 alphanumeric characters |
+| 400 | `INVALID_ADMIN_ROUTE_PATH` | Secret is not exactly 32 alphanumeric characters |
 | 409 | `READONLY_STORAGE` | Storage is read-only |
 | 500 | `INTERNAL_ERROR` | Server error |
 

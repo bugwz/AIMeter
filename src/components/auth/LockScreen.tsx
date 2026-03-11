@@ -10,8 +10,9 @@ interface LockScreenProps {
 type LockMode = 'check' | 'setup' | 'bootstrap';
 
 const MIN_PASSWORD_LENGTH = 12;
-const ROUTE_SECRET_LENGTH = 64;
+const ROUTE_SECRET_LENGTH = 32;
 const ALPHANUMERIC_RE = /^[a-zA-Z0-9]+$/;
+const UNIFIED_INPUT_HEIGHT_CLASS = 'h-11';
 
 function validatePassword(value: string): string {
   if (!value) return '';
@@ -31,7 +32,7 @@ function validateRouteSecret(value: string): string {
 
 function generateAdminRoutePath(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const bytes = new Uint8Array(64);
+  const bytes = new Uint8Array(ROUTE_SECRET_LENGTH);
   window.crypto.getRandomValues(bytes);
   let result = '';
   for (let i = 0; i < bytes.length; i += 1) {
@@ -128,7 +129,6 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isAdminRouteCopied, setIsAdminRouteCopied] = useState(false);
-  const adminRoutePathRef = useRef<HTMLTextAreaElement | null>(null);
   const [passwordVisible, setPasswordVisible] = useState({
     password: false,
     adminPassword: false,
@@ -155,7 +155,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="input-field w-full"
+        className={`input-field w-full ${UNIFIED_INPUT_HEIGHT_CLASS}`}
         style={{ paddingRight: '50px' }}
         autoFocus={autoFocus}
       />
@@ -193,12 +193,6 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
   useEffect(() => {
     checkAuthStatus();
   }, []);
-
-  useEffect(() => {
-    if (!adminRoutePathRef.current) return;
-    adminRoutePathRef.current.style.height = '0px';
-    adminRoutePathRef.current.style.height = `${adminRoutePathRef.current.scrollHeight}px`;
-  }, [adminRoutePath]);
 
   const sleep = (ms: number) => new Promise<void>((resolve) => {
     window.setTimeout(resolve, ms);
@@ -460,18 +454,18 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
                   </div>
                 </div>
                 <div className="relative">
-                  <textarea
-                    ref={adminRoutePathRef}
+                  <input
+                    type="text"
                     value={adminRoutePath}
                     readOnly
-                    placeholder="64-character alphanumeric secret"
-                    className="input-field w-full resize-none overflow-hidden cursor-not-allowed font-mono text-xs"
+                    placeholder="32-character alphanumeric secret"
+                    className={`input-field w-full cursor-not-allowed font-mono text-xs ${UNIFIED_INPUT_HEIGHT_CLASS}`}
                     style={{ paddingRight: '50px' }}
                   />
                   <button
                     type="button"
                     onClick={handleCopyAdminRoutePath}
-                    className={`absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${isAdminRouteCopied ? 'border-[var(--color-accent)] bg-[var(--color-accent-subtle)] text-[var(--color-accent)]' : 'border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-primary)]'}`}
+                    className={`absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md border transition-colors ${isAdminRouteCopied ? 'border-[var(--color-accent)] bg-[var(--color-accent-subtle)] text-[var(--color-accent)]' : 'border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-primary)]'}`}
                     aria-label={isAdminRouteCopied ? 'Copied' : 'Copy admin route path'}
                     title={isAdminRouteCopied ? 'Copied' : 'Copy admin route path'}
                   >

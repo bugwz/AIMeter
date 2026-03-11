@@ -112,9 +112,9 @@ auth:
   # adminPasswordHash: pbkdf2_sha256$210000$replace-salt$replace-digest
   # Admin route path used for the management entry URL.
   # Allowed:
-  # - exactly 64 random characters: admin UI is served from http://host:3000/<secret>
+  # - exactly 32 random characters: admin UI is served from http://host:3000/<secret>
   # Default when unset in both env and this file: unset
-  # adminRoutePath: replace-with-64-char-random-secret
+  # adminRoutePath: replace-with-32-char-random-secret
   # Shared secret for external cron/webhook refresh in serverless deployments.
   # Allowed:
   # - any non-empty string: caller must send this value in X-AIMETER-CRON-SECRET

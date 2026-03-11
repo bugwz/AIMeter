@@ -15,7 +15,7 @@ export function NotFoundPage({ fullViewport = true }: NotFoundPageProps) {
     : 'The requested path does not map to a valid AIMeter screen.';
   const statusLabel = invalidAdminPath ? 'Access blocked by route validation' : 'This path is not exposed by the current app';
   const guidance = invalidAdminPath
-    ? 'Use the exact 64-character admin route path configured for this deployment.'
+    ? 'Use the exact 32-character admin route path configured for this deployment.'
     : 'Return to the dashboard or step back to the previous valid screen.';
   return (
     <div className={`${fullViewport ? 'h-[100svh]' : 'h-full'} relative overflow-hidden`}>

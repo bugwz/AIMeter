@@ -117,12 +117,12 @@ router.post('/bootstrap', async (req, res) => {
   }
 
   const normalizedSecret = typeof adminRoutePath === 'string' ? adminRoutePath.trim() : '';
-  if (normalizedSecret.length !== 64) {
+  if (normalizedSecret.length !== 32) {
     return res.status(400).json({
       success: false,
       error: {
         code: 'INVALID_ADMIN_ROUTE_PATH',
-        message: 'Admin route path must be exactly 64 characters',
+        message: 'Admin route path must be exactly 32 characters',
       },
     });
   }
