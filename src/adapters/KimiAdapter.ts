@@ -1,6 +1,6 @@
 // Kimi provider adapter implementation
 import { IProviderAdapter, ValidationResult } from './interface';
-import { 
+import {
   UsageProvider, 
   AuthType, 
   Credential, 
@@ -9,7 +9,7 @@ import {
   ProgressItem,
   Identity,
 } from '../types';
-import { roundPercentage } from './utils';
+import { formatWindowDurationFromMinutes, roundPercentage } from './utils';
 
 interface KimiJWTPayload {
   device_id?: string;
@@ -222,7 +222,10 @@ export class KimiAdapter implements IProviderAdapter {
       const limitUsed = Number(limitDetail.used);
       const limitLimit = Number(limitDetail.limit);
       const limitRemaining = Number(limitDetail.remaining);
-      const rateWindow = this.formatWindowFromLimit(codingUsage.limits?.[0]?.window);
+      const rateWindowMinutes = this.windowToMinutes(codingUsage.limits?.[0]?.window);
+      const rateWindow = rateWindowMinutes
+        ? `${formatWindowDurationFromMinutes(rateWindowMinutes)} window`
+        : '';
       progress.push({
         name: 'Rate Limit',
         desc: rateWindow || '5 hours window',
@@ -230,6 +233,7 @@ export class KimiAdapter implements IProviderAdapter {
         used: limitUsed,
         limit: limitLimit,
         remainingPercent: roundPercentage((limitRemaining / limitLimit) * 100),
+        windowMinutes: rateWindowMinutes,
         resetsAt: limitDetail.resetTime ? new Date(limitDetail.resetTime) : undefined,
       });
     }
@@ -242,31 +246,29 @@ export class KimiAdapter implements IProviderAdapter {
     };
   }
 
-  private formatWindowFromLimit(
+  private windowToMinutes(
     window?: { duration?: number; timeUnit?: string }
-  ): string {
-    if (!window || typeof window.duration !== 'number' || window.duration <= 0) return '';
+  ): number | undefined {
+    if (!window || typeof window.duration !== 'number' || window.duration <= 0) return undefined;
     const unit = (window.timeUnit || '').toUpperCase();
     const duration = window.duration;
 
     if (unit.includes('MINUTE')) {
-      if (duration % (24 * 60) === 0) {
-        const days = duration / (24 * 60);
-        return `${days} ${days === 1 ? 'day' : 'days'} window`;
-      }
-      if (duration % 60 === 0) {
-        const hours = duration / 60;
-        return `${hours} ${hours === 1 ? 'hour' : 'hours'} window`;
-      }
-      return `${duration} ${duration === 1 ? 'minute' : 'minutes'} window`;
+      return Math.max(1, Math.round(duration));
     }
     if (unit.includes('HOUR')) {
-      return `${duration} ${duration === 1 ? 'hour' : 'hours'} window`;
+      return Math.max(1, Math.round(duration * 60));
     }
     if (unit.includes('DAY')) {
-      return `${duration} ${duration === 1 ? 'day' : 'days'} window`;
+      return Math.max(1, Math.round(duration * 24 * 60));
     }
-    return '';
+    if (unit.includes('WEEK')) {
+      return Math.max(1, Math.round(duration * 7 * 24 * 60));
+    }
+    if (unit.includes('MONTH')) {
+      return Math.max(1, Math.round(duration * 30 * 24 * 60));
+    }
+    return undefined;
   }
 
   private hasUsages(data: KimiUsageResponse): boolean {

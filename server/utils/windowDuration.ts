@@ -1,7 +1,3 @@
-export function roundPercentage(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
 function trimTrailingZeros(value: string): string {
   return value.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
 }
@@ -32,11 +28,4 @@ export function formatWindowDurationFromMinutes(windowMinutes?: number | null): 
 
   const matched = units.find((unit) => minutes >= unit.minutes) || units[units.length - 1];
   return formatScaledDuration(minutes / matched.minutes, matched.singular, matched.plural);
-}
-
-export function formatWindowDurationFromSeconds(windowSeconds?: number | null): string {
-  if (!Number.isFinite(windowSeconds) || windowSeconds === null || windowSeconds === undefined || windowSeconds <= 0) {
-    return '';
-  }
-  return formatWindowDurationFromMinutes(windowSeconds / 60);
 }

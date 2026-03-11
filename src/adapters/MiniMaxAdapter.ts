@@ -9,7 +9,7 @@ import {
   ProgressItem,
   ProviderConfig,
 } from '../types';
-import { roundPercentage } from './utils';
+import { formatWindowDurationFromMinutes, roundPercentage } from './utils';
 
 interface MiniMaxUsageResponse {
   model_remains?: {
@@ -412,28 +412,6 @@ export class MiniMaxAdapter implements IProviderAdapter {
     return value >= 1_000_000_000_000 ? value : value * 1000;
   }
 
-  private formatWindowDurationFromMinutes(windowMinutes?: number): string {
-    if (!Number.isFinite(windowMinutes) || !windowMinutes || windowMinutes <= 0) return '';
-    const minutes = Math.round(windowMinutes);
-    const minutePerWeek = 7 * 24 * 60;
-    const minutePerDay = 24 * 60;
-    const minutePerHour = 60;
-
-    if (minutes % minutePerWeek === 0) {
-      const value = minutes / minutePerWeek;
-      return `${value} ${value === 1 ? 'week' : 'weeks'}`;
-    }
-    if (minutes % minutePerDay === 0) {
-      const value = minutes / minutePerDay;
-      return `${value} ${value === 1 ? 'day' : 'days'}`;
-    }
-    if (minutes % minutePerHour === 0) {
-      const value = minutes / minutePerHour;
-      return `${value} ${value === 1 ? 'hour' : 'hours'}`;
-    }
-    return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
-  }
-
   private collectModelNames(items: NonNullable<MiniMaxUsageResponse['model_remains']>): string[] {
     const models: string[] = [];
     const seen = new Set<string>();
@@ -449,7 +427,7 @@ export class MiniMaxAdapter implements IProviderAdapter {
   }
 
   private buildSharedModelsWindowDescription(windowMinutes: number, modelNames: string[]): string {
-    const duration = this.formatWindowDurationFromMinutes(windowMinutes);
+    const duration = formatWindowDurationFromMinutes(windowMinutes);
     const base = duration ? `${duration} window` : 'window';
     if (!modelNames.length) return base;
     return `${base} for models: ${modelNames.join(', ')}`;

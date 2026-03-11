@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { storage } from '../storage.js';
 import { UsageErrorCode, UsageProvider } from '../../src/types/index.js';
 import { enrichProgressTitles } from '../utils/progressTitles.js';
+import { formatWindowDurationFromMinutes } from '../utils/windowDuration.js';
 
 const router = Router();
 
@@ -318,15 +319,7 @@ function displayWidth(value: string): number {
 
 function formatTimeWindow(windowMinutes: number | null): string {
   if (windowMinutes === null || Number.isNaN(windowMinutes) || windowMinutes <= 0) return '-';
-  if (windowMinutes % (60 * 24) === 0) {
-    const days = Math.round(windowMinutes / (60 * 24));
-    return `${days} ${days === 1 ? 'day' : 'days'}`;
-  }
-  if (windowMinutes % 60 === 0) {
-    const hours = Math.round(windowMinutes / 60);
-    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
-  }
-  return `${Math.round(windowMinutes)} min`;
+  return formatWindowDurationFromMinutes(windowMinutes) || `${Math.round(windowMinutes)} min`;
 }
 
 function formatAsXml(

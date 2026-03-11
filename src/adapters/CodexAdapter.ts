@@ -13,7 +13,7 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { roundPercentage } from './utils';
+import { formatWindowDurationFromSeconds, roundPercentage } from './utils';
 
 interface CodexAuthJson {
   tokens?: {
@@ -95,29 +95,8 @@ export class CodexAdapter implements IProviderAdapter {
   private readonly webAPIURL = 'https://chatgpt.com/api/organizations';
   private readonly webUsageURL = 'https://chatgpt.com/api/usage';
 
-  private formatWindowDesc(limitWindowSeconds?: number): string {
-    if (!Number.isFinite(limitWindowSeconds) || !limitWindowSeconds || limitWindowSeconds <= 0) return '';
-    const seconds = Math.round(limitWindowSeconds);
-
-    const units: Array<{ seconds: number; singular: string; plural: string }> = [
-      { seconds: 7 * 24 * 60 * 60, singular: 'week', plural: 'weeks' },
-      { seconds: 24 * 60 * 60, singular: 'day', plural: 'days' },
-      { seconds: 60 * 60, singular: 'hour', plural: 'hours' },
-      { seconds: 60, singular: 'minute', plural: 'minutes' },
-    ];
-
-    for (const unit of units) {
-      if (seconds % unit.seconds === 0) {
-        const value = seconds / unit.seconds;
-        return `${value} ${value === 1 ? unit.singular : unit.plural}`;
-      }
-    }
-
-    return `${seconds} seconds`;
-  }
-
   private formatWindowDescription(limitWindowSeconds?: number): string {
-    const duration = this.formatWindowDesc(limitWindowSeconds);
+    const duration = formatWindowDurationFromSeconds(limitWindowSeconds);
     if (!duration) return '';
     return `${duration} window`;
   }

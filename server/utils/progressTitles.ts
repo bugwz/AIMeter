@@ -1,4 +1,5 @@
 import { UsageProvider } from '../../src/types/index.js';
+import { formatWindowDurationFromMinutes } from './windowDuration.js';
 
 type ProgressTitleMap = Partial<Record<UsageProvider, Record<string, string>>>;
 
@@ -28,36 +29,22 @@ function normalizeName(name: string): string {
   return name.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-function formatWindowDescFromMinutes(windowMinutes?: number | null): string {
-  if (!Number.isFinite(windowMinutes) || windowMinutes === null || windowMinutes === undefined || windowMinutes <= 0) {
-    return '';
-  }
-
-  const minutes = Math.round(windowMinutes);
-  const minutePerWeek = 7 * 24 * 60;
-  const minutePerDay = 24 * 60;
-  const minutePerHour = 60;
-
-  if (minutes % minutePerWeek === 0) {
-    const value = minutes / minutePerWeek;
-    return `${value} ${value === 1 ? 'week' : 'weeks'}`;
-  }
-  if (minutes % minutePerDay === 0) {
-    const value = minutes / minutePerDay;
-    return `${value} ${value === 1 ? 'day' : 'days'}`;
-  }
-  if (minutes % minutePerHour === 0) {
-    const value = minutes / minutePerHour;
-    return `${value} ${value === 1 ? 'hour' : 'hours'}`;
-  }
-
-  return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
-}
-
 function formatWindowDescription(windowMinutes?: number | null): string {
-  const duration = formatWindowDescFromMinutes(windowMinutes);
+  const duration = formatWindowDurationFromMinutes(windowMinutes);
   if (!duration) return '';
   return `${duration} window`;
+}
+
+function normalizeWindowLikeDescription(desc: string, windowDesc: string): string {
+  const normalized = desc.trim();
+  if (!normalized) return windowDesc;
+
+  const pattern = /^(\d+(?:\.\d+)?\s+(?:second|seconds|minute|minutes|min|hour|hours|day|days|week|weeks|month|months)\s+window)(\s+for\s+.+)?$/i;
+  const matched = normalized.match(pattern);
+  if (!matched) return normalized;
+
+  const suffix = matched[2] || '';
+  return `${windowDesc}${suffix}`;
 }
 
 export function resolveProgressTitle(provider: UsageProvider, name: string): string | undefined {
@@ -76,12 +63,14 @@ export function enrichProgressTitles<T extends { name: string; desc?: string; wi
       ? item.desc
       : (typeof legacyTitle === 'string' ? legacyTitle : '');
     const currentDesc = currentDescRaw.trim();
-    const fallbackTitle = provider === UsageProvider.CODEX
-      ? formatWindowDescription(item.windowMinutes)
-      : resolveProgressTitle(provider, item.name);
+    const computedWindowDesc = formatWindowDescription(item.windowMinutes);
+    const fallbackTitle = computedWindowDesc || resolveProgressTitle(provider, item.name);
+    const resolvedDesc = computedWindowDesc
+      ? normalizeWindowLikeDescription(currentDesc, computedWindowDesc)
+      : currentDesc;
     return {
       ...item,
-      desc: currentDesc || fallbackTitle || '',
+      desc: resolvedDesc || fallbackTitle || '',
     };
   });
 }
