@@ -108,11 +108,11 @@ Priority order:
 
 Key areas:
 
-- `server`: API URL, frontend/backend ports, CORS, trust proxy
+- `server`: API URL, frontend/backend ports, CORS, HTTP/HTTPS protocol
 - `runtime`: `node` or `serverless`, mock switch
 - `database`: engine, DSN/path, encryption keys
-- `auth`: session secret, cookie options, rate limits, admin secrets
-- `providers`: provider list (used when database mode is disabled)
+- `auth`: session secret, rate limits, admin secrets
+- `AIMETER_PROVIDERS_JSON`: provider list env var (used when database mode is disabled)
 
 ## Runtime Modes
 

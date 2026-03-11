@@ -69,7 +69,7 @@ interface ConfigIssue {
   hint: string;
 }
 
-interface ParseEnvProvidersResult {
+interface ParseProvidersJsonResult {
   providers: ConfiguredProvider[] | null;
   issues: ConfigIssue[];
 }
@@ -440,15 +440,6 @@ function collectSecurityIssues(config: AppConfig, providerIssues: ConfigIssue[],
       });
     }
 
-    if (config.providers.length === 0) {
-      issues.push({
-        code: 'MISSING_PROVIDERS',
-        field: 'providers',
-        reason: 'No providers configured in env-only mode',
-        expected: 'At least one provider from config.yaml or AIMETER_PROVIDER_IDS/env overrides',
-        hint: 'Configure providers in config.yaml or set AIMETER_PROVIDER_IDS + provider env variables.',
-      });
-    }
   }
 
   if (config.auth.cronSecret && isWeakIntegrationSecret(config.auth.cronSecret)) {
@@ -521,79 +512,96 @@ function normalizeAlias(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
 
-function parseYamlProviders(root: UnknownRecord): ConfiguredProvider[] {
-  const providers = root.providers;
-  if (!Array.isArray(providers)) return [];
-
-  return providers
-    .map((item) => {
-      const obj = asRecord(item);
-      const id = normalizeAlias(asString(obj.id) || '');
-      const provider = (asString(obj.type) || '').trim().toLowerCase() as UsageProvider;
-      const authType = (asString(obj.authType) || AuthType.COOKIE) as AuthType;
-      const credential = asString(obj.credential) || '';
-
-      if (!id || !provider) return null;
-
-      return {
-        id,
-        provider,
-        authType,
-        credential,
-        refreshInterval: asNumber(obj.refreshInterval) ?? 0,
-        region: asString(obj.region),
-        name: asString(obj.name),
-        claudeAuthMode: asString(obj.claudeAuthMode) as ProviderConfig['claudeAuthMode'] | undefined,
-        opencodeWorkspaceId: asString(obj.opencodeWorkspaceId),
-        defaultProgressItem: asString(obj.defaultProgressItem),
-        source: 'config' as const,
-      };
-    })
-    .filter(Boolean) as ConfiguredProvider[];
+function hasLegacyProviderEnv(): boolean {
+  if ((process.env.AIMETER_PROVIDER_IDS || '').trim()) return true;
+  return Object.keys(process.env).some((key) => key.startsWith('AIMETER_PROVIDER__'));
 }
 
-function parseEnvProviders(): ParseEnvProvidersResult {
-  const providerIds = (process.env.AIMETER_PROVIDER_IDS || '')
-    .split(',')
-    .map((value) => normalizeAlias(value))
-    .filter(Boolean);
-
-  if (providerIds.length === 0) {
-    return { providers: null, issues: [] };
-  }
-
+function parseProvidersJson(raw: string): ParseProvidersJsonResult {
   const issues: ConfigIssue[] = [];
   const providers: ConfiguredProvider[] = [];
+  let parsed: unknown;
 
-  providerIds.forEach((id) => {
-    const prefix = `AIMETER_PROVIDER__${id.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}__`;
-    const provider = (process.env[`${prefix}TYPE`] || '').trim().toLowerCase() as UsageProvider;
-    const authType = (process.env[`${prefix}AUTH_TYPE`] || AuthType.COOKIE).trim() as AuthType;
-    const credential = process.env[`${prefix}CREDENTIAL`] || '';
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return {
+      providers: null,
+      issues: [{
+        code: 'INVALID_PROVIDERS_JSON',
+        field: 'AIMETER_PROVIDERS_JSON',
+        reason: 'JSON parsing failed',
+        expected: 'A valid JSON array of provider objects',
+        actualMasked: `<redacted len=${raw.length}>`,
+        hint: 'Ensure AIMETER_PROVIDERS_JSON is valid JSON (double quotes, no trailing commas).',
+      }],
+    };
+  }
 
+  if (!Array.isArray(parsed)) {
+    return {
+      providers: null,
+      issues: [{
+        code: 'INVALID_PROVIDERS_JSON',
+        field: 'AIMETER_PROVIDERS_JSON',
+        reason: 'Top-level JSON value must be an array',
+        expected: 'A JSON array with at least one provider object',
+        hint: 'Wrap providers in [ ... ].',
+      }],
+    };
+  }
+
+  if (parsed.length === 0) {
+    return {
+      providers: null,
+      issues: [{
+        code: 'EMPTY_PROVIDERS_JSON',
+        field: 'AIMETER_PROVIDERS_JSON',
+        reason: 'Provider list is empty',
+        expected: 'A non-empty provider array',
+        hint: 'Add at least one provider object in AIMETER_PROVIDERS_JSON.',
+      }],
+    };
+  }
+
+  parsed.forEach((item, index) => {
+    const obj = asRecord(item);
+    const id = normalizeAlias(asString(obj.id) || '');
+    const provider = (asString(obj.type) || '').trim().toLowerCase() as UsageProvider;
+    const authType = (asString(obj.authType) || AuthType.COOKIE).trim() as AuthType;
+    const credential = asString(obj.credential) || '';
+    const fieldPrefix = `AIMETER_PROVIDERS_JSON[${index}]`;
+
+    if (!id) {
+      issues.push({
+        code: 'INVALID_PROVIDER_ITEM',
+        field: `${fieldPrefix}.id`,
+        reason: 'Missing or invalid id',
+        expected: 'Non-empty provider id',
+        hint: 'Set id to a unique provider identifier (snake_case recommended).',
+      });
+    }
     if (!provider) {
       issues.push({
-        code: 'MISSING_PROVIDER_TYPE',
-        field: `${prefix}TYPE`,
-        reason: `Provider ${id} is missing TYPE`,
-        expected: 'A supported provider type',
-        actualMasked: '<unset>',
-        hint: `Set ${prefix}TYPE (for example: cursor).`,
+        code: 'INVALID_PROVIDER_ITEM',
+        field: `${fieldPrefix}.type`,
+        reason: 'Missing provider type',
+        expected: 'A supported provider type string',
+        hint: 'Set type, for example cursor/openrouter/claude.',
       });
     }
-
     if (!credential.trim()) {
       issues.push({
-        code: 'MISSING_PROVIDER_CREDENTIAL',
-        field: `${prefix}CREDENTIAL`,
-        reason: `Provider ${id} is missing credential`,
-        expected: 'A non-empty credential value',
+        code: 'INVALID_PROVIDER_ITEM',
+        field: `${fieldPrefix}.credential`,
+        reason: 'Missing credential',
+        expected: 'Non-empty credential string',
         actualMasked: '<unset>',
-        hint: `Set ${prefix}CREDENTIAL to a valid credential payload.`,
+        hint: 'Provide credential for the selected authType.',
       });
     }
 
-    if (!provider || !credential.trim()) {
+    if (!id || !provider || !credential.trim()) {
       return;
     }
 
@@ -602,20 +610,17 @@ function parseEnvProviders(): ParseEnvProvidersResult {
       provider,
       authType,
       credential,
-      refreshInterval: Number(process.env[`${prefix}REFRESH_INTERVAL`] || 0) || 0,
-      region: process.env[`${prefix}REGION`] || undefined,
-      name: process.env[`${prefix}NAME`] || undefined,
-      claudeAuthMode: process.env[`${prefix}CLAUDE_AUTH_MODE`] as ProviderConfig['claudeAuthMode'] | undefined,
-      opencodeWorkspaceId: process.env[`${prefix}OPENCODE_WORKSPACE_ID`] || undefined,
-      defaultProgressItem: process.env[`${prefix}DEFAULT_PROGRESS_ITEM`] || undefined,
+      refreshInterval: asNumber(obj.refreshInterval) ?? 0,
+      region: asString(obj.region),
+      name: asString(obj.name),
+      claudeAuthMode: asString(obj.claudeAuthMode) as ProviderConfig['claudeAuthMode'] | undefined,
+      opencodeWorkspaceId: asString(obj.opencodeWorkspaceId),
+      defaultProgressItem: asString(obj.defaultProgressItem),
       source: 'environment' as const,
     });
   });
 
-  return {
-    providers,
-    issues,
-  };
+  return { providers, issues };
 }
 
 export function getAppConfig(): AppConfig {
@@ -629,7 +634,6 @@ export function getAppConfig(): AppConfig {
   const database = asRecord(config.database);
   const auth = asRecord(config.auth);
   const authRateLimit = asRecord(auth.rateLimit);
-  const yamlProviders = parseYamlProviders(config);
   const databaseEngine = (asString(database.engine)
     || process.env.AIMETER_DATABASE_ENGINE
     || 'sqlite') as AppConfig['database']['engine'];
@@ -666,9 +670,44 @@ export function getAppConfig(): AppConfig {
     if (asString(auth.adminRoutePath)?.trim() || process.env.AIMETER_ADMIN_ROUTE_PATH?.trim()) {
       console.warn('[CONFIG] Ignoring AIMETER_ADMIN_ROUTE_PATH from env/config in database mode (managed by bootstrap/DB).');
     }
+    if ((process.env.AIMETER_PROVIDERS_JSON || '').trim()) {
+      console.warn('[CONFIG] Ignoring AIMETER_PROVIDERS_JSON in database mode (providers are managed in DB).');
+    }
+    if (hasLegacyProviderEnv()) {
+      console.warn('[CONFIG] Ignoring deprecated provider env vars in database mode (providers are managed in DB).');
+    }
   }
 
-  const envProviderResult = databaseEnabled ? { providers: null, issues: [] } : parseEnvProviders();
+  const providerIssues: ConfigIssue[] = [];
+  let providersFromJson: ConfiguredProvider[] = [];
+  if (!databaseEnabled) {
+    if (Object.prototype.hasOwnProperty.call(config, 'providers')) {
+      providerIssues.push({
+        code: 'DEPRECATED_PROVIDER_CONFIG_BLOCK',
+        field: 'config.yaml:providers',
+        reason: 'File-based providers configuration has been removed',
+        expected: 'Use AIMETER_PROVIDERS_JSON only',
+        hint: 'Remove providers block from config.yaml and move data to AIMETER_PROVIDERS_JSON.',
+      });
+    }
+    if (hasLegacyProviderEnv()) {
+      providerIssues.push({
+        code: 'DEPRECATED_PROVIDER_ENV_VARS',
+        field: 'AIMETER_PROVIDER_IDS/AIMETER_PROVIDER__*',
+        reason: 'Legacy provider environment variables have been removed',
+        expected: 'Use AIMETER_PROVIDERS_JSON only',
+        hint: 'Migrate legacy provider variables into AIMETER_PROVIDERS_JSON.',
+      });
+    }
+
+    const providersJsonRaw = (process.env.AIMETER_PROVIDERS_JSON || '').trim();
+    if (providersJsonRaw) {
+      const parsed = parseProvidersJson(providersJsonRaw);
+      providersFromJson = parsed.providers || [];
+      providerIssues.push(...parsed.issues);
+    }
+  }
+
   const configCorsOrigins = asStringArray(server.corsOrigins);
   const envCorsOrigins = asStringArray(process.env.AIMETER_CORS_ORIGIN);
   const configuredSessionSecret = asString(auth.sessionSecret) || process.env.AIMETER_AUTH_SESSION_SECRET;
@@ -724,10 +763,10 @@ export function getAppConfig(): AppConfig {
           ?? 300_000,
       },
     },
-    providers: yamlProviders.length > 0 ? yamlProviders : (envProviderResult.providers || []),
+    providers: databaseEnabled ? [] : providersFromJson,
   };
 
-  validateSecurityConfig(cachedConfig, envProviderResult.issues, protocolIssue);
+  validateSecurityConfig(cachedConfig, providerIssues, protocolIssue);
 
   return cachedConfig;
 }

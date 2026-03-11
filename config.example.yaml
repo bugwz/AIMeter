@@ -52,7 +52,7 @@ database:
   # Enable or disable database-backed mode.
   # Allowed:
   # - true: provider config comes from database; history is persisted
-  # - false: provider config comes from this file or provider env vars; history is disabled
+  # - false: provider config comes from AIMETER_PROVIDERS_JSON; history is disabled
   # Built-in default when unset in both env and this file: true
   enabled: true
   # Select database engine.
@@ -149,101 +149,7 @@ auth:
     # Built-in default when unset in both env and this file: 300000
     blockMs: 300000
 
-# Provider list used only when database.enabled = false.
-# When database.enabled = true, runtime provider data is loaded from the database.
-# In that case, this list is ignored for runtime provider loading and is not merged with database providers.
-# Allowed:
-# - YAML object list; each item defines one provider instance
-# Default when unset: empty provider list
-# If AIMETER_PROVIDER_IDS is set in env, it replaces this list entirely.
-# Provider item template:
-# - id: stable provider instance ID
-#   Allowed:
-#   - lowercase snake_case string; should be unique within this list
-# - type: provider type
-#   Allowed:
-#   - aliyun | antigravity | claude | codex | cursor | openrouter | copilot | minimax | zai | kimi | ollama | opencode
-# - name: display name shown in the UI
-#   Allowed:
-#   - any string
-# - authType: credential type
-#   Allowed:
-#   - cookie | api_key | oauth | jwt
-# - credential: raw credential payload
-#   Allowed:
-#   - any non-empty string
-#   - for oauth providers (Claude/Codex/Copilot/Antigravity), you can pass a plain access token string
-#     or a JSON string with token bundle fields such as:
-#     accessToken/access_token, refreshToken/refresh_token, idToken/id_token,
-#     clientId/client_id, clientSecret/client_secret, projectId/project_id/project,
-#     expiresAt/expiry_date
-# - refreshInterval: auto-refresh interval in minutes
-#   Allowed:
-#   - 0: disable scheduled refresh
-#   - any integer greater than 0: refresh interval in minutes
-# - region: provider-specific region selector (optional)
-#   Allowed:
-#   - any provider-defined string, for example minimax_cn
-# - claudeAuthMode: Claude-specific auth mode (optional)
-#   Allowed:
-#   - cookie | oauth
-# - opencodeWorkspaceId: OpenCode-specific workspace ID (optional)
-#   Allowed:
-#   - any string
-providers:
-  - id: antigravity_main
-    type: antigravity
-    name: Antigravity Main
-    authType: oauth
-    credential: replace-with-antigravity-oauth-access-token-or-json-bundle
-    refreshInterval: 5
-
-  - id: minimax_domestic
-    type: minimax
-    name: Domestic
-    authType: api_key
-    credential: replace-with-minimax-api-key
-    refreshInterval: 5
-    region: minimax_cn
-
-  - id: openrouter_test
-    type: openrouter
-    name: Test Account
-    authType: api_key
-    credential: replace-with-openrouter-api-key
-    refreshInterval: 5
-
-  - id: kimi_test
-    type: kimi
-    name: Test
-    authType: api_key
-    credential: replace-with-kimi-api-key
-    refreshInterval: 5
-
-  - id: codex_test
-    type: codex
-    name: Test
-    authType: oauth
-    credential: replace-with-codex-oauth-access-token-or-json-bundle
-    refreshInterval: 5
-
-  - id: copilot_test
-    type: copilot
-    name: Test
-    authType: oauth
-    credential: replace-with-copilot-access-token
-    refreshInterval: 5
-
-  - id: ollama_test
-    type: ollama
-    name: Test
-    authType: cookie
-    credential: replace-with-ollama-base-url-or-cookie
-    refreshInterval: 5
-
-  - id: cursor_self
-    type: cursor
-    name: Self
-    authType: cookie
-    credential: replace-with-cursor-cookie
-    refreshInterval: 5
+# Provider configuration in env-only mode is now managed only by AIMETER_PROVIDERS_JSON.
+# The "providers" block in config.yaml has been removed and is no longer supported.
+# Example:
+# AIMETER_PROVIDERS_JSON=[{"id":"primary","type":"cursor","authType":"cookie","credential":"replace-with-cursor-cookie","refreshInterval":5}]
