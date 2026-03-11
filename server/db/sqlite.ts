@@ -41,27 +41,9 @@ class SqliteClient implements DbClient {
   }
 }
 
-function deriveSqliteMockConnection(connection: string): string {
-  const parsed = path.parse(connection);
-  if (parsed.ext) {
-    return path.join(parsed.dir, `${parsed.name}-mock${parsed.ext}`);
-  }
-  return `${connection}-mock`;
-}
-
 function resolveSqliteConnectionPath(): string {
   const appConfig = getAppConfig();
   const baseConnection = appConfig.database.connection || './data/aimeter.db';
-  if (appConfig.runtime.mockEnabled) {
-    const selectedMockConnection = appConfig.database.mockConnection || deriveSqliteMockConnection(baseConnection);
-    const resolvedBase = path.resolve(process.cwd(), baseConnection);
-    const resolvedMock = path.resolve(process.cwd(), selectedMockConnection);
-    if (resolvedBase === resolvedMock) {
-      throw new Error('Mock mode requires an isolated database file. AIMETER_DATABASE_MOCK_CONNECTION must differ from AIMETER_DATABASE_CONNECTION.');
-    }
-    return resolvedMock;
-  }
-
   return path.resolve(process.cwd(), baseConnection);
 }
 

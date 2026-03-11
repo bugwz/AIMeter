@@ -1,37 +1,21 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import crypto from 'crypto';
-import { fileURLToPath } from 'url';
 import { UsageProvider, ProviderConfig, Credential, AuthType, UsageSnapshot, RateWindow } from '../../src/types/index.js';
 import { MOCK_PROVIDER_CONFIGS, MockProviderConfig } from './config.js';
 import { roundPercentage } from '../utils/usageTransformer.js';
 import { getAppConfig } from '../config.js';
 type StoredProviderConfig = Omit<ProviderConfig, 'id'> & { id: number };
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appConfig = getAppConfig();
-
-function deriveSqliteMockConnection(connection: string): string {
-  const parsed = path.parse(connection);
-  if (parsed.ext) {
-    return path.join(parsed.dir, `${parsed.name}-mock${parsed.ext}`);
-  }
-  return `${connection}-mock`;
-}
 
 function resolveMockDatabasePath(): string {
   if (!appConfig.database.enabled) {
     return ':memory:';
   }
 
-  const baseConnection = appConfig.database.connection || path.join(__dirname, '../../data/aimeter.db');
-  const selectedConnection = appConfig.database.mockConnection || deriveSqliteMockConnection(baseConnection);
-  const resolvedBase = path.resolve(process.cwd(), baseConnection);
-  const resolvedMock = path.resolve(process.cwd(), selectedConnection);
-  if (resolvedBase === resolvedMock) {
-    throw new Error('Mock mode requires an isolated database file. AIMETER_DATABASE_MOCK_CONNECTION must differ from AIMETER_DATABASE_CONNECTION.');
-  }
-  return resolvedMock;
+  const baseConnection = appConfig.database.connection || './data/aimeter.db';
+  return path.resolve(process.cwd(), baseConnection);
 }
 
 let db: Database.Database;

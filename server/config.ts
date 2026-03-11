@@ -37,7 +37,6 @@ export interface AppConfig {
     enabled: boolean;
     engine: 'sqlite' | 'postgres' | 'mysql';
     connection: string;
-    mockConnection?: string;
     encryptionKey?: string;
   };
   auth: {
@@ -496,8 +495,6 @@ export function getAppConfig(): AppConfig {
       connection: process.env.AIMETER_DATABASE_CONNECTION
         || asString(database.connection)
         || path.join(projectRoot, 'data/aimeter.db'),
-      mockConnection: process.env.AIMETER_DATABASE_MOCK_CONNECTION
-        || asString(database.mockConnection),
       encryptionKey: process.env.AIMETER_ENCRYPTION_KEY || asString(database.encryptionKey),
     },
     auth: {

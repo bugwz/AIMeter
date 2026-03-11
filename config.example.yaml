@@ -71,12 +71,6 @@ database:
   # - sqlite: ./data/aimeter.db
   # - mysql: mysql://root:password@127.0.0.1:3306/aimeter
   # - postgres: postgresql://postgres:password@127.0.0.1:5432/aimeter
-  # Separate database connection used when mock mode is enabled.
-  # Allowed:
-  # - sqlite file path, for example ./data/aimeter-mock.db: store mock-mode data in a separate SQLite file
-  # Default behavior when unset in both env and this file:
-  # - the app derives a mock DB path from database.connection
-  mockConnection: ./data/aimeter-mock.db
   # Encrypt provider credentials stored in the main database.
   # Allowed:
   # - any non-empty string: used as the encryption secret
