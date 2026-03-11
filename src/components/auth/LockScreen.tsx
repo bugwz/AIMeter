@@ -29,7 +29,7 @@ function validateRouteSecret(value: string): string {
   return '';
 }
 
-function generateAdminRouteSecret(): string {
+function generateAdminRoutePath(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   const bytes = new Uint8Array(64);
   window.crypto.getRandomValues(bytes);
@@ -47,7 +47,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
   const [mode, setMode] = useState<LockMode>('check');
   const [password, setPassword] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
-  const [adminRouteSecret, setAdminRouteSecret] = useState(generateAdminRouteSecret);
+  const [adminRoutePath, setAdminRoutePath] = useState(generateAdminRoutePath);
   const [authMutable, setAuthMutable] = useState(true);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -162,7 +162,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
     try {
       if (mode === 'bootstrap') {
         if (!authMutable) {
-          throw new Error('Current deployment requires normal/admin passwords and admin route secret to be provided in config');
+          throw new Error('Current deployment requires normal/admin passwords and admin route path to be provided in config');
         }
         if (password.length < MIN_PASSWORD_LENGTH || adminPassword.length < MIN_PASSWORD_LENGTH) {
           throw new Error(`Normal and admin passwords must both be at least ${MIN_PASSWORD_LENGTH} characters`);
@@ -170,11 +170,11 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
         if (password === adminPassword) {
           throw new Error('Normal and admin passwords must be different');
         }
-        const secretError = validateRouteSecret(adminRouteSecret);
+        const secretError = validateRouteSecret(adminRoutePath);
         if (secretError) {
           throw new Error(secretError);
         }
-        await apiService.bootstrapSetup(password, adminPassword, adminRouteSecret.trim());
+        await apiService.bootstrapSetup(password, adminPassword, adminRoutePath.trim());
         sessionStorage.setItem(sessionKey, 'true');
         onUnlock();
         return;
@@ -238,7 +238,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
       : (role === 'admin' ? 'Enter Admin Password' : 'Enter Password');
 
   const subtitle = mode === 'bootstrap'
-    ? 'Create the normal password, admin password, and 64-character admin route secret'
+    ? 'Create the normal password, admin password, and 64-character admin route path'
     : mode === 'setup'
       ? (role === 'admin' ? 'Create a password to protect the admin console' : 'Create a password to protect your dashboard')
       : (role === 'admin' ? 'Enter your admin password to access the full management console' : 'Enter your password to access the dashboard');
@@ -333,24 +333,24 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
               </div>
               <div>
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <label className="block text-xs font-medium text-[var(--color-text-secondary)]">Admin Route Secret</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-secondary)]">Admin Route Path</label>
                   <button
                     type="button"
-                    onClick={() => setAdminRouteSecret(generateAdminRouteSecret())}
+                    onClick={() => setAdminRoutePath(generateAdminRoutePath())}
                     className="text-xs font-medium text-[var(--color-accent)] hover:opacity-80"
                   >
                     Regenerate
                   </button>
                 </div>
                 <textarea
-                  value={adminRouteSecret}
-                  onChange={(e) => setAdminRouteSecret(e.target.value)}
+                  value={adminRoutePath}
+                  onChange={(e) => setAdminRoutePath(e.target.value)}
                   placeholder="64-character alphanumeric secret"
                   className="input-field w-full min-h-[112px] resize-y font-mono text-xs"
                 />
                 {(() => {
-                  const secretError = validateRouteSecret(adminRouteSecret);
-                  const trimmed = adminRouteSecret.trim();
+                  const secretError = validateRouteSecret(adminRoutePath);
+                  const trimmed = adminRoutePath.trim();
                   const isValid = !secretError && trimmed.length === ROUTE_SECRET_LENGTH;
                   return (
                     <p className={`mt-2 rounded-md border px-3 py-2 text-xs font-medium ${isValid ? 'border-[var(--color-accent)]/40 bg-[var(--color-accent-subtle)] text-[var(--color-text-primary)]' : 'border-[#f87171]/40 bg-[#f87171]/10 text-[#f87171]'}`}>
@@ -358,7 +358,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
                         <span>{secretError}</span>
                       ) : (
                         <>
-                          <span>Admin route secret length: {trimmed.length}/{ROUTE_SECRET_LENGTH}. Letters and numbers only.</span>
+                          <span>Admin route path length: {trimmed.length}/{ROUTE_SECRET_LENGTH}. Letters and numbers only.</span>
                           <span className="mt-1 block font-mono text-[11px] break-all">
                             Admin console path preview: /{trimmed || '<admin-route-secret>'}
                           </span>

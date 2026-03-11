@@ -61,7 +61,7 @@ curl http://localhost:3001/api/auth/normal/status
 
 ### `POST /api/auth/bootstrap`
 
-**First-time initialization**: sets the normal password, admin password, and admin route secret in a single call. Returns 410 on all subsequent calls.
+**First-time initialization**: sets the normal password, admin password, and admin route path in a single call. Returns 410 on all subsequent calls.
 
 #### Authentication
 
@@ -73,7 +73,7 @@ None (public, one-time endpoint).
 {
   "normalPassword": "mypassword123",
   "adminPassword": "adminpass456",
-  "adminRouteSecret": "abcdefghij1234567890abcdefghij1234567890abcdefghij1234567890abcd"
+  "adminRoutePath": "abcdefghij1234567890abcdefghij1234567890abcdefghij1234567890abcd"
 }
 ```
 
@@ -81,7 +81,7 @@ None (public, one-time endpoint).
 |-------|------|----------|-------------|
 | `normalPassword` | string | Yes | At least 12 characters, must contain letters and digits |
 | `adminPassword` | string | Yes | Same rules; must differ from `normalPassword` |
-| `adminRouteSecret` | string | Yes | Exactly 64 alphanumeric characters (no special characters) |
+| `adminRoutePath` | string | Yes | Exactly 64 alphanumeric characters (no special characters) |
 
 #### Request Example
 
@@ -91,7 +91,7 @@ curl -X POST http://localhost:3001/api/auth/bootstrap \
   -d '{
     "normalPassword": "mypassword123",
     "adminPassword": "adminpass456",
-    "adminRouteSecret": "abcdefghij1234567890abcdefghij1234567890abcdefghij1234567890abcd"
+    "adminRoutePath": "abcdefghij1234567890abcdefghij1234567890abcdefghij1234567890abcd"
   }'
 ```
 
@@ -116,7 +116,7 @@ A session cookie for the `normal` role is automatically set on success.
 | 410 | `BOOTSTRAP_DISABLED` | Setup already completed; endpoint is permanently disabled |
 | 429 | `RATE_LIMITED` | Too many requests |
 | 400 | `INVALID_PASSWORD` | Password fails length/character/uniqueness rule |
-| 400 | `INVALID_ADMIN_ROUTE_SECRET` | Secret is not exactly 64 alphanumeric characters |
+| 400 | `INVALID_ADMIN_ROUTE_PATH` | Secret is not exactly 64 alphanumeric characters |
 | 409 | `READONLY_STORAGE` | Storage is read-only |
 | 500 | `INTERNAL_ERROR` | Server error |
 

@@ -96,10 +96,10 @@ router.post('/bootstrap', async (req, res) => {
   }
 
 
-  const { normalPassword, adminPassword, adminRouteSecret } = req.body as {
+  const { normalPassword, adminPassword, adminRoutePath } = req.body as {
     normalPassword?: string;
     adminPassword?: string;
-    adminRouteSecret?: string;
+    adminRoutePath?: string;
   };
 
   const passwordError = validatePasswordStrength(normalPassword) || validatePasswordStrength(adminPassword);
@@ -116,13 +116,13 @@ router.post('/bootstrap', async (req, res) => {
     });
   }
 
-  const normalizedSecret = typeof adminRouteSecret === 'string' ? adminRouteSecret.trim() : '';
+  const normalizedSecret = typeof adminRoutePath === 'string' ? adminRoutePath.trim() : '';
   if (normalizedSecret.length !== 64) {
     return res.status(400).json({
       success: false,
       error: {
-        code: 'INVALID_ADMIN_ROUTE_SECRET',
-        message: 'Admin route secret must be exactly 64 characters',
+        code: 'INVALID_ADMIN_ROUTE_PATH',
+        message: 'Admin route path must be exactly 64 characters',
       },
     });
   }
@@ -130,8 +130,8 @@ router.post('/bootstrap', async (req, res) => {
     return res.status(400).json({
       success: false,
       error: {
-        code: 'INVALID_ADMIN_ROUTE_SECRET',
-        message: 'Admin route secret must contain only letters and digits (no special characters)',
+        code: 'INVALID_ADMIN_ROUTE_PATH',
+        message: 'Admin route path must contain only letters and digits (no special characters)',
       },
     });
   }
@@ -143,8 +143,8 @@ router.post('/bootstrap', async (req, res) => {
     if (!await storage.getPasswordHash('admin')) {
       await storage.setPassword('admin', adminPassword);
     }
-    if (!await storage.getAdminRouteSecret()) {
-      await storage.setAdminRouteSecret(normalizedSecret);
+    if (!await storage.getAdminRoutePath()) {
+      await storage.setAdminRoutePath(normalizedSecret);
     }
   } catch (error) {
     const readonly = tryParseReadonlyError(error);
@@ -171,7 +171,7 @@ router.post('/bootstrap', async (req, res) => {
   res.json({
     success: true,
     data: {
-      adminBasePath: `/${await storage.getAdminRouteSecret()}`,
+      adminBasePath: `/${await storage.getAdminRoutePath()}`,
       message: 'Initial setup completed successfully',
     },
   });

@@ -70,7 +70,7 @@ export async function createApp(): Promise<express.Application> {
   }
 
   async function getAdminBasePath(): Promise<string | null> {
-    const secret = await storage.getAdminRouteSecret();
+    const secret = await storage.getAdminRoutePath();
     return secret ? `/${secret}` : null;
   }
 

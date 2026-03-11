@@ -43,7 +43,7 @@ TIMESTAMP="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date)"
 
 ENCRYPTION_KEY="$(rand_hex 32)"        # 64 hex chars
 SESSION_SECRET="$(rand_hex 32)"        # 64 hex chars
-ADMIN_ROUTE_SECRET="$(rand_hex 32)"    # 64 hex chars (exactly 64 required)
+ADMIN_ROUTE_PATH="$(rand_hex 32)"    # 64 hex chars (exactly 64 required)
 
 printf '# AIMeter secrets — generated %s\n' "$TIMESTAMP"
 printf '# Copy the values you need into your config file or environment.\n'
@@ -53,4 +53,4 @@ printf 'AIMETER_ENCRYPTION_KEY=%s\n' "$ENCRYPTION_KEY"
 printf 'AIMETER_AUTH_SESSION_SECRET=%s\n' "$SESSION_SECRET"
 printf '\n'
 printf '# Optional — protects the admin route (must be exactly 64 characters):\n'
-printf 'AIMETER_ADMIN_ROUTE_SECRET=%s\n' "$ADMIN_ROUTE_SECRET"
+printf 'AIMETER_ADMIN_ROUTE_PATH=%s\n' "$ADMIN_ROUTE_PATH"

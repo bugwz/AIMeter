@@ -38,7 +38,7 @@ app.use(express.static(path.join(__dirname, '../public'), { index: false }));
 app.use(express.static(path.join(__dirname, '../dist'), { index: false }));
 
 app.get('*', async (req, res) => {
-  const secret = await storage.getAdminRouteSecret();
+  const secret = await storage.getAdminRoutePath();
   const adminBasePath = secret ? `/${secret}` : null;
 
   if (adminBasePath && (req.path === adminBasePath || req.path.startsWith(`${adminBasePath}/`))) {

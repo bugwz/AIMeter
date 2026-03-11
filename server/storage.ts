@@ -86,7 +86,7 @@ const ROLE_PASSWORD_KEYS: Record<AuthRole, string> = {
   normal: 'normal_password_hash',
   admin: 'admin_password_hash',
 };
-const ADMIN_ROUTE_SECRET_KEY = 'admin_route_secret';
+const ADMIN_ROUTE_PATH_KEY = 'admin_route_path';
 const CRON_SECRET_KEY = 'cron_secret';
 const ENDPOINT_SECRET_KEY = 'endpoint_secret';
 const PASSWORD_SCHEME = 'pbkdf2_sha256';
@@ -102,8 +102,8 @@ function getConfiguredPasswordHash(role: AuthRole): string | null {
   return appConfig.auth.adminPasswordHash || null;
 }
 
-function getConfiguredAdminRouteSecret(): string | null {
-  return appConfig.auth.adminRouteSecret || null;
+function getConfiguredAdminRoutePath(): string | null {
+  return appConfig.auth.adminRoutePath || null;
 }
 
 function getPasswordSettingKey(role: AuthRole): string {
@@ -328,18 +328,18 @@ export const storage = {
     return getDbSetting(getPasswordSettingKey(role));
   },
 
-  async getAdminRouteSecret(): Promise<string | null> {
+  async getAdminRoutePath(): Promise<string | null> {
     if (runtimeConfig.storageMode === 'env') {
-      return getConfiguredAdminRouteSecret();
+      return getConfiguredAdminRoutePath();
     }
-    return getDbSetting(ADMIN_ROUTE_SECRET_KEY);
+    return getDbSetting(ADMIN_ROUTE_PATH_KEY);
   },
 
-  async setAdminRouteSecret(value: string): Promise<void> {
+  async setAdminRoutePath(value: string): Promise<void> {
     if (runtimeConfig.isReadonlyAuth) {
-      throw new ReadonlyAdminRouteError('Admin route secret is managed by environment variables');
+      throw new ReadonlyAdminRouteError('Admin route path is managed by environment variables');
     }
-    await setDbSetting(ADMIN_ROUTE_SECRET_KEY, value);
+    await setDbSetting(ADMIN_ROUTE_PATH_KEY, value);
   },
 
   async getCronSecret(): Promise<string | null> {
@@ -372,7 +372,7 @@ export const storage = {
     if (runtimeConfig.storageMode !== 'database') {
       return false;
     }
-    return !(await storage.getPasswordHash('normal')) || !(await storage.getPasswordHash('admin')) || !(await storage.getAdminRouteSecret());
+    return !(await storage.getPasswordHash('normal')) || !(await storage.getPasswordHash('admin')) || !(await storage.getAdminRoutePath());
   },
 
   async listProviders(): Promise<ProviderInstance[]> {
@@ -575,8 +575,8 @@ export const storage = {
       if (Object.values(ROLE_PASSWORD_KEYS).includes(key as (typeof ROLE_PASSWORD_KEYS)[AuthRole])) {
         throw new ReadonlyAuthError('Authentication is managed by environment variables');
       }
-      if (key === ADMIN_ROUTE_SECRET_KEY) {
-        throw new ReadonlyAdminRouteError('Admin route secret is managed by environment variables');
+      if (key === ADMIN_ROUTE_PATH_KEY) {
+        throw new ReadonlyAdminRouteError('Admin route path is managed by environment variables');
       }
       throw new ReadonlyStoreError('Settings are not writable in env storage mode');
     }

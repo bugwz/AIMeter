@@ -110,10 +110,10 @@ Override these only when you need a fixed value (e.g. multiple instances sharing
 | `AIMETER_RUNTIME_MODE` | `node` | Timer mode: `node` (built-in) or `serverless` (external trigger) |
 | `AIMETER_SECURE_COOKIE` | `true` | Require HTTPS for session cookies |
 | `AIMETER_TRUST_PROXY` | `true` | Trust `X-Forwarded-*` headers from nginx |
-| `AIMETER_ADMIN_ROUTE_SECRET` | _(unset)_ | Secret to protect the admin route (recommended) |
+| `AIMETER_ADMIN_ROUTE_PATH` | _(unset)_ | Secret to protect the admin route (recommended) |
 
 ## Security Notes
 
 - `AIMETER_ENCRYPTION_KEY` and `AIMETER_AUTH_SESSION_SECRET` are auto-generated on first start and persisted in the database — no manual setup required. If you set them explicitly, use strong random values.
 - Self-signed certificates are suitable for local use only. Use a CA-signed certificate for production.
-- Set `AIMETER_ADMIN_ROUTE_SECRET` to a strong secret to restrict access to the admin route.
+- Set `AIMETER_ADMIN_ROUTE_PATH` to a strong secret to restrict access to the admin route.

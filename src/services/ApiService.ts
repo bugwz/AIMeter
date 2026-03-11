@@ -517,11 +517,11 @@ class ApiService {
     }
   }
 
-  async bootstrapSetup(normalPassword: string, adminPassword: string, adminRouteSecret: string): Promise<{ adminBasePath: string }> {
+  async bootstrapSetup(normalPassword: string, adminPassword: string, adminRoutePath: string): Promise<{ adminBasePath: string }> {
     const response = await this.client.post<ApiResponse<{ adminBasePath: string }>>('/auth/bootstrap', {
       normalPassword,
       adminPassword,
-      adminRouteSecret,
+      adminRoutePath,
     });
     if (!response.data.success) {
       throw new Error(response.data.error?.message || 'Failed to complete initial setup');

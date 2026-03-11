@@ -102,8 +102,8 @@ curl "http://localhost:3001/api/entry-context?path=/"
 
 | Field | Description |
 |-------|-------------|
-| `role` | `"normal"` or `"admin"` depending on whether `path` matches the configured admin route secret |
-| `basePath` | Base path for the role — the admin route secret path for admin, `/` for normal |
+| `role` | `"normal"` or `"admin"` depending on whether `path` matches the configured admin route path |
+| `basePath` | Base path for the role — the admin route path path for admin, `/` for normal |
 | `invalidAdminPath` | Reserved field; always `false` |
 
 The frontend uses `role` and `basePath` to bootstrap the correct UI.

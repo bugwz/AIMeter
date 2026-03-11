@@ -46,7 +46,7 @@ export interface AppConfig {
     secureCookie: boolean;
     normalPasswordHash?: string;
     adminPasswordHash?: string;
-    adminRouteSecret?: string;
+    adminRoutePath?: string;
     cronSecret?: string;
     endpointSecret?: string;
     rateLimit: {
@@ -318,7 +318,7 @@ function isWeakSecret(value: string | undefined, placeholders: string[] = []): b
   return false;
 }
 
-function isWeakAdminRouteSecret(value: string | undefined): boolean {
+function isWeakAdminRoutePath(value: string | undefined): boolean {
   const trimmed = value?.trim();
   if (!trimmed) return true;
   if (trimmed.length !== 64) return true;
@@ -336,8 +336,8 @@ function validateSecurityConfig(config: AppConfig): void {
     if (config.database.enabled && config.database.encryptionKey && isWeakSecret(config.database.encryptionKey, ['aimeter-secret-key'])) {
       console.warn('[SECURITY] encryptionKey is set but weak. Set AIMETER_ENCRYPTION_KEY to a strong random secret.');
     }
-    if (config.auth.adminRouteSecret && isWeakAdminRouteSecret(config.auth.adminRouteSecret)) {
-      console.warn('[SECURITY] adminRouteSecret is weak or invalid. Set AIMETER_ADMIN_ROUTE_SECRET to exactly 64 random characters before deploying to production.');
+    if (config.auth.adminRoutePath && isWeakAdminRoutePath(config.auth.adminRoutePath)) {
+      console.warn('[SECURITY] adminRoutePath is weak or invalid. Set AIMETER_ADMIN_ROUTE_PATH to exactly 64 random characters before deploying to production.');
     }
     return;
   }
@@ -359,8 +359,8 @@ function validateSecurityConfig(config: AppConfig): void {
     throw new Error('Security check failed: AIMETER_ENCRYPTION_KEY is set but too weak. Use a strong random secret.');
   }
 
-  if (config.auth.adminRouteSecret && isWeakAdminRouteSecret(config.auth.adminRouteSecret)) {
-    throw new Error('Security check failed: AIMETER_ADMIN_ROUTE_SECRET must be exactly 64 random characters in production.');
+  if (config.auth.adminRoutePath && isWeakAdminRoutePath(config.auth.adminRoutePath)) {
+    throw new Error('Security check failed: AIMETER_ADMIN_ROUTE_PATH must be exactly 64 random characters in production.');
   }
 
 }
@@ -514,8 +514,8 @@ export function getAppConfig(): AppConfig {
         || asString(auth.normalPasswordHash),
       adminPasswordHash: process.env.AIMETER_ADMIN_PASSWORD_HASH
         || asString(auth.adminPasswordHash),
-      adminRouteSecret: process.env.AIMETER_ADMIN_ROUTE_SECRET
-        || asString(auth.adminRouteSecret),
+      adminRoutePath: process.env.AIMETER_ADMIN_ROUTE_PATH
+        || asString(auth.adminRoutePath),
       cronSecret: process.env.AIMETER_CRON_SECRET
         || asString(auth.cronSecret),
       endpointSecret: process.env.AIMETER_ENDPOINT_SECRET?.trim() || asString(auth.endpointSecret) || undefined,
