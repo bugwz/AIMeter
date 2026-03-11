@@ -84,6 +84,7 @@ function LabelWithHint({ label, hint }: { label: string; hint: string }) {
         <button
           ref={hintButtonRef}
           type="button"
+          tabIndex={-1}
           className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)] focus:outline-none focus-visible:text-[var(--color-text-secondary)]"
           aria-label={`${label} description`}
           onMouseEnter={() => {
@@ -443,6 +444,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
+                      tabIndex={-1}
                       onClick={() => {
                         setIsAdminRouteCopied(false);
                         setAdminRoutePath(generateAdminRoutePath());
@@ -464,6 +466,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
                   />
                   <button
                     type="button"
+                    tabIndex={-1}
                     onClick={handleCopyAdminRoutePath}
                     className={`absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md border transition-colors ${isAdminRouteCopied ? 'border-[var(--color-accent)] bg-[var(--color-accent-subtle)] text-[var(--color-accent)]' : 'border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-primary)]'}`}
                     aria-label={isAdminRouteCopied ? 'Copied' : 'Copy admin route path'}
