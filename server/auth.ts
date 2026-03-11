@@ -12,7 +12,7 @@ const SESSION_COOKIE_NAMES: Record<AuthRole, string> = {
 const appConfig = getAppConfig();
 const SESSION_TTL_SECONDS = Math.max(appConfig.auth.sessionTtlSeconds || 12 * 60 * 60, 300);
 let SESSION_SECRET = appConfig.auth.sessionSecret || crypto.randomBytes(32).toString('hex');
-const IS_PROD = appConfig.auth.secureCookie === true;
+const USE_SECURE_COOKIE = appConfig.server.protocol === 'https';
 
 if (!appConfig.auth.sessionSecret) {
   console.warn('[SECURITY] AIMETER_AUTH_SESSION_SECRET is not set. In database mode it will be loaded from the database; otherwise sessions will be invalidated on restart.');
@@ -109,7 +109,7 @@ export function setSessionCookie(role: AuthRole, res: Response, token: string): 
     `Max-Age=${SESSION_TTL_SECONDS}`,
   ];
 
-  if (IS_PROD) {
+  if (USE_SECURE_COOKIE) {
     cookieParts.push('Secure');
   }
 
@@ -126,7 +126,7 @@ export function clearSessionCookie(role: AuthRole, res: Response): void {
     'Max-Age=0',
   ];
 
-  if (IS_PROD) {
+  if (USE_SECURE_COOKIE) {
     cookieParts.push('Secure');
   }
 

@@ -26,12 +26,11 @@ export interface AppConfig {
     frontendPort: number;
     backendPort: number;
     corsOrigins: string[];
-    trustProxy: boolean;
+    protocol: 'http' | 'https';
   };
   runtime: {
     mockEnabled: boolean;
     mode: 'node' | 'serverless';
-    isProduction: boolean;
   };
   database: {
     enabled: boolean;
@@ -42,7 +41,6 @@ export interface AppConfig {
   auth: {
     sessionSecret?: string;
     sessionTtlSeconds: number;
-    secureCookie: boolean;
     normalPassword?: string;
     adminPassword?: string;
     adminRoutePath?: string;
@@ -60,6 +58,20 @@ export interface AppConfig {
 interface ParsedLine {
   indent: number;
   content: string;
+}
+
+interface ConfigIssue {
+  code: string;
+  field: string;
+  reason: string;
+  expected: string;
+  actualMasked?: string;
+  hint: string;
+}
+
+interface ParseEnvProvidersResult {
+  providers: ConfiguredProvider[] | null;
+  issues: ConfigIssue[];
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -310,10 +322,6 @@ function parseEnvNumber(value: string | undefined): number | undefined {
   return parsed;
 }
 
-function isProductionRuntime(): boolean {
-  return (process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
-}
-
 function isWeakSecret(value: string | undefined, placeholders: string[] = []): boolean {
   const trimmed = value?.trim();
   if (!trimmed) return true;
@@ -342,54 +350,158 @@ function isWeakIntegrationSecret(value: string | undefined): boolean {
   return false;
 }
 
-function validateSecurityConfig(config: AppConfig): void {
-  if (!config.runtime.isProduction) {
-    // Emit warnings so developers catch misconfigurations before going to production.
-    if (isWeakSecret(config.auth.sessionSecret) && !config.database.enabled) {
-      console.warn('[SECURITY] sessionSecret is weak or unset. Set AIMETER_AUTH_SESSION_SECRET before deploying to production.');
+function maskSecret(value: string | undefined): string {
+  const trimmed = value?.trim();
+  if (!trimmed) return '<unset>';
+  return `<redacted len=${trimmed.length}>`;
+}
+
+function collectSecurityIssues(config: AppConfig, providerIssues: ConfigIssue[], protocolIssue: ConfigIssue | null): ConfigIssue[] {
+  const issues: ConfigIssue[] = [];
+
+  if (protocolIssue) {
+    issues.push(protocolIssue);
+  }
+
+  issues.push(...providerIssues);
+
+  if (!config.database.enabled) {
+    if (!config.auth.sessionSecret) {
+      issues.push({
+        code: 'MISSING_SESSION_SECRET',
+        field: 'AIMETER_AUTH_SESSION_SECRET',
+        reason: 'Session secret is required in env-only mode',
+        expected: 'A non-empty strong secret (>=24 chars)',
+        actualMasked: '<unset>',
+        hint: 'Set AIMETER_AUTH_SESSION_SECRET to a strong random value.',
+      });
+    } else if (isWeakSecret(config.auth.sessionSecret)) {
+      issues.push({
+        code: 'WEAK_SESSION_SECRET',
+        field: 'AIMETER_AUTH_SESSION_SECRET',
+        reason: 'Session secret is too weak',
+        expected: 'A strong random secret with at least 24 characters',
+        actualMasked: maskSecret(config.auth.sessionSecret),
+        hint: 'Generate one with: openssl rand -hex 16',
+      });
     }
-    if (config.database.enabled && config.database.encryptionKey && isWeakSecret(config.database.encryptionKey, ['aimeter-secret-key'])) {
-      console.warn('[SECURITY] encryptionKey is set but weak. Set AIMETER_ENCRYPTION_KEY to a strong random secret.');
+
+    if (!config.auth.normalPassword) {
+      issues.push({
+        code: 'MISSING_NORMAL_PASSWORD',
+        field: 'AIMETER_NORMAL_PASSWORD',
+        reason: 'Normal password is required in env-only mode',
+        expected: 'Password with >=12 chars containing letters and digits',
+        actualMasked: '<unset>',
+        hint: 'Set AIMETER_NORMAL_PASSWORD in env/config for env-only deployment.',
+      });
     }
-    if (config.auth.adminRoutePath && isWeakAdminRoutePath(config.auth.adminRoutePath)) {
-      console.warn('[SECURITY] adminRoutePath is weak or invalid. Set AIMETER_ADMIN_ROUTE_PATH to exactly 32 random characters before deploying to production.');
+    if (!config.auth.adminPassword) {
+      issues.push({
+        code: 'MISSING_ADMIN_PASSWORD',
+        field: 'AIMETER_ADMIN_PASSWORD',
+        reason: 'Admin password is required in env-only mode',
+        expected: 'Password with >=12 chars containing letters and digits',
+        actualMasked: '<unset>',
+        hint: 'Set AIMETER_ADMIN_PASSWORD in env/config for env-only deployment.',
+      });
     }
-    if (config.auth.cronSecret && isWeakIntegrationSecret(config.auth.cronSecret)) {
-      console.warn('[SECURITY] cronSecret is weak or invalid. Set AIMETER_CRON_SECRET to exactly 32 random characters before deploying to production.');
+    if (
+      config.auth.normalPassword
+      && config.auth.adminPassword
+      && config.auth.normalPassword === config.auth.adminPassword
+    ) {
+      issues.push({
+        code: 'DUPLICATE_PASSWORDS',
+        field: 'AIMETER_NORMAL_PASSWORD,AIMETER_ADMIN_PASSWORD',
+        reason: 'Normal and admin passwords must not be the same',
+        expected: 'Two different password values',
+        hint: 'Use different credentials for normal/admin roles.',
+      });
     }
-    if (config.auth.endpointSecret && isWeakIntegrationSecret(config.auth.endpointSecret)) {
-      console.warn('[SECURITY] endpointSecret is weak or invalid. Set AIMETER_ENDPOINT_SECRET to exactly 32 random characters before deploying to production.');
+
+    if (!config.auth.adminRoutePath) {
+      issues.push({
+        code: 'MISSING_ADMIN_ROUTE_PATH',
+        field: 'AIMETER_ADMIN_ROUTE_PATH',
+        reason: 'Admin route path is required in env-only mode',
+        expected: 'Exactly 32 random alphanumeric characters',
+        actualMasked: '<unset>',
+        hint: 'Set AIMETER_ADMIN_ROUTE_PATH to a 32-char random value.',
+      });
+    } else if (isWeakAdminRoutePath(config.auth.adminRoutePath)) {
+      issues.push({
+        code: 'WEAK_ADMIN_ROUTE_PATH',
+        field: 'AIMETER_ADMIN_ROUTE_PATH',
+        reason: 'Admin route path is weak or invalid',
+        expected: 'Exactly 32 random alphanumeric characters',
+        actualMasked: maskSecret(config.auth.adminRoutePath),
+        hint: 'Regenerate a 32-char random path with only letters/numbers.',
+      });
+    }
+
+    if (config.providers.length === 0) {
+      issues.push({
+        code: 'MISSING_PROVIDERS',
+        field: 'providers',
+        reason: 'No providers configured in env-only mode',
+        expected: 'At least one provider from config.yaml or AIMETER_PROVIDER_IDS/env overrides',
+        hint: 'Configure providers in config.yaml or set AIMETER_PROVIDER_IDS + provider env variables.',
+      });
+    }
+  }
+
+  if (config.auth.cronSecret && isWeakIntegrationSecret(config.auth.cronSecret)) {
+    issues.push({
+      code: 'WEAK_CRON_SECRET',
+      field: 'AIMETER_CRON_SECRET',
+      reason: 'Cron secret is weak or invalid',
+      expected: 'Exactly 32 random characters when set',
+      actualMasked: maskSecret(config.auth.cronSecret),
+      hint: 'Regenerate a strong 32-char secret.',
+    });
+  }
+  if (config.auth.endpointSecret && isWeakIntegrationSecret(config.auth.endpointSecret)) {
+    issues.push({
+      code: 'WEAK_ENDPOINT_SECRET',
+      field: 'AIMETER_ENDPOINT_SECRET',
+      reason: 'Endpoint secret is weak or invalid',
+      expected: 'Exactly 32 random characters when set',
+      actualMasked: maskSecret(config.auth.endpointSecret),
+      hint: 'Regenerate a strong 32-char secret.',
+    });
+  }
+
+  return issues;
+}
+
+function validateSecurityConfig(config: AppConfig, providerIssues: ConfigIssue[], protocolIssue: ConfigIssue | null): void {
+  const issues = collectSecurityIssues(config, providerIssues, protocolIssue);
+  if (issues.length === 0) {
+    if (!config.database.enabled) {
+      console.log(`[CONFIG] Validation passed (mode=env, protocol=${config.server.protocol})`);
     }
     return;
   }
 
-  // If a value is explicitly set but weak, always reject it.
-  // If unset and database mode is enabled, allow it — secrets are auto-managed in the DB.
-  if (config.auth.sessionSecret && isWeakSecret(config.auth.sessionSecret)) {
-    throw new Error('Security check failed: AIMETER_AUTH_SESSION_SECRET is set but too weak. Use a strong random secret.');
+  console.error(config.database.enabled
+    ? '[CONFIG] Validation failed (database mode)'
+    : '[CONFIG] Validation failed (env-only)');
+  for (const issue of issues) {
+    const details = [
+      `[CONFIG][${issue.code}] field=${issue.field}`,
+      `reason=${issue.reason}`,
+      `expected=${issue.expected}`,
+    ];
+    if (issue.actualMasked) {
+      details.push(`actual=${issue.actualMasked}`);
+    }
+    details.push(`hint=${issue.hint}`);
+    console.error(details.join(' | '));
   }
-  if (!config.auth.sessionSecret && !config.database.enabled) {
-    throw new Error('Security check failed: AIMETER_AUTH_SESSION_SECRET must be set to a strong secret in production.');
-  }
+  console.error(`[CONFIG] Total issues: ${issues.length}`);
 
-  if (!config.auth.secureCookie) {
-    throw new Error('Security check failed: secureCookie must be enabled in production.');
-  }
-
-  if (config.database.enabled && config.database.encryptionKey && isWeakSecret(config.database.encryptionKey, ['aimeter-secret-key'])) {
-    throw new Error('Security check failed: AIMETER_ENCRYPTION_KEY is set but too weak. Use a strong random secret.');
-  }
-
-  if (config.auth.adminRoutePath && isWeakAdminRoutePath(config.auth.adminRoutePath)) {
-    throw new Error('Security check failed: AIMETER_ADMIN_ROUTE_PATH must be exactly 32 random characters in production.');
-  }
-  if (config.auth.cronSecret && isWeakIntegrationSecret(config.auth.cronSecret)) {
-    throw new Error('Security check failed: AIMETER_CRON_SECRET must be exactly 32 random characters in production when set.');
-  }
-  if (config.auth.endpointSecret && isWeakIntegrationSecret(config.auth.endpointSecret)) {
-    throw new Error('Security check failed: AIMETER_ENDPOINT_SECRET must be exactly 32 random characters in production when set.');
-  }
-
+  throw new Error(`Configuration validation failed with ${issues.length} issue(s).`);
 }
 
 function asStringArray(value: unknown): string[] {
@@ -440,27 +552,52 @@ function parseYamlProviders(root: UnknownRecord): ConfiguredProvider[] {
     .filter(Boolean) as ConfiguredProvider[];
 }
 
-function parseEnvProviders(): ConfiguredProvider[] | null {
+function parseEnvProviders(): ParseEnvProvidersResult {
   const providerIds = (process.env.AIMETER_PROVIDER_IDS || '')
     .split(',')
     .map((value) => normalizeAlias(value))
     .filter(Boolean);
 
   if (providerIds.length === 0) {
-    return null;
+    return { providers: null, issues: [] };
   }
 
-  return providerIds.map((id) => {
+  const issues: ConfigIssue[] = [];
+  const providers: ConfiguredProvider[] = [];
+
+  providerIds.forEach((id) => {
     const prefix = `AIMETER_PROVIDER__${id.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}__`;
     const provider = (process.env[`${prefix}TYPE`] || '').trim().toLowerCase() as UsageProvider;
     const authType = (process.env[`${prefix}AUTH_TYPE`] || AuthType.COOKIE).trim() as AuthType;
     const credential = process.env[`${prefix}CREDENTIAL`] || '';
 
-    if (!provider || !credential) {
-      throw new Error(`Provider override ${id} is missing required TYPE or CREDENTIAL`);
+    if (!provider) {
+      issues.push({
+        code: 'MISSING_PROVIDER_TYPE',
+        field: `${prefix}TYPE`,
+        reason: `Provider ${id} is missing TYPE`,
+        expected: 'A supported provider type',
+        actualMasked: '<unset>',
+        hint: `Set ${prefix}TYPE (for example: cursor).`,
+      });
     }
 
-    return {
+    if (!credential.trim()) {
+      issues.push({
+        code: 'MISSING_PROVIDER_CREDENTIAL',
+        field: `${prefix}CREDENTIAL`,
+        reason: `Provider ${id} is missing credential`,
+        expected: 'A non-empty credential value',
+        actualMasked: '<unset>',
+        hint: `Set ${prefix}CREDENTIAL to a valid credential payload.`,
+      });
+    }
+
+    if (!provider || !credential.trim()) {
+      return;
+    }
+
+    providers.push({
       id,
       provider,
       authType,
@@ -472,8 +609,13 @@ function parseEnvProviders(): ConfiguredProvider[] | null {
       opencodeWorkspaceId: process.env[`${prefix}OPENCODE_WORKSPACE_ID`] || undefined,
       defaultProgressItem: process.env[`${prefix}DEFAULT_PROGRESS_ITEM`] || undefined,
       source: 'environment' as const,
-    };
+    });
   });
+
+  return {
+    providers,
+    issues,
+  };
 }
 
 export function getAppConfig(): AppConfig {
@@ -487,17 +629,50 @@ export function getAppConfig(): AppConfig {
   const database = asRecord(config.database);
   const auth = asRecord(config.auth);
   const authRateLimit = asRecord(auth.rateLimit);
-  const isProduction = isProductionRuntime();
   const yamlProviders = parseYamlProviders(config);
-  const envProviders = parseEnvProviders();
   const databaseEngine = (asString(database.engine)
     || process.env.AIMETER_DATABASE_ENGINE
     || 'sqlite') as AppConfig['database']['engine'];
   const databaseEnabled = asBoolean(database.enabled)
     ?? parseEnvBoolean(process.env.AIMETER_DATABASE_ENABLED)
     ?? true;
+  const runtimeMode = (asString(runtime.mode) || process.env.AIMETER_RUNTIME_MODE || 'node') as 'node' | 'serverless';
+  const protocolRaw = (asString(server.protocol) || process.env.AIMETER_SERVER_PROTOCOL || '').trim().toLowerCase();
+  const protocolFallback: 'http' | 'https' = runtimeMode === 'serverless' ? 'https' : 'http';
+  let protocol: 'http' | 'https' = protocolFallback;
+  let protocolIssue: ConfigIssue | null = null;
+  if (protocolRaw) {
+    if (protocolRaw === 'http' || protocolRaw === 'https') {
+      protocol = protocolRaw;
+    } else {
+      protocolIssue = {
+        code: 'INVALID_SERVER_PROTOCOL',
+        field: 'AIMETER_SERVER_PROTOCOL',
+        reason: 'Unsupported server protocol value',
+        expected: 'http or https',
+        actualMasked: protocolRaw,
+        hint: 'Set AIMETER_SERVER_PROTOCOL=http or AIMETER_SERVER_PROTOCOL=https.',
+      };
+    }
+  }
+
+  if (databaseEnabled) {
+    if (asString(database.encryptionKey)?.trim() || process.env.AIMETER_ENCRYPTION_KEY?.trim()) {
+      console.warn('[CONFIG] Ignoring AIMETER_ENCRYPTION_KEY from env/config in database mode (auto-managed in DB).');
+    }
+    if (asString(auth.sessionSecret)?.trim() || process.env.AIMETER_AUTH_SESSION_SECRET?.trim()) {
+      console.warn('[CONFIG] Ignoring AIMETER_AUTH_SESSION_SECRET from env/config in database mode (auto-managed in DB).');
+    }
+    if (asString(auth.adminRoutePath)?.trim() || process.env.AIMETER_ADMIN_ROUTE_PATH?.trim()) {
+      console.warn('[CONFIG] Ignoring AIMETER_ADMIN_ROUTE_PATH from env/config in database mode (managed by bootstrap/DB).');
+    }
+  }
+
+  const envProviderResult = databaseEnabled ? { providers: null, issues: [] } : parseEnvProviders();
   const configCorsOrigins = asStringArray(server.corsOrigins);
   const envCorsOrigins = asStringArray(process.env.AIMETER_CORS_ORIGIN);
+  const configuredSessionSecret = asString(auth.sessionSecret) || process.env.AIMETER_AUTH_SESSION_SECRET;
+  const configuredAdminRoutePath = asString(auth.adminRoutePath) || process.env.AIMETER_ADMIN_ROUTE_PATH;
 
   cachedConfig = {
     configFilePath,
@@ -508,16 +683,13 @@ export function getAppConfig(): AppConfig {
       corsOrigins: (Object.prototype.hasOwnProperty.call(server, 'corsOrigins')
         ? configCorsOrigins
         : envCorsOrigins),
-      trustProxy: asBoolean(server.trustProxy)
-        ?? parseEnvBoolean(process.env.AIMETER_TRUST_PROXY)
-        ?? isProduction,
+      protocol,
     },
     runtime: {
       mockEnabled: asBoolean(runtime.mockEnabled)
         ?? parseEnvBoolean(process.env.AIMETER_MOCK_ENABLED)
         ?? false,
-      mode: (asString(runtime.mode) || process.env.AIMETER_RUNTIME_MODE || 'node') as 'node' | 'serverless',
-      isProduction,
+      mode: runtimeMode,
     },
     database: {
       enabled: databaseEnabled,
@@ -525,22 +697,18 @@ export function getAppConfig(): AppConfig {
       connection: asString(database.connection)
         || process.env.AIMETER_DATABASE_CONNECTION
         || path.join(projectRoot, 'data/aimeter.db'),
-      encryptionKey: asString(database.encryptionKey) || process.env.AIMETER_ENCRYPTION_KEY,
+      encryptionKey: databaseEnabled ? undefined : (asString(database.encryptionKey) || process.env.AIMETER_ENCRYPTION_KEY),
     },
     auth: {
-      sessionSecret: asString(auth.sessionSecret) || process.env.AIMETER_AUTH_SESSION_SECRET,
+      sessionSecret: databaseEnabled ? undefined : configuredSessionSecret,
       sessionTtlSeconds: asNumber(auth.sessionTtlSeconds)
         ?? parseEnvNumber(process.env.AIMETER_AUTH_SESSION_TTL_SECONDS)
         ?? 4 * 60 * 60,
-      secureCookie: asBoolean(auth.secureCookie)
-        ?? parseEnvBoolean(process.env.AIMETER_SECURE_COOKIE)
-        ?? isProduction,
       normalPassword: asString(auth.normalPassword)
         || process.env.AIMETER_NORMAL_PASSWORD,
       adminPassword: asString(auth.adminPassword)
         || process.env.AIMETER_ADMIN_PASSWORD,
-      adminRoutePath: asString(auth.adminRoutePath)
-        || process.env.AIMETER_ADMIN_ROUTE_PATH,
+      adminRoutePath: databaseEnabled ? undefined : configuredAdminRoutePath,
       cronSecret: asString(auth.cronSecret)
         || process.env.AIMETER_CRON_SECRET,
       endpointSecret: asString(auth.endpointSecret)?.trim() || process.env.AIMETER_ENDPOINT_SECRET?.trim() || undefined,
@@ -556,10 +724,10 @@ export function getAppConfig(): AppConfig {
           ?? 300_000,
       },
     },
-    providers: yamlProviders.length > 0 ? yamlProviders : (envProviders || []),
+    providers: yamlProviders.length > 0 ? yamlProviders : (envProviderResult.providers || []),
   };
 
-  validateSecurityConfig(cachedConfig);
+  validateSecurityConfig(cachedConfig, envProviderResult.issues, protocolIssue);
 
   return cachedConfig;
 }

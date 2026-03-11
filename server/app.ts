@@ -18,7 +18,6 @@ export async function createApp(): Promise<express.Application> {
   const isMockMode = runtimeConfig.mockEnabled;
   const allowedOrigins = appConfig.server.corsOrigins || [];
   const app = express();
-  app.set('trust proxy', appConfig.server.trustProxy);
 
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -27,7 +26,7 @@ export async function createApp(): Promise<express.Application> {
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'");
-    if (appConfig.runtime.isProduction) {
+    if (appConfig.server.protocol === 'https') {
       res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     }
     next();

@@ -206,7 +206,7 @@ export async function runCommonBootstrap(
           ? initialSecrets?.[key]?.trim()
           : undefined
       );
-      const secretBytes = (key === 'cron_secret' || key === 'endpoint_secret') ? 16 : 32;
+      const secretBytes = 16;
       const secret = configuredSecret || crypto.randomBytes(secretBytes).toString('hex');
       const now = Math.floor(Date.now() / 1000);
       await client.execute(

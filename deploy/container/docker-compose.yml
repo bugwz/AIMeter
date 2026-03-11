@@ -12,21 +12,13 @@ services:
       # Application logs
       # - /opt/aimeter/log:/aimeter/log
     environment:
-      NODE_ENV: production
       # Node.js internal port (nginx proxies :3000 → :3001)
       AIMETER_BACKEND_PORT: 3001
+      # Public protocol used by this deployment
+      AIMETER_SERVER_PROTOCOL: https
       # Database configuration (SQLite)
       AIMETER_DATABASE_ENGINE: sqlite
       AIMETER_DATABASE_CONNECTION: /aimeter/db/aimeter.db
       # Runtime mode: node (built-in timer) or serverless (external trigger)
       AIMETER_RUNTIME_MODE: node
-      # Security keys: auto-generated and stored in the database on first start.
-      # Override only if you need a fixed value (e.g. multi-instance deployments).
-      # AIMETER_ENCRYPTION_KEY:
-      # AIMETER_AUTH_SESSION_SECRET:
-      # HTTPS via nginx (built into container)
-      AIMETER_SECURE_COOKIE: "true"
-      AIMETER_TRUST_PROXY: "true"
-      # Optional configuration
-      # AIMETER_ADMIN_ROUTE_PATH: change-me-32-char-admin-secret
     restart: unless-stopped
