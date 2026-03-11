@@ -117,7 +117,13 @@ function getConfiguredPasswordPlain(role: AuthRole): string | null {
 }
 
 function getConfiguredAdminRoutePath(): string | null {
-  return appConfig.auth.adminRoutePath || null;
+  return normalizeAdminRoutePath(appConfig.auth.adminRoutePath);
+}
+
+function normalizeAdminRoutePath(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().replace(/^\/+|\/+$/g, '');
+  return normalized || null;
 }
 
 function getPasswordSettingKey(role: AuthRole): string {
@@ -356,14 +362,18 @@ export const storage = {
     if (runtimeConfig.storageMode === 'env') {
       return getConfiguredAdminRoutePath();
     }
-    return getDbSetting(ADMIN_ROUTE_PATH_KEY);
+    return normalizeAdminRoutePath(await getDbSetting(ADMIN_ROUTE_PATH_KEY));
   },
 
   async setAdminRoutePath(value: string): Promise<void> {
     if (runtimeConfig.isReadonlyAuth) {
       throw new ReadonlyAdminRouteError('Admin route path is managed by environment variables');
     }
-    await setDbSetting(ADMIN_ROUTE_PATH_KEY, value);
+    const normalized = normalizeAdminRoutePath(value);
+    if (!normalized) {
+      throw new ReadonlyAdminRouteError('Admin route path cannot be empty');
+    }
+    await setDbSetting(ADMIN_ROUTE_PATH_KEY, normalized);
   },
 
   async getCronSecret(): Promise<string | null> {
