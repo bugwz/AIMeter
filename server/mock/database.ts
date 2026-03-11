@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import { createRequire } from 'module';
 import path from 'path';
 import crypto from 'crypto';
 import { UsageProvider, ProviderConfig, Credential, AuthType, UsageSnapshot, RateWindow } from '../../src/types/index.js';
@@ -6,8 +6,27 @@ import { MOCK_PROVIDER_CONFIGS, MockProviderConfig } from './config.js';
 import { roundPercentage } from '../utils/usageTransformer.js';
 import { getAppConfig } from '../config.js';
 type StoredProviderConfig = Omit<ProviderConfig, 'id'> & { id: number };
+type BetterSqliteDatabase = import('better-sqlite3').Database;
+type BetterSqliteCtor = new (filename: string) => BetterSqliteDatabase;
 
 const appConfig = getAppConfig();
+const require = createRequire(import.meta.url);
+let betterSqliteCtor: BetterSqliteCtor | null = null;
+
+function getBetterSqliteCtor(): BetterSqliteCtor {
+  if (betterSqliteCtor) return betterSqliteCtor;
+  try {
+    const mod = require('better-sqlite3') as BetterSqliteCtor | { default: BetterSqliteCtor };
+    betterSqliteCtor = (typeof mod === 'function' ? mod : mod.default);
+    return betterSqliteCtor;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `better-sqlite3 is required only for env-storage mock mode. ` +
+      `Disable AIMETER_MOCK_ENABLED or install better-sqlite3. Inner error: ${message}`,
+    );
+  }
+}
 
 function resolveMockDatabasePath(): string {
   if (!appConfig.database.enabled) {
@@ -18,7 +37,7 @@ function resolveMockDatabasePath(): string {
   return path.resolve(process.cwd(), baseConnection);
 }
 
-let db: Database.Database;
+let db: BetterSqliteDatabase;
 
 function toUnixSeconds(value?: Date | number | string): number {
   if (value instanceof Date) return Math.floor(value.getTime() / 1000);
@@ -55,7 +74,7 @@ function toUnixSecondsValue(value: Date | number | string | undefined): number |
   return undefined;
 }
 
-function migrateMockUsageJsonTimestamps(database: Database.Database): void {
+function migrateMockUsageJsonTimestamps(database: BetterSqliteDatabase): void {
   const rowStmt = database.prepare('SELECT id, progress FROM mock_usage');
   const updateStmt = database.prepare('UPDATE mock_usage SET progress = ? WHERE id = ?');
   const rows = rowStmt.all() as Array<{ id: number; progress: string | null }>;
@@ -173,8 +192,9 @@ function getEncryptionHelpers(): { encrypt: (text: string) => string; decrypt: (
   return { encrypt, decrypt };
 }
 
-export function initMockDatabase(): Database.Database {
-  db = new Database(resolveMockDatabasePath());
+export function initMockDatabase(): BetterSqliteDatabase {
+  const BetterSqlite = getBetterSqliteCtor();
+  db = new BetterSqlite(resolveMockDatabasePath());
   db.pragma('journal_mode = WAL');
   
   db.exec(`
@@ -256,7 +276,7 @@ export function initMockDatabase(): Database.Database {
   return db;
 }
 
-export function getMockDatabase(): Database.Database {
+export function getMockDatabase(): BetterSqliteDatabase {
   if (!db) {
     return initMockDatabase();
   }
