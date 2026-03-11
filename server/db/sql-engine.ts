@@ -436,8 +436,9 @@ export class SqlEngine implements DatabaseEngine {
     const existing = await this.getProvider(uid);
     if (!existing) return;
 
-    const updated = { ...existing, ...updates };
-    const attrs = buildProviderAttrs(updated);
+    const merged = { ...existing, ...updates };
+    const { id: _legacyId, uid: _currentUid, ...attrsSource } = merged;
+    const attrs = buildProviderAttrs(attrsSource);
     let encryptedKey: string;
 
     if (updates.credentials) {
@@ -455,7 +456,7 @@ export class SqlEngine implements DatabaseEngine {
         updated_at = ?
       WHERE uid = ?`,
       [
-        updated.name || null,
+        merged.name || null,
         encryptedKey,
         JSON.stringify(attrs),
         toUnixSeconds(),

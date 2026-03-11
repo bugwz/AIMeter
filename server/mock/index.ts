@@ -278,8 +278,9 @@ app.put('/api/providers/:id', async (req, res) => {
       });
     }
     
+    const { id: _providerId, ...providerConfigInput } = providerConfig;
     const updated: ProviderConfig = {
-      ...providerConfig,
+      ...providerConfigInput,
       refreshInterval: refreshInterval ?? providerConfig.refreshInterval,
       region: region !== undefined ? region : providerConfig.region,
       name: name !== undefined ? name : providerConfig.name,

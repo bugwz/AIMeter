@@ -59,7 +59,7 @@ export function getDatabase(): BetterSqlite3Database {
   return sqliteRaw;
 }
 
-export async function saveProvider(provider: UsageProvider, config: ProviderConfig): Promise<number> {
+export async function saveProvider(provider: UsageProvider, config: ProviderConfig): Promise<string> {
   return (await getEngine()).saveProvider(provider, config);
 }
 
@@ -67,8 +67,8 @@ export async function getAllProviders() {
   return (await getEngine()).getAllProviders();
 }
 
-export async function getProvider(id: number) {
-  return (await getEngine()).getProvider(id);
+export async function getProvider(uid: string) {
+  return (await getEngine()).getProvider(uid);
 }
 
 export async function getFirstProviderByType(provider: UsageProvider) {
@@ -79,47 +79,47 @@ export async function getProviderByName(provider: UsageProvider, name: string) {
   return (await getEngine()).getProviderByName(provider, name);
 }
 
-export async function deleteProvider(id: number): Promise<void> {
-  return (await getEngine()).deleteProvider(id);
+export async function deleteProvider(uid: string): Promise<void> {
+  return (await getEngine()).deleteProvider(uid);
 }
 
-export async function updateProvider(id: number, updates: Partial<ProviderConfig> & { credentials?: Credential }): Promise<void> {
-  return (await getEngine()).updateProvider(id, updates);
+export async function updateProvider(uid: string, updates: Partial<ProviderConfig> & { credentials?: Credential }): Promise<void> {
+  return (await getEngine()).updateProvider(uid, updates);
 }
 
-export async function updateProviderDisplayOrders(items: Array<{ id: number; displayOrder: number }>): Promise<void> {
+export async function updateProviderDisplayOrders(items: Array<{ uid: string; displayOrder: number }>): Promise<void> {
   return (await getEngine()).updateProviderDisplayOrders(items);
 }
 
-export async function recordUsage(provider: number, snapshot: UsageSnapshot): Promise<void> {
-  return (await getEngine()).recordUsage(provider, snapshot);
+export async function recordUsage(uid: string, snapshot: UsageSnapshot): Promise<void> {
+  return (await getEngine()).recordUsage(uid, snapshot);
 }
 
-export async function recordUsageAt(provider: number, snapshot: UsageSnapshot, createdAt: Date): Promise<void> {
-  return (await getEngine()).recordUsageAt(provider, snapshot, createdAt);
+export async function recordUsageAt(uid: string, snapshot: UsageSnapshot, createdAt: Date): Promise<void> {
+  return (await getEngine()).recordUsageAt(uid, snapshot, createdAt);
 }
 
 export async function recordUsageBatchAt(
-  provider: number,
+  uid: string,
   entries: Array<{ snapshot: UsageSnapshot; createdAt: Date }>
 ): Promise<void> {
-  return (await getEngine()).recordUsageBatchAt(provider, entries);
+  return (await getEngine()).recordUsageBatchAt(uid, entries);
 }
 
-export async function clearUsageHistory(provider: number): Promise<void> {
-  return (await getEngine()).clearUsageHistory(provider);
+export async function clearUsageHistory(uid: string): Promise<void> {
+  return (await getEngine()).clearUsageHistory(uid);
 }
 
-export async function getUsageHistory(provider: number, days: number = 30): Promise<UsageRecordRow[]> {
-  return (await getEngine()).getUsageHistory(provider, days);
+export async function getUsageHistory(uid: string, days: number = 30): Promise<UsageRecordRow[]> {
+  return (await getEngine()).getUsageHistory(uid, days);
 }
 
 export async function getAllUsageHistory(days: number = 30): Promise<Map<string, UsageRecordRow[]>> {
   return (await getEngine()).getAllUsageHistory(days);
 }
 
-export async function getLatestUsage(provider: number): Promise<UsageRecordRow | null> {
-  return (await getEngine()).getLatestUsage(provider);
+export async function getLatestUsage(uid: string): Promise<UsageRecordRow | null> {
+  return (await getEngine()).getLatestUsage(uid);
 }
 
 export async function getSetting(key: string): Promise<string | null> {
