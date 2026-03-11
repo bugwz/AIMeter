@@ -5,6 +5,7 @@ import { storage } from '../storage.js';
 import { fetchUsageForProvider, getAdapterForProvider } from '../services/ProviderUsageService.js';
 import { runtimeConfig } from '../runtime.js';
 import { enrichProgressTitles } from '../utils/progressTitles.js';
+import { resolveMockDisplayNameForResponse } from '../mock/displayName.js';
 
 const router = Router();
 
@@ -235,17 +236,22 @@ router.post('/latest', async (req: Request, res: Response) => {
         try {
           const liveSnapshot = await fetchUsageForProvider(provider);
           await storage.recordUsage(provider.id, liveSnapshot);
+          const items = extractSnapshotItems(liveSnapshot);
+          const calculatedPlan = provider.provider === UsageProvider.MINIMAX
+            ? calculateMiniMaxPlan(provider.region, items)
+            : undefined;
           results.push({
             id: provider.id,
             provider: provider.provider,
-            name: provider.name || null,
+            name: resolveMockDisplayNameForResponse(provider),
             region: provider.region || undefined,
             refreshInterval: provider.refreshInterval,
             identity: withPlanFallback(
               liveSnapshot.identity as Record<string, unknown> | undefined,
               provider.plan,
+              calculatedPlan,
             ),
-            progress: serializeProgressItems(provider.provider, applyProviderDisplayMode(provider, extractSnapshotItems(liveSnapshot))),
+            progress: serializeProgressItems(provider.provider, applyProviderDisplayMode(provider, items)),
             updatedAt: toUnixSeconds(liveSnapshot.updatedAt) ?? Math.floor(Date.now() / 1000),
           });
         } catch (error) {
@@ -280,7 +286,7 @@ router.post('/latest', async (req: Request, res: Response) => {
         const snapshot: SerializedDashboardProviderData = {
           id: provider.id,
           provider: provider.provider,
-          name: provider.name || null,
+          name: resolveMockDisplayNameForResponse(provider),
           region: provider.region || undefined,
           refreshInterval: provider.refreshInterval,
           identity: finalIdentity || undefined,
@@ -300,18 +306,23 @@ router.post('/latest', async (req: Request, res: Response) => {
         try {
           const liveSnapshot = await fetchUsageForProvider(provider);
           await storage.recordUsage(provider.id, liveSnapshot);
+          const items = extractSnapshotItems(liveSnapshot);
+          const calculatedPlan = provider.provider === UsageProvider.MINIMAX
+            ? calculateMiniMaxPlan(provider.region, items)
+            : undefined;
 
           results.push({
             id: provider.id,
             provider: provider.provider,
-            name: provider.name || null,
+            name: resolveMockDisplayNameForResponse(provider),
             region: provider.region || undefined,
             refreshInterval: provider.refreshInterval,
             identity: withPlanFallback(
               liveSnapshot.identity as Record<string, unknown> | undefined,
               provider.plan,
+              calculatedPlan,
             ),
-            progress: serializeProgressItems(provider.provider, applyProviderDisplayMode(provider, extractSnapshotItems(liveSnapshot))),
+            progress: serializeProgressItems(provider.provider, applyProviderDisplayMode(provider, items)),
             updatedAt: toUnixSeconds(liveSnapshot.updatedAt) ?? Math.floor(Date.now() / 1000),
           });
         } catch (error) {
@@ -378,7 +389,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
         const dashboardData: SerializedDashboardProviderData = {
           id: provider.id,
           provider: provider.provider,
-          name: provider.name || null,
+          name: resolveMockDisplayNameForResponse(provider),
           region: provider.region || undefined,
           refreshInterval: provider.refreshInterval,
           identity: withPlanFallback(
@@ -386,7 +397,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
             provider.plan,
             calculatedPlan,
           ),
-          progress: serializeProgressItems(provider.provider, items),
+          progress: serializeProgressItems(provider.provider, applyProviderDisplayMode(provider, items)),
           updatedAt: toUnixSeconds(snapshot.updatedAt) ?? Math.floor(Date.now() / 1000),
         };
         results.push(dashboardData);

@@ -65,7 +65,7 @@ Each item in the array is either a usage record (contains `progress`) or an erro
 |-------|------|-------------|
 | `id` | string | Provider ID |
 | `provider` | string | Provider type |
-| `name` | string\|null | Custom display name |
+| `name` | string\|null | Provider display name; in `mockEnabled=true` + `storageMode=env`, this may be a runtime-generated alias |
 | `region` | string | Region identifier |
 | `refreshInterval` | number | Provider refresh interval (minutes) |
 | `identity.plan` | string | Subscription plan (e.g. Pro, Starter) |

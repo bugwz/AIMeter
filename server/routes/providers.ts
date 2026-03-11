@@ -10,6 +10,7 @@ import type { ProviderInstance, UsageRecordRow } from '../storage.js';
 import { fetchUsageForProvider, getAdapterForProvider } from '../services/ProviderUsageService.js';
 import { isMockMode } from '../runtime.js';
 import { enrichProgressTitles } from '../utils/progressTitles.js';
+import { resolveMockDisplayNameForResponse } from '../mock/displayName.js';
 
 const router = Router();
 
@@ -169,7 +170,7 @@ function serializeProvider(provider: ProviderInstance) {
   return {
     id: provider.id,
     provider: provider.provider,
-    name: provider.name || null,
+    name: resolveMockDisplayNameForResponse(provider),
     refreshInterval: provider.refreshInterval,
     displayOrder: provider.displayOrder,
     region: provider.region,
@@ -294,7 +295,7 @@ router.get('/:id', async (req: Request, res: Response) => {
         id: provider.id,
         provider: provider.provider,
         credentials: provider.credentials,
-        name: provider.name || null,
+        name: resolveMockDisplayNameForResponse(provider),
         refreshInterval: provider.refreshInterval,
         displayOrder: provider.displayOrder,
         region: provider.region,

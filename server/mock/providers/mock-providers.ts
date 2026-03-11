@@ -37,7 +37,6 @@ const itemWindowStore = new Map<string, ItemWindowState>();
 
 const FIXED_PLANS: Partial<Record<UsageProvider, string>> = {
   [UsageProvider.ALIYUN]: 'Coding Plan',
-  [UsageProvider.CLAUDE]: 'Claude Pro',
   [UsageProvider.CODEX]: 'plus',
   [UsageProvider.COPILOT]: 'Business',
   [UsageProvider.CURSOR]: 'Pro',
@@ -206,13 +205,15 @@ function toPercentItem(input: {
   resetsAt?: Date;
   windowMinutes?: number;
   resetDescription?: string;
+  includeRemainingPercent?: boolean;
 }): ProgressItem {
   const usedPercent = roundPercentage(clamp(input.usedPercent, 0, 100));
+  const includeRemainingPercent = input.includeRemainingPercent !== false;
   return {
     name: input.name,
     desc: input.desc,
     usedPercent,
-    remainingPercent: roundPercentage(100 - usedPercent),
+    ...(includeRemainingPercent ? { remainingPercent: roundPercentage(100 - usedPercent) } : {}),
     windowMinutes: input.windowMinutes,
     resetsAt: input.resetsAt,
     resetDescription: input.resetDescription,
@@ -566,16 +567,38 @@ class GenericMockProvider {
           limit: weeklyLimit,
           intensity: 0.88,
         });
-        const codeReviewLimit = 60;
-        const dailyWindow = { start: startOfDay(now), end: nextDailyReset(now) };
+        const additionalSessionLimit = 80;
+        const additionalSessionUsed = resolveMonotonicWindowUsed({
+          key: `${this.instanceKey}:codex:additional_session`,
+          seed: state.seed + 27,
+          now,
+          start: rolling5h.start,
+          end: rolling5h.end,
+          limit: additionalSessionLimit,
+          intensity: 0.05,
+          floorPercent: 0,
+        });
+        const additionalWeeklyLimit = 350;
+        const additionalWeeklyUsed = resolveMonotonicWindowUsed({
+          key: `${this.instanceKey}:codex:additional_weekly`,
+          seed: state.seed + 33,
+          now,
+          start: weeklyWindow.start,
+          end: weeklyWindow.end,
+          limit: additionalWeeklyLimit,
+          intensity: 0.06,
+          floorPercent: 0,
+        });
+        const codeReviewLimit = 200;
         const codeReviewUsed = resolveMonotonicWindowUsed({
           key: `${this.instanceKey}:codex:code_review`,
-          seed: state.seed + 31,
+          seed: state.seed + 39,
           now,
-          start: dailyWindow.start,
-          end: dailyWindow.end,
+          start: weeklyWindow.start,
+          end: weeklyWindow.end,
           limit: codeReviewLimit,
-          intensity: 0.82,
+          intensity: 0.05,
+          floorPercent: 0,
         });
         return {
           plan: FIXED_PLANS[this.provider],
@@ -589,17 +612,31 @@ class GenericMockProvider {
             }),
             toPercentItem({
               name: 'Weekly',
-              desc: '7 days window',
+              desc: '1 week window',
               usedPercent: (weeklyUsed / weeklyLimit) * 100,
               resetsAt: weeklyWindow.end,
               windowMinutes: 7 * 24 * 60,
             }),
             toPercentItem({
+              name: 'Additional Session',
+              desc: '5 hours window for GPT-5.3-Codex-Spark',
+              usedPercent: (additionalSessionUsed / additionalSessionLimit) * 100,
+              resetsAt: rolling5h.end,
+              windowMinutes: 300,
+            }),
+            toPercentItem({
+              name: 'Additional Weekly',
+              desc: '1 week window for GPT-5.3-Codex-Spark',
+              usedPercent: (additionalWeeklyUsed / additionalWeeklyLimit) * 100,
+              resetsAt: weeklyWindow.end,
+              windowMinutes: 7 * 24 * 60,
+            }),
+            toPercentItem({
               name: 'Code Review',
-              desc: '1 day window',
+              desc: '1 week window',
               usedPercent: (codeReviewUsed / codeReviewLimit) * 100,
-              resetsAt: dailyWindow.end,
-              windowMinutes: 24 * 60,
+              resetsAt: weeklyWindow.end,
+              windowMinutes: 7 * 24 * 60,
             }),
           ],
         };
@@ -853,15 +890,23 @@ class GenericMockProvider {
 
         if (this.provider === UsageProvider.CLAUDE) {
           progress.push(
-            toProgressItem({
+            toPercentItem({
               name: 'Weekly',
-              desc: '7 days window',
-              used: secondaryUsed,
-              limit: secondaryLimit,
+              desc: '1 week window',
+              usedPercent: (secondaryUsed / secondaryLimit) * 100,
               resetsAt: weeklyWindow.end,
               windowMinutes: 7 * 24 * 60,
+              includeRemainingPercent: false,
             })
           );
+          progress[0] = toPercentItem({
+            name: 'Session',
+            desc: '5 hours window',
+            usedPercent: (primaryUsed / state.limit) * 100,
+            resetsAt: rolling5h.end,
+            windowMinutes: 300,
+            includeRemainingPercent: false,
+          });
         }
 
         return {

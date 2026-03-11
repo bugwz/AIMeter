@@ -15,6 +15,7 @@ import { runtimeConfig } from '../runtime.js';
 import { storage } from '../storage.js';
 import { fetchUsageForProvider } from '../services/ProviderUsageService.js';
 import { createMockProvider } from './providers/base.js';
+import { generateRandomEnglishName } from './displayName.js';
 
 function buildDefaultMockCredential(provider: UsageProvider): Credential {
   switch (provider) {
@@ -68,12 +69,16 @@ export function initMock() {
   const existingProviders = getAllMockProviders();
   if (existingProviders.length === 0) {
     console.log('Adding default mock providers...');
+    const usedNames = new Set<string>();
     
     for (const [provider, mockConfig] of Object.entries(MOCK_PROVIDER_CONFIGS)) {
+      const generatedName = generateRandomEnglishName(usedNames);
+      usedNames.add(generatedName);
       const config: ProviderConfig = {
         provider: provider as UsageProvider,
         credentials: buildDefaultMockCredential(provider as UsageProvider),
         refreshInterval: 5,
+        name: generatedName,
         region: getDefaultMockRegion(provider as UsageProvider),
       };
       const providerId = saveMockProvider(provider as UsageProvider, config);
@@ -124,12 +129,15 @@ export async function ensureMockRuntimeProvidersSeeded(): Promise<void> {
 
   const currentProviders = await storage.listProviders();
   if (currentProviders.length === 0) {
+    const usedNames = new Set<string>();
     for (const [provider, mockConfig] of Object.entries(MOCK_PROVIDER_CONFIGS)) {
+      const generatedName = generateRandomEnglishName(usedNames);
+      usedNames.add(generatedName);
       const config: ProviderConfig = {
         provider: provider as UsageProvider,
         credentials: buildDefaultMockCredential(provider as UsageProvider),
         refreshInterval: 5,
-        name: `Mock ${mockConfig.name}`,
+        name: generatedName,
         region: getDefaultMockRegion(provider as UsageProvider),
       };
       await storage.createProvider(provider as UsageProvider, config);

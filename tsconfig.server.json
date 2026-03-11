@@ -15,9 +15,5 @@
     "jsx": "react-jsx",
     "baseUrl": "."
   },
-  "include": ["server/**/*", "src/**/*"],
-  "exclude": [
-    "server/routes/*-mock.ts",
-    "server/mock/index.ts"
-  ]
+  "include": ["server/**/*", "src/**/*"]
 }

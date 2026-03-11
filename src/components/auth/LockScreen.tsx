@@ -134,6 +134,8 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
     password: false,
     adminPassword: false,
   });
+  const [showLockConfirm, setShowLockConfirm] = useState(false);
+  const [isLocking, setIsLocking] = useState(false);
 
   const renderPasswordInput = ({
     value,
@@ -317,6 +319,22 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLockAgain = async () => {
+    setIsLocking(true);
+    try {
+      try {
+        await apiService.logout();
+      } catch {
+        // Best-effort logout; still clear local state.
+      }
+      sessionStorage.removeItem(sessionKey);
+      window.location.reload();
+    } finally {
+      setIsLocking(false);
+      setShowLockConfirm(false);
     }
   };
 
@@ -535,17 +553,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
           <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
             <button
               type="button"
-              onClick={async () => {
-                if (confirm('This will clear your session. You will need to re-enter password. Continue?')) {
-                  try {
-                    await apiService.logout();
-                  } catch {
-                    // Best-effort logout; still clear local state.
-                  }
-                  sessionStorage.removeItem(sessionKey);
-                  window.location.reload();
-                }
-              }}
+              onClick={() => setShowLockConfirm(true)}
               className="w-full text-sm text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
             >
               Lock again
@@ -553,6 +561,41 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
           </div>
         )}
       </div>
+
+      {showLockConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => {
+              if (!isLocking) setShowLockConfirm(false);
+            }}
+          />
+          <div className="relative w-full max-w-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-2xl animate-fade-in">
+            <h3 className="text-base font-semibold text-[var(--color-text-primary)]">Lock Session</h3>
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+              This will clear your session. You will need to re-enter password.
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowLockConfirm(false)}
+                disabled={isLocking}
+                className="px-3 py-2 text-sm rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-subtle)] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleLockAgain}
+                disabled={isLocking}
+                className="px-3 py-2 text-sm rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {isLocking ? 'Locking...' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-[var(--color-text-muted)]">
         {mode === 'bootstrap' ? 'Initial setup data will be written to the database' : 'Your password is stored securely on the server'}
