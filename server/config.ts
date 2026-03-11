@@ -43,8 +43,8 @@ export interface AppConfig {
     sessionSecret?: string;
     sessionTtlSeconds: number;
     secureCookie: boolean;
-    normalPasswordHash?: string;
-    adminPasswordHash?: string;
+    normalPassword?: string;
+    adminPassword?: string;
     adminRoutePath?: string;
     cronSecret?: string;
     endpointSecret?: string;
@@ -535,10 +535,10 @@ export function getAppConfig(): AppConfig {
       secureCookie: asBoolean(auth.secureCookie)
         ?? parseEnvBoolean(process.env.AIMETER_SECURE_COOKIE)
         ?? isProduction,
-      normalPasswordHash: asString(auth.normalPasswordHash)
-        || process.env.AIMETER_NORMAL_PASSWORD_HASH,
-      adminPasswordHash: asString(auth.adminPasswordHash)
-        || process.env.AIMETER_ADMIN_PASSWORD_HASH,
+      normalPassword: asString(auth.normalPassword)
+        || process.env.AIMETER_NORMAL_PASSWORD,
+      adminPassword: asString(auth.adminPassword)
+        || process.env.AIMETER_ADMIN_PASSWORD,
       adminRoutePath: asString(auth.adminRoutePath)
         || process.env.AIMETER_ADMIN_ROUTE_PATH,
       cronSecret: asString(auth.cronSecret)

@@ -102,14 +102,22 @@ auth:
   secureCookie: true
   # Read-only normal-entry password source when database mode is disabled.
   # Allowed:
-  # - PBKDF2 hash string in format pbkdf2_sha256$<iterations>$<salt>$<digest>: enable normal-entry password verification from env/config
+  # - plaintext password string: enable normal-entry password verification from env/config
+  # Password format requirement:
+  # - at least 12 characters
+  # - contains at least one letter
+  # - contains at least one digit
   # Default when unset in both env and this file: unset
-  # normalPasswordHash: pbkdf2_sha256$210000$replace-salt$replace-digest
+  # normalPassword: replace-with-normal-password
   # Read-only admin-entry password source when database mode is disabled.
   # Allowed:
-  # - PBKDF2 hash string in format pbkdf2_sha256$<iterations>$<salt>$<digest>: enable admin-entry password verification from env/config
+  # - plaintext password string: enable admin-entry password verification from env/config
+  # Password format requirement:
+  # - at least 12 characters
+  # - contains at least one letter
+  # - contains at least one digit
   # Default when unset in both env and this file: unset
-  # adminPasswordHash: pbkdf2_sha256$210000$replace-salt$replace-digest
+  # adminPassword: replace-with-admin-password
   # Admin route path used for the management entry URL.
   # Allowed:
   # - exactly 32 random characters: admin UI is served from http://host:3000/<secret>

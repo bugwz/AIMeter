@@ -101,10 +101,19 @@ const appConfig = getAppConfig();
 const latestUsageCache = new Map<string, UsageRecordRow>();
 
 function getConfiguredPasswordHash(role: AuthRole): string | null {
+  const configuredPassword = role === 'normal'
+    ? appConfig.auth.normalPassword
+    : appConfig.auth.adminPassword;
+  if (!configuredPassword) return null;
+  // Keep storage/session logic hash-based even when env/config provides plaintext.
+  return crypto.createHash('sha256').update(configuredPassword).digest('hex');
+}
+
+function getConfiguredPasswordPlain(role: AuthRole): string | null {
   if (role === 'normal') {
-    return appConfig.auth.normalPasswordHash || null;
+    return appConfig.auth.normalPassword || null;
   }
-  return appConfig.auth.adminPasswordHash || null;
+  return appConfig.auth.adminPassword || null;
 }
 
 function getConfiguredAdminRoutePath(): string | null {
@@ -607,6 +616,11 @@ export const storage = {
   },
 
   async verifyPassword(role: AuthRole, password: string): Promise<boolean> {
+    if (runtimeConfig.storageMode === 'env') {
+      const configuredPassword = getConfiguredPasswordPlain(role);
+      if (!configuredPassword) return false;
+      return safeEqual(password, configuredPassword);
+    }
     const hash = await storage.getPasswordHash(role);
     if (!hash) return false;
     return verifyHashedPassword(password, hash);
