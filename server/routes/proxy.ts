@@ -246,7 +246,7 @@ router.post('/latest', async (req: Request, res: Response) => {
           results.push({
             id: provider.id,
             provider: provider.provider,
-            name: resolveMockDisplayNameForResponse(provider),
+            name: resolveMockDisplayNameForResponse(provider) ?? undefined,
             region: provider.region || undefined,
             refreshInterval: provider.refreshInterval,
             identity: withPlanFallback(
@@ -289,7 +289,7 @@ router.post('/latest', async (req: Request, res: Response) => {
         const snapshot: SerializedDashboardProviderData = {
           id: provider.id,
           provider: provider.provider,
-          name: resolveMockDisplayNameForResponse(provider),
+          name: resolveMockDisplayNameForResponse(provider) ?? undefined,
           region: provider.region || undefined,
           refreshInterval: provider.refreshInterval,
           identity: finalIdentity || undefined,
@@ -317,7 +317,7 @@ router.post('/latest', async (req: Request, res: Response) => {
           results.push({
             id: provider.id,
             provider: provider.provider,
-            name: resolveMockDisplayNameForResponse(provider),
+            name: resolveMockDisplayNameForResponse(provider) ?? undefined,
             region: provider.region || undefined,
             refreshInterval: provider.refreshInterval,
             identity: withPlanFallback(
@@ -392,7 +392,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
         const dashboardData: SerializedDashboardProviderData = {
           id: provider.id,
           provider: provider.provider,
-          name: resolveMockDisplayNameForResponse(provider),
+          name: resolveMockDisplayNameForResponse(provider) ?? undefined,
           region: provider.region || undefined,
           refreshInterval: provider.refreshInterval,
           identity: withPlanFallback(
