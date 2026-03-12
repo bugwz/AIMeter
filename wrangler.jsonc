@@ -3,6 +3,9 @@
   "main": "worker.ts",
   "compatibility_date": "2026-03-12",
   "compatibility_flags": ["nodejs_compat"],
+  "build": {
+    "command": "npm run cf:build"
+  },
   "assets": {
     "directory": "dist",
     "binding": "ASSETS",
@@ -14,6 +17,6 @@
     "AIMETER_SERVER_PROTOCOL": "https",
     "AIMETER_DATABASE_ENABLED": "true",
     "AIMETER_DATABASE_ENGINE": "d1",
-    "AIMETER_DATABASE_CONNECTION": ""
+    "AIMETER_DATABASE_CONNECTION": "DB"
   }
 }
