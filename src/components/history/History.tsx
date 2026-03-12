@@ -3,7 +3,7 @@ import { UsageChart } from './UsageChart';
 import { MultiCharts, HistorySeriesMeta } from './MultiCharts';
 import { apiService } from '../../services/ApiService';
 import { UsageProvider, PROVIDER_NAMES } from '../../types';
-import { providerLogos } from '../common/providerLogos';
+import { ProviderLogo } from '../common/ProviderLogo';
 import { SelectField } from '../common';
 import { buildProviderSeriesColorMap } from './colorSystem';
 
@@ -46,15 +46,7 @@ const formatProviderDisplayName = (providerName: string, customName?: string | n
 
 const renderProviderIcon = (provider?: UsageProvider, label?: string): React.ReactNode => {
   if (!provider) return null;
-  const logo = providerLogos[provider];
-  if (!logo) return null;
-  return (
-    <img
-      src={logo}
-      alt={label || provider}
-      className="h-4 w-4 rounded bg-white p-[1px] object-contain"
-    />
-  );
+  return <ProviderLogo provider={provider} size={16} alt={label || provider} className="rounded" imgClassName="rounded" frame="none" />;
 };
 
 const ProviderDisplay: React.FC<{
@@ -68,16 +60,11 @@ const ProviderDisplay: React.FC<{
 
   const meta = seriesMeta[seriesKey];
   const label = meta.displayName || seriesKey;
-  const logo = meta.provider ? providerLogos[meta.provider] : undefined;
 
   return (
     <span className={`inline-flex min-w-0 items-center gap-2 ${className || ''}`}>
-      {logo ? (
-        <img
-          src={logo}
-          alt={label}
-          className="h-5 w-5 rounded bg-white p-[2px] object-contain"
-        />
+      {meta.provider ? (
+        <ProviderLogo provider={meta.provider} size={20} alt={label} />
       ) : (
         <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-[var(--color-bg-subtle)] text-[10px] font-semibold text-[var(--color-text-secondary)]">
           {(label || '?')[0]}

@@ -616,7 +616,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                 options={availableProviders.map((provider) => ({
                   value: provider,
                   label: PROVIDER_NAMES[provider],
-                  icon: <ProviderLogo provider={provider} size="sm" />,
+                  icon: <ProviderLogo provider={provider} size="sm" frame="none" />,
                 }))}
                 placeholder="Choose a provider..."
                 className="input-field select-field"

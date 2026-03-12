@@ -4,8 +4,11 @@ import { providerLogos } from './providerLogos';
 
 interface ProviderLogoProps {
   provider: UsageProvider;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | number;
   className?: string;
+  imgClassName?: string;
+  alt?: string;
+  frame?: 'auto' | 'none';
 }
 
 const SIZE_MAP = {
@@ -14,21 +17,41 @@ const SIZE_MAP = {
   lg: 48,
 };
 
+const resolveSize = (size: ProviderLogoProps['size']): number =>
+  typeof size === 'number' ? size : SIZE_MAP[size || 'md'];
+
+const resolveRadiusClass = (dimension: number): string => {
+  if (dimension <= 20) return 'rounded-[6px]';
+  if (dimension <= 32) return 'rounded-[9px]';
+  return 'rounded-xl';
+};
+
+const resolveFallbackFontSize = (dimension: number): number =>
+  Math.max(9, Math.round(dimension * 0.4));
+
 export const ProviderLogo: React.FC<ProviderLogoProps> = ({ 
   provider, 
   size = 'md',
-  className = ''
+  className = '',
+  imgClassName = '',
+  alt,
+  frame = 'auto',
 }) => {
   const logoPath = providerLogos[provider];
-  const dimension = SIZE_MAP[size];
+  const dimension = resolveSize(size);
+  const radiusClass = resolveRadiusClass(dimension);
+  const padding = Math.max(1, Math.round(dimension * 0.08));
 
   if (!logoPath) {
     return (
       <div 
-        className={`rounded-md bg-[var(--color-bg-subtle)] flex items-center justify-center ${className}`}
-        style={{ width: dimension, height: dimension }}
+        className={`${frame === 'auto' ? 'provider-logo-frame provider-logo-fallback' : ''} inline-flex items-center justify-center ${radiusClass} ${className}`}
+        style={{ width: dimension, height: dimension, padding }}
       >
-        <span className="text-xs font-medium text-[var(--color-text-muted)]">
+        <span
+          className="font-semibold leading-none text-[var(--color-text-secondary)]"
+          style={{ fontSize: resolveFallbackFontSize(dimension) }}
+        >
           {provider.charAt(0).toUpperCase()}
         </span>
       </div>
@@ -36,12 +59,16 @@ export const ProviderLogo: React.FC<ProviderLogoProps> = ({
   }
 
   return (
-    <img
-      src={logoPath}
-      alt={provider}
-      className={className}
-      style={{ width: dimension, height: dimension }}
-    />
+    <span
+      className={`${frame === 'auto' ? 'provider-logo-frame provider-logo-image-frame' : ''} inline-flex items-center justify-center overflow-hidden ${radiusClass} ${className}`}
+      style={{ width: dimension, height: dimension, padding }}
+    >
+      <img
+        src={logoPath}
+        alt={alt || provider}
+        className={`provider-logo-image h-full w-full object-contain ${imgClassName}`}
+      />
+    </span>
   );
 };
 

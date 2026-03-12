@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { UsageProvider, PROVIDER_NAMES, PROVIDER_COLORS } from '../../types/provider';
-import { providerLogos } from '../common/providerLogos';
+import { UsageProvider, PROVIDER_NAMES } from '../../types/provider';
+import { ProviderLogo } from '../common/ProviderLogo';
 import { SelectField } from '../common/SelectField';
 
 type OutputFormat = 'json' | 'xml' | 'table' | 'markdown' | 'csv';
@@ -96,27 +96,6 @@ const TIMEZONE_OPTIONS = [
   { value: 'Australia/Sydney', label: 'Australia/Sydney (UTC+10)' },
   { value: 'Pacific/Auckland', label: 'Pacific/Auckland (UTC+12)' },
 ];
-
-const ProviderLogo: React.FC<{ provider: UsageProvider; size?: number }> = ({ provider, size = 40 }) => {
-  const logoPath = providerLogos[provider];
-  if (!logoPath) {
-    return (
-      <div 
-        className="rounded-xl flex items-center justify-center font-semibold"
-        style={{ 
-          width: size, 
-          height: size, 
-          backgroundColor: PROVIDER_COLORS[provider] || '#666',
-          color: '#fff',
-          fontSize: size * 0.4
-        }}
-      >
-        {PROVIDER_NAMES[provider]?.[0] || '?'}
-      </div>
-    );
-  }
-  return <img src={logoPath} alt={provider} style={{ width: size, height: size }} className="rounded-xl" />;
-};
 
 export const Endpoint: React.FC = () => {
   const [config, setConfig] = useState<EndpointConfig>({

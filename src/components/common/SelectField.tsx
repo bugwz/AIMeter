@@ -149,7 +149,14 @@ export function SelectField<T extends string | number>({
       >
         <span className={`flex min-h-6 items-center ${showSelectedIcon ? 'gap-2.5' : 'gap-2'}`}>
           {showSelectedIcon ? (
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+            <span
+              className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-lg border"
+              style={{
+                borderColor: 'var(--provider-logo-border)',
+                background: 'var(--provider-logo-bg)',
+                boxShadow: 'var(--provider-logo-shadow)',
+              }}
+            >
               {selectedOption?.icon}
             </span>
           ) : null}
@@ -220,8 +227,9 @@ export function SelectField<T extends string | number>({
                       <span
                         className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg border"
                         style={{
-                          borderColor: active ? 'var(--color-accent)' : 'var(--color-border)',
-                          background: active ? 'var(--color-surface-hover)' : 'var(--color-surface)',
+                          borderColor: active ? 'var(--color-accent)' : 'var(--provider-logo-border)',
+                          background: 'var(--provider-logo-bg)',
+                          boxShadow: 'var(--provider-logo-shadow)',
                         }}
                       >
                         {option.icon}

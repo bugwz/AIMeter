@@ -54,6 +54,10 @@
   --select-focus-inset: rgba(255, 255, 255, 0.04);
   --select-focus-ring: rgba(196, 206, 216, 0.08);
   --select-focus-shadow: rgba(0, 0, 0, 0.2);
+
+  --provider-logo-bg: rgba(248, 250, 252, 0.96);
+  --provider-logo-border: rgba(15, 23, 42, 0.14);
+  --provider-logo-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
   
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.22);
   --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.24);
@@ -118,6 +122,10 @@
   --select-focus-ring: rgba(80, 99, 114, 0.12);
   --select-focus-shadow: rgba(80, 99, 114, 0.1);
 
+  --provider-logo-bg: rgba(255, 255, 255, 0.92);
+  --provider-logo-border: rgba(33, 48, 59, 0.12);
+  --provider-logo-shadow: 0 1px 2px rgba(33, 48, 59, 0.1);
+
   --shadow-sm: 0 1px 2px rgba(33, 48, 59, 0.06);
   --shadow-md: 0 10px 24px rgba(33, 48, 59, 0.08);
   --shadow-lg: 0 18px 48px rgba(33, 48, 59, 0.12);
@@ -137,6 +145,23 @@ body {
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.provider-logo-frame {
+  box-sizing: border-box;
+  background: var(--provider-logo-bg);
+  border: 1px solid var(--provider-logo-border);
+  box-shadow: var(--provider-logo-shadow);
+}
+
+:root[data-theme='light'] .provider-logo-image-frame {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.provider-logo-image {
+  display: block;
 }
 
 ::-webkit-scrollbar {

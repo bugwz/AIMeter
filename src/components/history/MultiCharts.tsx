@@ -24,6 +24,7 @@ import {
   YAxis,
 } from 'recharts';
 import { UsageProvider } from '../../types';
+import { ProviderLogo } from '../common/ProviderLogo';
 import { providerLogos } from '../common/providerLogos';
 import { buildProgressColorMap, getProviderBaseColor } from './colorSystem';
 
@@ -166,7 +167,7 @@ const ProviderBadge: React.FC<{
   return (
     <span className={`inline-flex min-w-0 items-center gap-2 ${className || ''}`}>
       {logo ? (
-        <img src={logo} alt={label} className={`${iconSizeClass} rounded bg-white p-[1px] object-contain`} />
+        <ProviderLogo provider={provider as UsageProvider} size={iconSize === 'md' ? 20 : 16} alt={label} />
       ) : (
         <span className={`inline-flex ${iconSizeClass} items-center justify-center rounded bg-[var(--color-bg-subtle)] ${fallbackTextClass} font-semibold text-[var(--color-text-secondary)]`}>
           {(label || '?')[0]}
@@ -360,11 +361,7 @@ const UsageTrendLegend: React.FC<{
         <span key={lineKey} className="inline-flex items-center gap-1 text-[var(--color-text-secondary)]">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: lineColorByKey[lineKey] || '#666666' }} />
           {lineProviderByKey[lineKey] && providerLogos[lineProviderByKey[lineKey] as UsageProvider] ? (
-            <img
-              src={providerLogos[lineProviderByKey[lineKey] as UsageProvider]}
-              alt={lineLabelByKey[lineKey] || lineKey}
-              className="h-4 w-4 rounded bg-white p-[1px] object-contain"
-            />
+            <ProviderLogo provider={lineProviderByKey[lineKey] as UsageProvider} size={16} alt={lineLabelByKey[lineKey] || lineKey} />
           ) : null}
           <span>{lineLabelByKey[lineKey] || lineKey}</span>
         </span>
@@ -410,11 +407,7 @@ const UsageTrendTooltip: React.FC<{
           <div key={`${key || 'row'}-${index}`} className="mb-1 flex items-center gap-2 text-xs last:mb-0">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: dotColor }} />
             {logo ? (
-              <img
-                src={logo}
-                alt={displayLabel}
-                className="h-4 w-4 rounded bg-white p-[1px] object-contain"
-              />
+              <ProviderLogo provider={provider as UsageProvider} size={16} alt={displayLabel} />
             ) : null}
             <span className="text-[var(--color-text-secondary)]">{displayLabel}</span>
             <span className="ml-auto font-medium text-[var(--color-text-primary)]">
@@ -1091,14 +1084,27 @@ export const MultiCharts: React.FC<MultiChartsProps> = ({ data, seriesMeta, rang
                     return (
                       <g transform={`translate(${props.x},${props.y})`}>
                         {logo ? (
-                          <image
-                            href={logo}
-                            x={-36}
-                            y={2}
-                            width={12}
-                            height={12}
-                            preserveAspectRatio="xMidYMid meet"
-                          />
+                          <>
+                            <rect
+                              x={-36}
+                              y={2}
+                              width={12}
+                              height={12}
+                              rx={2}
+                              style={{
+                                fill: 'var(--provider-logo-bg)',
+                                stroke: 'var(--provider-logo-border)',
+                              }}
+                            />
+                            <image
+                              href={logo}
+                              x={-35}
+                              y={3}
+                              width={10}
+                              height={10}
+                              preserveAspectRatio="xMidYMid meet"
+                            />
+                          </>
                         ) : (
                           <rect x={-36} y={2} width={12} height={12} rx={2} fill="var(--color-bg-subtle)" />
                         )}
