@@ -51,8 +51,21 @@ async function fetchToExpress(app: Application, request: Request): Promise<Respo
     req.httpVersion = '1.1';
     req.httpVersionMajor = 1;
     req.httpVersionMinor = 1;
-    req.socket = { remoteAddress: clientIp, encrypted: true, destroy: () => {} };
-    req.connection = { remoteAddress: clientIp, encrypted: true };
+    // socket must be an EventEmitter — body-parser uses on-finished which calls
+    // req.socket.on('close', ...) and req.socket.on('error', ...).
+    const mockSocket = Object.assign(new EventEmitter(), {
+      remoteAddress: clientIp,
+      remoteFamily: 'IPv4',
+      encrypted: true,
+      writable: true,
+      destroyed: false,
+      destroy: () => {},
+      setTimeout: () => {},
+      setNoDelay: () => {},
+      setKeepAlive: () => {},
+    });
+    req.socket = mockSocket;
+    req.connection = mockSocket;
     req.readable = true;
     req.readableEnded = false;
     req.complete = false;
