@@ -30,7 +30,8 @@ This guide covers Cloudflare Workers deployment for AIMeter with:
 
 2. Wait for the first build/deploy to complete.
 3. If you selected `d1`, complete the D1 binding steps in the next section.
-4. After D1 binding is saved, directly visit your service URL to trigger system initialization.
+4. After D1 binding is saved, open your service URL and complete the Initial Setup form.
+   Database schema/data initialization runs only after you submit that setup form.
 
 ---
 
@@ -63,8 +64,8 @@ you must manually link the D1 database to the Worker in the Cloudflare dashboard
 
 8. Submit/Save binding.
 
-After saving the binding, directly visit your deployed service URL. The first request will trigger
-system initialization automatically and create required tables
+After saving the binding, open your deployed service URL, fill all required fields on the
+Initial Setup page, and click submit. At that moment the system initializes required tables/data
 (`providers`, `usage_records`, `settings`, `audit_logs`).
 
 ---

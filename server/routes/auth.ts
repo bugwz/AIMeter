@@ -1,7 +1,9 @@
 import crypto from 'crypto';
 import { Router, type Response } from 'express';
-import { clearSessionCookie, isRequestAuthenticated, issueSessionToken, setSessionCookie, type AuthRole } from '../auth.js';
+import { clearSessionCookie, initSessionSecret, isRequestAuthenticated, issueSessionToken, setSessionCookie, type AuthRole } from '../auth.js';
 import { getAppConfig } from '../config.js';
+import { initDatabase } from '../database.js';
+import { runtimeConfig } from '../runtime.js';
 import { storage, tryParseReadonlyError } from '../storage.js';
 import {
   checkLoginRateLimit,
@@ -143,6 +145,12 @@ router.post('/bootstrap', async (req, res) => {
   }
 
   try {
+    await initDatabase();
+    const dbSessionSecret = await storage.getSetting('session_secret');
+    if (dbSessionSecret) {
+      initSessionSecret(dbSessionSecret);
+    }
+
     if (!await storage.getPasswordHash('normal')) {
       await storage.setPassword('normal', normalPassword);
     }
@@ -186,6 +194,16 @@ router.post('/bootstrap', async (req, res) => {
 router.post('/:role/setup', async (req, res) => {
   const role = getRoleOr404(req.params.role, res);
   if (!role) return;
+
+  if (runtimeConfig.storageMode === 'database' && await storage.isInitialSetupRequired()) {
+    return res.status(409).json({
+      success: false,
+      error: {
+        code: 'BOOTSTRAP_REQUIRED',
+        message: 'Database initialization is required; use /api/auth/bootstrap first',
+      },
+    });
+  }
 
   const limitCheck = checkLoginRateLimit(req);
   if (!limitCheck.allowed) {

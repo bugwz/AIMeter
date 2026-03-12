@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import { initDatabase, getSetting } from './database.js';
+import { initDatabase, getSetting, isDatabaseInitialized } from './database.js';
 import { initMock, ensureMockRuntimeProvidersSeeded } from './mock/init.js';
 import { requireApiAuth, requireEndpointAuth } from './middleware/auth.js';
 import { createApiAuditMiddleware } from './middleware/audit.js';
@@ -44,16 +44,21 @@ export async function createApp(): Promise<express.Application> {
 
   if (runtimeConfig.storageMode === 'database') {
     console.log('Starting with DATABASE storage');
-    await initDatabase();
-    console.log('Database initialized');
-    if (!appConfig.auth.sessionSecret) {
-      const dbSessionSecret = await getSetting('session_secret');
-      if (dbSessionSecret) {
-        initSessionSecret(dbSessionSecret);
+    const initialized = await isDatabaseInitialized();
+    if (initialized) {
+      await initDatabase();
+      console.log('Database initialized');
+      if (!appConfig.auth.sessionSecret) {
+        const dbSessionSecret = await getSetting('session_secret');
+        if (dbSessionSecret) {
+          initSessionSecret(dbSessionSecret);
+        }
       }
-    }
-    if (isMockMode) {
-      await ensureMockRuntimeProvidersSeeded();
+      if (isMockMode) {
+        await ensureMockRuntimeProvidersSeeded();
+      }
+    } else {
+      console.log('Database schema is not initialized yet; waiting for initial setup submit');
     }
   } else {
     console.log('Starting with ENV storage');

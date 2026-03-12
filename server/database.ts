@@ -1,4 +1,7 @@
 import type { Database as BetterSqlite3Database } from 'better-sqlite3';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
 import { getAppConfig } from './config.js';
 import type { Credential, ProviderConfig, UsageProvider, UsageSnapshot } from '../src/types/index.js';
 import type { AuditLogRow, DatabaseEngine, UsageRecordRow } from './db/engine.js';
@@ -6,6 +9,159 @@ import type { AuditLogRow, DatabaseEngine, UsageRecordRow } from './db/engine.js
 let engineInstance: DatabaseEngine | null = null;
 let sqliteRaw: BetterSqlite3Database | null = null;
 let initPromise: Promise<void> | null = null;
+let initializedState: boolean | null = null;
+
+const REQUIRED_TABLES = ['providers', 'usage_records', 'settings', 'audit_logs'] as const;
+
+interface D1QueryResult<T = Record<string, unknown>> {
+  results?: T[];
+}
+
+interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  all<T = Record<string, unknown>>(): Promise<D1QueryResult<T>>;
+}
+
+interface D1Database {
+  prepare(query: string): D1PreparedStatement;
+  exec(query: string): Promise<unknown>;
+}
+
+function isD1Database(value: unknown): value is D1Database {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<D1Database>;
+  return typeof candidate.prepare === 'function' && typeof candidate.exec === 'function';
+}
+
+function isValidBindingName(value: string): boolean {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(value);
+}
+
+async function isSqliteSchemaInitialized(connection: string): Promise<boolean> {
+  const dbPath = path.resolve(process.cwd(), connection || './data/aimeter.db');
+  if (!existsSync(dbPath)) {
+    return false;
+  }
+
+  const { default: Database } = await import('better-sqlite3');
+  const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+  try {
+    const rows = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('providers','usage_records','settings','audit_logs')"
+      )
+      .all() as Array<{ name: string }>;
+    const names = new Set(rows.map((row) => row.name));
+    return REQUIRED_TABLES.every((table) => names.has(table));
+  } finally {
+    db.close();
+  }
+}
+
+async function isPostgresSchemaInitialized(connection: string): Promise<boolean> {
+  const require = createRequire(import.meta.url);
+  const pgModule = require('pg') as {
+    Pool: new (config: { connectionString: string }) => {
+      query: (sql: string) => Promise<{ rows: Array<Record<string, string | null>> }>;
+      end: () => Promise<void>;
+    };
+  };
+  const pool = new pgModule.Pool({ connectionString: connection });
+  try {
+    const result = await pool.query(
+      "SELECT to_regclass('public.providers') AS providers, " +
+      "to_regclass('public.usage_records') AS usage_records, " +
+      "to_regclass('public.settings') AS settings, " +
+      "to_regclass('public.audit_logs') AS audit_logs"
+    );
+    const row = result.rows[0] || {};
+    return REQUIRED_TABLES.every((table) => Boolean(row[table]));
+  } finally {
+    await pool.end();
+  }
+}
+
+async function isMysqlSchemaInitialized(connection: string): Promise<boolean> {
+  const { default: mysqlModule } = await import('mysql2/promise');
+  const pool = mysqlModule.createPool(connection);
+  try {
+    const [rows] = await pool.query(
+      `SELECT TABLE_NAME
+       FROM INFORMATION_SCHEMA.TABLES
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME IN ('providers', 'usage_records', 'settings', 'audit_logs')`
+    ) as [Array<{ TABLE_NAME: string }>, unknown];
+    const names = new Set(rows.map((row) => row.TABLE_NAME));
+    return REQUIRED_TABLES.every((table) => names.has(table));
+  } finally {
+    await pool.end();
+  }
+}
+
+async function resolveCloudflareBindings(): Promise<Record<string, unknown>> {
+  try {
+    const mod = await import('cloudflare:workers') as { env?: Record<string, unknown> };
+    if (!mod.env || typeof mod.env !== 'object') {
+      throw new Error('Cloudflare bindings are unavailable');
+    }
+    return mod.env;
+  } catch {
+    throw new Error(
+      'AIMETER_DATABASE_ENGINE=d1 requires Cloudflare Workers runtime with D1 binding support. ' +
+      'Use sqlite/mysql/postgres outside Cloudflare.'
+    );
+  }
+}
+
+async function isD1SchemaInitialized(bindingName: string): Promise<boolean> {
+  const normalized = (bindingName || '').trim();
+  if (!normalized) {
+    throw new Error('AIMETER_DATABASE_CONNECTION is required when AIMETER_DATABASE_ENGINE=d1.');
+  }
+  if (!isValidBindingName(normalized)) {
+    throw new Error(
+      `Invalid D1 binding name "${normalized}". ` +
+      'When AIMETER_DATABASE_ENGINE=d1, AIMETER_DATABASE_CONNECTION must be a binding name like DB.'
+    );
+  }
+
+  const bindings = await resolveCloudflareBindings();
+  const binding = bindings[normalized];
+  if (!isD1Database(binding)) {
+    throw new Error(
+      `D1 binding "${normalized}" not found. ` +
+      'Add a D1 binding with this exact name in your Cloudflare Worker configuration.'
+    );
+  }
+
+  const result = await binding
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('providers','usage_records','settings','audit_logs')")
+    .all<{ name: string }>();
+  const rows = Array.isArray(result.results) ? result.results : [];
+  const names = new Set(rows.map((row) => row.name));
+  return REQUIRED_TABLES.every((table) => names.has(table));
+}
+
+async function detectDatabaseInitialized(): Promise<boolean> {
+  const appConfig = getAppConfig();
+  if (!appConfig.database.enabled) {
+    return false;
+  }
+
+  if (appConfig.database.engine === 'sqlite') {
+    return isSqliteSchemaInitialized(appConfig.database.connection || './data/aimeter.db');
+  }
+  if (appConfig.database.engine === 'postgres') {
+    return isPostgresSchemaInitialized(appConfig.database.connection);
+  }
+  if (appConfig.database.engine === 'mysql') {
+    return isMysqlSchemaInitialized(appConfig.database.connection);
+  }
+  if (appConfig.database.engine === 'd1') {
+    return isD1SchemaInitialized(appConfig.database.connection);
+  }
+  return false;
+}
 
 async function initializeEngine(): Promise<void> {
   if (engineInstance) return;
@@ -33,6 +189,7 @@ async function initializeEngine(): Promise<void> {
   }
 
   await engineInstance.init();
+  initializedState = true;
 }
 
 async function getEngine(): Promise<DatabaseEngine> {
@@ -40,8 +197,11 @@ async function getEngine(): Promise<DatabaseEngine> {
     if (!initPromise) {
       initPromise = initializeEngine();
     }
-    await initPromise;
-    initPromise = null;
+    try {
+      await initPromise;
+    } finally {
+      initPromise = null;
+    }
   }
 
   if (!engineInstance) {
@@ -53,7 +213,20 @@ async function getEngine(): Promise<DatabaseEngine> {
 
 export async function initDatabase(): Promise<BetterSqlite3Database | null> {
   await getEngine();
+  initializedState = true;
   return sqliteRaw;
+}
+
+export async function isDatabaseInitialized(): Promise<boolean> {
+  if (engineInstance) {
+    return true;
+  }
+  if (initializedState !== null) {
+    return initializedState;
+  }
+
+  initializedState = await detectDatabaseInitialized();
+  return initializedState;
 }
 
 export function getDatabase(): BetterSqlite3Database {

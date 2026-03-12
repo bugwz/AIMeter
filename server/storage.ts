@@ -20,6 +20,7 @@ import {
   recordAuditLog as recordDbAuditLog,
   patchProviderAttrs as patchDbProviderAttrs,
   patchFetchState as patchDbFetchState,
+  isDatabaseInitialized,
 } from './database.js';
 import { runtimeConfig } from './runtime.js';
 import { getAppConfig } from './config.js';
@@ -305,6 +306,13 @@ async function listDbProviders(): Promise<ProviderInstance[]> {
   return providers.map(mapDbProvider);
 }
 
+async function hasInitializedDatabaseSchema(): Promise<boolean> {
+  if (runtimeConfig.storageMode !== 'database') {
+    return false;
+  }
+  return isDatabaseInitialized();
+}
+
 async function getCapabilities(viewerRole: AuthRole): Promise<RuntimeCapabilities> {
   const normalHash = await storage.getPasswordHash('normal');
   const adminHash = await storage.getPasswordHash('admin');
@@ -355,12 +363,18 @@ export const storage = {
     if (runtimeConfig.storageMode === 'env') {
       return getConfiguredPasswordHash(role);
     }
+    if (!await hasInitializedDatabaseSchema()) {
+      return null;
+    }
     return getDbSetting(getPasswordSettingKey(role));
   },
 
   async getAdminRoutePath(): Promise<string | null> {
     if (runtimeConfig.storageMode === 'env') {
       return getConfiguredAdminRoutePath();
+    }
+    if (!await hasInitializedDatabaseSchema()) {
+      return null;
     }
     return normalizeAdminRoutePath(await getDbSetting(ADMIN_ROUTE_PATH_KEY));
   },
@@ -378,6 +392,9 @@ export const storage = {
 
   async getCronSecret(): Promise<string | null> {
     if (runtimeConfig.storageMode === 'database') {
+      if (!await hasInitializedDatabaseSchema()) {
+        return null;
+      }
       return getDbSetting(CRON_SECRET_KEY);
     }
     return getAppConfig().auth.cronSecret?.trim() || null;
@@ -385,6 +402,9 @@ export const storage = {
 
   async getEndpointSecret(): Promise<string | null> {
     if (runtimeConfig.storageMode === 'database') {
+      if (!await hasInitializedDatabaseSchema()) {
+        return null;
+      }
       return getDbSetting(ENDPOINT_SECRET_KEY);
     }
     return getAppConfig().auth.endpointSecret?.trim() || null;
@@ -411,6 +431,9 @@ export const storage = {
   async isInitialSetupRequired(): Promise<boolean> {
     if (runtimeConfig.storageMode !== 'database') {
       return false;
+    }
+    if (!await hasInitializedDatabaseSchema()) {
+      return true;
     }
     return !(await storage.getPasswordHash('normal')) || !(await storage.getPasswordHash('admin')) || !(await storage.getAdminRoutePath());
   },
@@ -597,6 +620,9 @@ export const storage = {
     if (runtimeConfig.storageMode === 'env') {
       return null;
     }
+    if (!await hasInitializedDatabaseSchema()) {
+      return null;
+    }
     return getDbSetting(key);
   },
 
@@ -640,6 +666,9 @@ export const storage = {
       if (!configuredPassword) return false;
       return safeEqual(password, configuredPassword);
     }
+    if (!await hasInitializedDatabaseSchema()) {
+      return false;
+    }
     const hash = await storage.getPasswordHash(role);
     if (!hash) return false;
     return verifyHashedPassword(password, hash);
@@ -647,6 +676,9 @@ export const storage = {
 
   async getAuditLogs(limit: number) {
     if (runtimeConfig.storageMode === 'env') {
+      return [];
+    }
+    if (!await hasInitializedDatabaseSchema()) {
       return [];
     }
     return getDbAuditLogs(limit);
@@ -664,6 +696,9 @@ export const storage = {
     details?: Record<string, unknown>;
   }): Promise<void> {
     if (runtimeConfig.storageMode === 'env') {
+      return;
+    }
+    if (!await hasInitializedDatabaseSchema()) {
       return;
     }
     await recordDbAuditLog(entry);
