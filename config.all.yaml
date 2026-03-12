@@ -26,13 +26,6 @@ server:
   # - https when runtime.mode=serverless
   # - http otherwise
   protocol: http
-  # Allowed CORS origins for browser requests.
-  # Allowed:
-  # - single origin, for example http://localhost:3000
-  # - YAML string list, for example [http://localhost:3000, https://your-domain.com]
-  # Built-in default when unset in both env and this file: empty (no custom CORS middleware)
-  corsOrigins:
-    - http://localhost:3000
 
 runtime:
   # Switch all provider data fetching to mock mode.

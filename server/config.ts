@@ -25,7 +25,6 @@ export interface AppConfig {
     apiUrl: string;
     frontendPort: number;
     backendPort: number;
-    corsOrigins: string[];
     protocol: 'http' | 'https';
   };
   runtime: {
@@ -509,19 +508,6 @@ function validateSecurityConfig(config: AppConfig, providerIssues: ConfigIssue[]
   throw new Error(`Configuration validation failed with ${issues.length} issue(s).`);
 }
 
-function asStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.map((item) => asString(item)).filter((item): item is string => Boolean(item));
-  }
-  if (typeof value === 'string') {
-    return value
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-  return [];
-}
-
 function normalizeAlias(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
@@ -727,8 +713,6 @@ export function getAppConfig(): AppConfig {
     }
   }
 
-  const configCorsOrigins = asStringArray(server.corsOrigins);
-  const envCorsOrigins = asStringArray(process.env.AIMETER_CORS_ORIGIN);
   const configuredSessionSecret = asString(auth.sessionSecret) || process.env.AIMETER_AUTH_SESSION_SECRET;
   const configuredAdminRoutePath = asString(auth.adminRoutePath) || process.env.AIMETER_ADMIN_ROUTE_PATH;
 
@@ -738,9 +722,6 @@ export function getAppConfig(): AppConfig {
       apiUrl: asString(server.apiUrl) || process.env.AIMETER_API_URL || '/api',
       frontendPort: asNumber(server.frontendPort) ?? parseEnvNumber(process.env.AIMETER_FRONTEND_PORT) ?? 3000,
       backendPort: asNumber(server.backendPort) ?? parseEnvNumber(process.env.AIMETER_BACKEND_PORT) ?? 3001,
-      corsOrigins: (Object.prototype.hasOwnProperty.call(server, 'corsOrigins')
-        ? configCorsOrigins
-        : envCorsOrigins),
       protocol,
     },
     runtime: {

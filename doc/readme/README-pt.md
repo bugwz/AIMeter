@@ -54,7 +54,7 @@ Os adaptadores atuais incluem:
 ├─ server/              # API backend, auth, jobs, armazenamento
 ├─ doc/                 # Notas de design, exemplos de provider, traducoes
 ├─ config.example.yaml  # Modelo completo de configuracao
-└─ .env.example         # Modelo de variaveis de ambiente
+└─ .env.all         # Modelo de variaveis de ambiente
 ```
 
 ## Inicio rapido
@@ -68,7 +68,7 @@ npm install
 ### 2. Preparar configuracao
 
 ```bash
-cp .env.example .env
+cp .env.all .env
 cp config.example.yaml config.yaml
 ```
 
@@ -106,7 +106,7 @@ Ordem de prioridade:
 
 Areas principais:
 
-- `server`: URL da API, portas frontend/backend, CORS, trust proxy
+- `server`: URL da API, portas frontend/backend, trust proxy
 - `runtime`: `node` ou `serverless`, chave mock
 - `database`: engine, DSN/caminho, chaves de criptografia
 - `auth`: segredo de sessao, opcoes de cookie, rate limits, segredos bootstrap/admin
@@ -148,5 +148,4 @@ Para producao:
 - `AIMETER_CRON_SECRET` e `AIMETER_ENDPOINT_SECRET` sao opcionais no modo env-only, mas os endpoints com autenticacao por secret ficam indisponiveis ate serem configurados.
 - No modo banco de dados, `AIMETER_CRON_SECRET` e `AIMETER_ENDPOINT_SECRET` sao usados apenas na inicializacao inicial; depois, os valores passam a ser gerenciados no banco.
 - Ative cookies seguros em HTTPS.
-- Restrinja origens CORS.
 - Proteja os segredos admin/cron/endpoint.

@@ -29,6 +29,19 @@ Mode selection is controlled by your environment variables and bindings:
 
 ---
 
+## Env Value Visibility
+
+Cloudflare Deploy Button treats `.env.example` / `.dev.vars.example` entries as secrets,
+so values are hidden in the UI.
+
+This repository uses `.env.all` for local setup and keeps Worker defaults in
+`wrangler.jsonc` `vars` so values remain visible during deployment.
+
+If you want a value to stay visible in Cloudflare, set it as a plain text variable
+(`vars`) instead of a secret.
+
+---
+
 ## Runtime Model
 
 - Recommended runtime mode on Workers: `AIMETER_RUNTIME_MODE=serverless`

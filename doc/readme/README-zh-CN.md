@@ -54,7 +54,7 @@ AIMeter 是一个可自托管的仪表盘，用于在一个界面中跟踪多个
 ├─ server/              # 后端 API、鉴权、任务、存储
 ├─ doc/                 # 设计说明、Provider 示例、多语言文档
 ├─ config.example.yaml  # 完整配置模板
-└─ .env.example         # 环境变量模板
+└─ .env.all         # 环境变量模板
 ```
 
 ## 快速开始
@@ -68,7 +68,7 @@ npm install
 ### 2. 准备配置
 
 ```bash
-cp .env.example .env
+cp .env.all .env
 cp config.example.yaml config.yaml
 ```
 
@@ -106,7 +106,7 @@ npm run preview        # 预览生产构建
 
 关键配置域：
 
-- `server`：API 地址、前后端端口、CORS、反向代理信任
+- `server`：API 地址、前后端端口、反向代理信任
 - `runtime`：`node` 或 `serverless`、mock 开关
 - `database`：引擎、DSN/路径、加密密钥
 - `auth`：会话密钥、Cookie 选项、限流、bootstrap/admin 密钥
@@ -148,5 +148,4 @@ AIMeter 提供单容器部署方案：**nginx**（HTTPS，端口 3000）终止 T
 - 在无数据库模式下，`AIMETER_CRON_SECRET` 与 `AIMETER_ENDPOINT_SECRET` 可不配置，但未配置时对应的 secret 鉴权接口不可用。
 - 在数据库模式下，`AIMETER_CRON_SECRET` 与 `AIMETER_ENDPOINT_SECRET` 仅用于首次初始化，后续以数据库中的值为准。
 - 在 HTTPS 后启用安全 Cookie。
-- 严格限制 CORS 来源。
 - 妥善保管 admin/cron/endpoint 等敏感密钥。

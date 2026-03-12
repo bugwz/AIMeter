@@ -11,6 +11,9 @@
   },
   "vars": {
     "AIMETER_RUNTIME_MODE": "serverless",
-    "AIMETER_SERVER_PROTOCOL": "https"
+    "AIMETER_SERVER_PROTOCOL": "https",
+    "AIMETER_DATABASE_ENABLED": "true",
+    "AIMETER_DATABASE_ENGINE": "d1",
+    "AIMETER_DATABASE_CONNECTION": ""
   }
 }

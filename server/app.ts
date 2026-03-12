@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors';
 import { initDatabase, getSetting } from './database.js';
 import { initMock, ensureMockRuntimeProvidersSeeded } from './mock/init.js';
 import { requireApiAuth, requireEndpointAuth } from './middleware/auth.js';
@@ -16,7 +15,6 @@ export async function createApp(): Promise<express.Application> {
 
   const appConfig = getAppConfig();
   const isMockMode = runtimeConfig.mockEnabled;
-  const allowedOrigins = appConfig.server.corsOrigins || [];
   const app = express();
 
   app.use((req, res, next) => {
@@ -31,13 +29,6 @@ export async function createApp(): Promise<express.Application> {
     }
     next();
   });
-
-  if (allowedOrigins.length > 0) {
-    app.use(cors({
-      origin: allowedOrigins,
-      credentials: true,
-    }));
-  }
 
   app.use(express.json({ limit: '1mb' }));
   app.use('/api', createApiAuditMiddleware(isMockMode));

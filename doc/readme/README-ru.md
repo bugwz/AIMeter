@@ -54,7 +54,7 @@ AIMeter - это self-hosted панель для отслеживания исп
 ├─ server/              # Backend API, auth, jobs, storage
 ├─ doc/                 # Дизайн-заметки, примеры provider, переводы
 ├─ config.example.yaml  # Полный шаблон конфигурации
-└─ .env.example         # Шаблон переменных окружения
+└─ .env.all         # Шаблон переменных окружения
 ```
 
 ## Быстрый старт
@@ -68,7 +68,7 @@ npm install
 ### 2. Подготовьте конфигурацию
 
 ```bash
-cp .env.example .env
+cp .env.all .env
 cp config.example.yaml config.yaml
 ```
 
@@ -106,7 +106,7 @@ npm run preview        # просмотр production-сборки
 
 Ключевые разделы:
 
-- `server`: API URL, порты frontend/backend, CORS, trust proxy
+- `server`: API URL, порты frontend/backend, trust proxy
 - `runtime`: `node` или `serverless`, переключатель mock
 - `database`: движок, DSN/путь, ключи шифрования
 - `auth`: session secret, настройки cookie, rate limits, bootstrap/admin secrets
@@ -148,5 +148,4 @@ AIMeter поставляется с конфигурацией одного ко
 - `AIMETER_CRON_SECRET` и `AIMETER_ENDPOINT_SECRET` в env-only режиме опциональны, но соответствующие secret-auth endpoints недоступны, пока значения не заданы.
 - В режиме базы данных `AIMETER_CRON_SECRET` и `AIMETER_ENDPOINT_SECRET` используются только при первичной инициализации; далее значения управляются в БД.
 - Включайте secure cookies за HTTPS.
-- Ограничивайте CORS origins.
 - Защищайте admin/cron/endpoint secrets.
