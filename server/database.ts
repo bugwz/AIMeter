@@ -225,8 +225,16 @@ export async function isDatabaseInitialized(): Promise<boolean> {
     return initializedState;
   }
 
-  initializedState = await detectDatabaseInitialized();
-  return initializedState;
+  try {
+    initializedState = await detectDatabaseInitialized();
+    return initializedState;
+  } catch (error) {
+    console.warn(
+      '[DB] Failed to detect schema state; treating as uninitialized until bootstrap submit.',
+      error instanceof Error ? error.message : error
+    );
+    return false;
+  }
 }
 
 export function getDatabase(): BetterSqlite3Database {
