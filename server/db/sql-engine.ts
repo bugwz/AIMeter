@@ -10,7 +10,7 @@ import {
 } from '../../src/types/index.js';
 import type { AuditLogRow, DatabaseEngine, DbClient, StoredProviderConfig, UsageRecordRow } from './engine.js';
 
-type EngineType = 'sqlite' | 'postgres' | 'mysql';
+type EngineType = 'sqlite' | 'postgres' | 'mysql' | 'd1';
 
 interface DbProviderRow {
   id: number;

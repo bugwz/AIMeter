@@ -1,4 +1,5 @@
 .agents/skills/
+.wrangler
 data
 dist
 doc/reference

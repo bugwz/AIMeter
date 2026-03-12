@@ -34,7 +34,7 @@ export interface AppConfig {
   };
   database: {
     enabled: boolean;
-    engine: 'sqlite' | 'postgres' | 'mysql';
+    engine: 'sqlite' | 'postgres' | 'mysql' | 'd1';
     connection: string;
     encryptionKey?: string;
   };
@@ -637,6 +637,11 @@ export function getAppConfig(): AppConfig {
   const databaseEngine = (asString(database.engine)
     || process.env.AIMETER_DATABASE_ENGINE
     || 'sqlite') as AppConfig['database']['engine'];
+  const configuredDatabaseConnection = asString(database.connection)
+    || process.env.AIMETER_DATABASE_CONNECTION;
+  const defaultDatabaseConnection = databaseEngine === 'd1'
+    ? 'DB'
+    : path.join(projectRoot, 'data/aimeter.db');
   const databaseEnabled = asBoolean(database.enabled)
     ?? parseEnvBoolean(process.env.AIMETER_DATABASE_ENABLED)
     ?? true;
@@ -733,9 +738,7 @@ export function getAppConfig(): AppConfig {
     database: {
       enabled: databaseEnabled,
       engine: databaseEngine,
-      connection: asString(database.connection)
-        || process.env.AIMETER_DATABASE_CONNECTION
-        || path.join(projectRoot, 'data/aimeter.db'),
+      connection: configuredDatabaseConnection || defaultDatabaseConnection,
       encryptionKey: databaseEnabled ? undefined : (asString(database.encryptionKey) || process.env.AIMETER_ENCRYPTION_KEY),
     },
     auth: {

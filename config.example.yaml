@@ -58,6 +58,7 @@ database:
   # Select database engine.
   # Allowed:
   # - sqlite: use a local SQLite database file
+  # - d1: use Cloudflare D1 (connection is the D1 binding name, for example DB)
   # - postgres: use a PostgreSQL database via DSN connection string
   # - mysql: use a MySQL database via DSN connection string
   # Built-in default when unset in both env and this file: sqlite
@@ -65,12 +66,16 @@ database:
   # Main database connection string.
   # Allowed:
   # - sqlite file path, for example ./data/aimeter.db: store data in a local SQLite file
+  # - d1 binding name, for example DB (Cloudflare Workers only)
   # - postgres DSN, for example postgres://user:pass@127.0.0.1:5432/aimeter
   # - mysql DSN, for example mysql://user:pass@127.0.0.1:3306/aimeter
-  # Built-in default when unset in both env and this file: ./data/aimeter.db
+  # Built-in default when unset in both env and this file:
+  # - d1 engine: DB
+  # - other engines: ./data/aimeter.db
   connection: ./data/aimeter.db
   # Examples by engine:
   # - sqlite: ./data/aimeter.db
+  # - d1: DB
   # - mysql: mysql://root:password@127.0.0.1:3306/aimeter
   # - postgres: postgresql://postgres:password@127.0.0.1:5432/aimeter
   # Encrypt provider credentials stored in the main database.

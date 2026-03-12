@@ -10,6 +10,9 @@
     "build": "tsc --noEmit --skipLibCheck && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
+    "cf:build": "npm run build",
+    "cf:dev": "npx wrangler dev",
+    "cf:deploy": "npx wrangler deploy",
     "start:server": "node --import tsx server/index.ts",
     "start:mock": "AIMETER_MOCK_ENABLED=true node --import tsx server/index.ts",
     "vercel-build": "vite build"
@@ -32,6 +35,9 @@
   },
   "optionalDependencies": {
     "better-sqlite3": "^9.2.2"
+  },
+  "overrides": {
+    "iconv-lite": "^0.6.3"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.8",

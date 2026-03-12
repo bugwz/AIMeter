@@ -24,6 +24,10 @@ async function initializeEngine(): Promise<void> {
     const { createMysqlEngine } = await import('./db/mysql.js');
     engineInstance = await createMysqlEngine();
     sqliteRaw = null;
+  } else if (appConfig.database.engine === 'd1') {
+    const { createD1Engine } = await import('./db/d1.js');
+    engineInstance = await createD1Engine();
+    sqliteRaw = null;
   } else {
     throw new Error(`Unsupported database engine: ${appConfig.database.engine}`);
   }

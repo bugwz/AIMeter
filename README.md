@@ -22,7 +22,7 @@ It includes a React frontend, an Express backend, multi-provider adapters, sched
 - Endpoint and widget related pages
 - Automatic refresh scheduler in node runtime mode
 - Mock mode for local development and demos
-- Storage backends: SQLite, PostgreSQL, MySQL
+- Storage backends: SQLite, Cloudflare D1, PostgreSQL, MySQL
 - Environment-first config override model
 
 ## Supported Providers
@@ -46,7 +46,7 @@ Current provider adapters include:
 
 - Frontend: React 18, TypeScript, Vite, Tailwind CSS
 - Backend: Node.js, Express, TypeScript
-- Database: better-sqlite3, pg, mysql2
+- Database: better-sqlite3, Cloudflare D1, pg, mysql2
 
 ## Project Structure
 
@@ -96,6 +96,8 @@ npm run dev:all        # frontend + backend
 npm run dev:mock:all   # frontend + backend in mock mode
 npm run build          # type-check and build frontend
 npm run preview        # preview production frontend build
+npm run cf:dev         # local Cloudflare Workers dev (requires Wrangler)
+npm run cf:deploy      # deploy to Cloudflare Workers (requires Wrangler)
 ```
 
 ## Configuration Model
@@ -124,6 +126,7 @@ Key areas:
 AIMeter supports:
 
 - SQLite (default)
+- Cloudflare D1 (Workers runtime)
 - PostgreSQL
 - MySQL
 
@@ -141,6 +144,12 @@ AIMeter ships a single-container stack: **nginx** (HTTPS, port 3000) terminates 
 Security keys are auto-generated on first start — no manual configuration required.
 
 For full details see [deploy/container/README.md](deploy/container/README.md).
+
+## Cloudflare Workers Deployment
+
+For Cloudflare Workers deployment (including `env-only` and `database.engine=d1`), see:
+
+- [deploy/cloudflare/README.md](deploy/cloudflare/README.md)
 
 ## Security Notes
 
