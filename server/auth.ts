@@ -11,7 +11,7 @@ const SESSION_COOKIE_NAMES: Record<AuthRole, string> = {
 
 const appConfig = getAppConfig();
 const SESSION_TTL_SECONDS = Math.max(appConfig.auth.sessionTtlSeconds || 12 * 60 * 60, 300);
-let SESSION_SECRET = appConfig.auth.sessionSecret || crypto.randomBytes(32).toString('hex');
+let SESSION_SECRET = appConfig.auth.sessionSecret?.trim() || '';
 const USE_SECURE_COOKIE = appConfig.server.protocol === 'https';
 
 if (!appConfig.auth.sessionSecret && !appConfig.database.enabled) {
@@ -20,6 +20,13 @@ if (!appConfig.auth.sessionSecret && !appConfig.database.enabled) {
 
 export function initSessionSecret(secret: string): void {
   SESSION_SECRET = secret;
+}
+
+function getSessionSecret(): string {
+  if (!SESSION_SECRET) {
+    SESSION_SECRET = crypto.randomBytes(32).toString('hex');
+  }
+  return SESSION_SECRET;
 }
 
 interface SessionPayload {
@@ -55,7 +62,7 @@ function parseCookies(req: Request): Record<string, string> {
 
 function createSignature(payloadB64: string, passwordHash: string): string {
   return crypto
-    .createHmac('sha256', SESSION_SECRET)
+    .createHmac('sha256', getSessionSecret())
     .update(`${payloadB64}.${passwordHash}`)
     .digest('base64url');
 }

@@ -43,21 +43,15 @@ interface OnboardResponse {
 
 class AntigravityOAuthService {
   private sessions = new Map<string, OAuthSession>();
-  private cleanupTimer: ReturnType<typeof setInterval>;
 
   private readonly baseURLs = [
     'https://daily-cloudcode-pa.googleapis.com',
     'https://cloudcode-pa.googleapis.com',
   ];
 
-  constructor() {
-    this.cleanupTimer = setInterval(() => this.cleanupExpiredSessions(), 5 * 60 * 1000);
-    if (this.cleanupTimer.unref) {
-      this.cleanupTimer.unref();
-    }
-  }
-
   generateAuthUrl(): { authUrl: string; sessionId: string } {
+    this.cleanupExpiredSessions();
+
     const sessionId = crypto.randomUUID();
     const state = crypto.randomBytes(16).toString('hex');
     const codeVerifier = generateCodeVerifier();
