@@ -10,12 +10,16 @@ type BetterSqliteDatabase = import('better-sqlite3').Database;
 type BetterSqliteCtor = new (filename: string) => BetterSqliteDatabase;
 
 const appConfig = getAppConfig();
-const require = createRequire(import.meta.url);
+let nodeRequire: ReturnType<typeof createRequire> | null = null;
 let betterSqliteCtor: BetterSqliteCtor | null = null;
 
 function getBetterSqliteCtor(): BetterSqliteCtor {
   if (betterSqliteCtor) return betterSqliteCtor;
   try {
+    if (!nodeRequire) {
+      nodeRequire = createRequire(import.meta.url);
+    }
+    const require = nodeRequire;
     const mod = require('better-sqlite3') as BetterSqliteCtor | { default: BetterSqliteCtor };
     betterSqliteCtor = (typeof mod === 'function' ? mod : mod.default);
     return betterSqliteCtor;
