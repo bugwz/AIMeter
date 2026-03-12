@@ -8,81 +8,64 @@ This guide covers Cloudflare Workers deployment for AIMeter with:
 
 ---
 
-## One-Click Deploy
+## Deployment Steps
 
-Use this single deploy entry for all modes:
+1. Click the one-click deploy button, then configure required env variables in Cloudflare.
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bugwz/AIMeter)
+   [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bugwz/AIMeter)
 
-Mode selection is controlled by your environment variables and bindings:
+   In Cloudflare's deploy page:
 
-| Mode | Storage | Engine | Mock |
-|---|---|---|---|
-| Env-only | Env | N/A | Off |
-| Env-only | Env | N/A | On |
-| D1 | Database | `d1` | Off |
-| D1 | Database | `d1` | On |
-| MySQL | Database | `mysql` | Off |
-| MySQL | Database | `mysql` | On |
-| PostgreSQL | Database | `postgres` | Off |
-| PostgreSQL | Database | `postgres` | On |
+   - Connect/authorize GitHub if prompted. (If you see an error about being unable to fetch repository content, try disabling proxy software and retry.)
+   - Confirm project import.
+   - Set required env variables by mode (one mode per row; one required key per line with example):
+   - `AIMETER_ADMIN_ROUTE_PATH` and `AIMETER_AUTH_SESSION_SECRET` should be 32-character random strings (do not reuse example values).
 
----
+   | Mode | Required envs (with examples) |
+   |---|---|
+   | Env-only | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=false`<br>`AIMETER_NORMAL_PASSWORD=normalpassword123`<br>`AIMETER_ADMIN_PASSWORD=adminpassword123`<br>`AIMETER_ADMIN_ROUTE_PATH=f84c1b56d2a90e37c4f1a8b62d95e013`<br>`AIMETER_AUTH_SESSION_SECRET=7f1c39b8e2d64a01c5f73a9d0b4e8c26`<br>`AIMETER_PROVIDERS_JSON=[{"id":"openai","enabled":true}]` |
+   | D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=true`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
+   | MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=true`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://user:pass@host:3306/aimeter` |
+   | PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=true`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://user:pass@host:5432/aimeter` |
 
-## Env Value Visibility
-
-Cloudflare Deploy Button treats `.env.example` / `.dev.vars.example` entries as secrets,
-so values are hidden in the UI.
-
-This repository uses `.env.all` for local setup and keeps Worker defaults in
-`wrangler.jsonc` `vars` so values remain visible during deployment.
-
-If you want a value to stay visible in Cloudflare, set it as a plain text variable
-(`vars`) instead of a secret.
+2. Wait for the first build/deploy to complete.
+3. If you selected `d1`, complete the D1 binding steps in the next section.
+4. After D1 binding is saved, directly visit your service URL to trigger system initialization.
 
 ---
 
-## Runtime Model
+## D1 Post-Deploy Binding Steps
 
-- Recommended runtime mode on Workers: `AIMETER_RUNTIME_MODE=serverless`
-- Recommended protocol: `AIMETER_SERVER_PROTOCOL=https`
-- Frontend static assets are served by Workers Assets (`dist/`)
-- API routes are handled by the Worker (`/api/*`)
+D1 bindings are **not** configured through environment variables alone. For `AIMETER_DATABASE_ENGINE=d1`,
+you must manually link the D1 database to the Worker in the Cloudflare dashboard after the first deploy.
 
----
+### Step 1 — Create D1 database
 
-## Environment Variables by Mode
+1. In Cloudflare dashboard, expand **Storage & databases**.
+2. Find **D1 SQL database**, then click **Create Database**.
+3. Enter database name: `aimeter-db`.
+4. Click **Create**.
 
-| Mode | Required envs |
-|---|---|
-| Env-only | `AIMETER_RUNTIME_MODE=serverless`, `AIMETER_SERVER_PROTOCOL=https`, `AIMETER_DATABASE_ENABLED=false`, `AIMETER_NORMAL_PASSWORD`, `AIMETER_ADMIN_PASSWORD`, `AIMETER_ADMIN_ROUTE_PATH`, `AIMETER_AUTH_SESSION_SECRET`, `AIMETER_PROVIDERS_JSON` |
-| D1 | `AIMETER_RUNTIME_MODE=serverless`, `AIMETER_SERVER_PROTOCOL=https`, `AIMETER_DATABASE_ENABLED=true`, `AIMETER_DATABASE_ENGINE=d1`, `AIMETER_DATABASE_CONNECTION=<D1 binding name>` |
-| MySQL | `AIMETER_RUNTIME_MODE=serverless`, `AIMETER_SERVER_PROTOCOL=https`, `AIMETER_DATABASE_ENABLED=true`, `AIMETER_DATABASE_ENGINE=mysql`, `AIMETER_DATABASE_CONNECTION=<mysql dsn>` |
-| PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`, `AIMETER_SERVER_PROTOCOL=https`, `AIMETER_DATABASE_ENABLED=true`, `AIMETER_DATABASE_ENGINE=postgres`, `AIMETER_DATABASE_CONNECTION=<postgres dsn>` |
+### Step 2 — Bind the D1 database to your Worker
 
-Mock-only additional env:
+1. Go back and expand **Compute**.
+2. Open **Workers & Pages**.
+3. Open your deployed Worker.
+4. Click **Bindings**.
+5. Click **Add binding**.
+6. Select **D1 database**.
+7. Fill in the two fields:
 
-- `AIMETER_MOCK_ENABLED=true`
+   | Field | Value |
+   |---|---|
+   | **Variable name** | `DB` (must match `AIMETER_DATABASE_CONNECTION`) |
+   | **D1 database** | Select `aimeter-db` (the database created in Step 1) |
 
-Optional integration secrets (all modes):
+8. Submit/Save binding.
 
-- `AIMETER_CRON_SECRET`
-- `AIMETER_ENDPOINT_SECRET`
-
----
-
-## D1 Binding Semantics
-
-When `AIMETER_DATABASE_ENGINE=d1`:
-
-- `AIMETER_DATABASE_CONNECTION` is interpreted as the D1 binding name directly (for example `DB`)
-- No extra D1-specific env/config key is required
-- The Worker must have a D1 binding with the same name
-
-Important:
-
-- `d1` is Cloudflare Workers runtime only
-- If `engine=d1` is used outside Cloudflare Workers, AIMeter fails at startup with an explicit error
+After saving the binding, directly visit your deployed service URL. The first request will trigger
+system initialization automatically and create required tables
+(`providers`, `usage_records`, `settings`, `audit_logs`).
 
 ---
 
@@ -99,20 +82,34 @@ Important:
 
 ---
 
-## Verification Checklist
-
-After deployment:
-
-1. Health check returns `status: ok` from `/api/health`
-2. SPA deep links load normally (non-API paths resolve to frontend app)
-3. Auth flow works for the selected mode (`env-only` or database-backed)
-4. Database-backed mode can save provider settings and write/read history
-5. For `d1`, confirm the binding name exactly matches `AIMETER_DATABASE_CONNECTION`
-
----
-
 ## Local Development Notes
 
 - Workers local development requires Wrangler
 - `engine=d1` local testing should use a local D1 binding setup via Wrangler
 - For non-Cloudflare local backend runs, use `sqlite`, `mysql`, or `postgres` instead of `d1`
+
+---
+
+## Required Env Variables (Reference)
+
+Only required env variables are listed below (one mode per row; one required key per line with example).
+
+| Mode | Required envs |
+|---|---|
+| Env-only | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=false`<br>`AIMETER_NORMAL_PASSWORD=normalpassword123`<br>`AIMETER_ADMIN_PASSWORD=adminpassword123`<br>`AIMETER_ADMIN_ROUTE_PATH=f84c1b56d2a90e37c4f1a8b62d95e013`<br>`AIMETER_AUTH_SESSION_SECRET=7f1c39b8e2d64a01c5f73a9d0b4e8c26`<br>`AIMETER_PROVIDERS_JSON=[{"id":"openai","enabled":true}]` |
+| D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=true`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
+| MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=true`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://user:pass@host:3306/aimeter` |
+| PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=true`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://user:pass@host:5432/aimeter` |
+
+### D1 Variable Semantics
+
+When `AIMETER_DATABASE_ENGINE=d1`:
+
+- `AIMETER_DATABASE_CONNECTION` is interpreted as the D1 binding name directly (for example `DB`)
+- No extra D1-specific env/config key is required
+- The Worker must have a D1 binding with the same name
+
+Important:
+
+- `d1` is Cloudflare Workers runtime only
+- If `engine=d1` is used outside Cloudflare Workers, AIMeter fails at startup with an explicit error
