@@ -74,8 +74,18 @@ interface ParseProvidersJsonResult {
   issues: ConfigIssue[];
 }
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, '..');
+function getProjectRoot(): string | null {
+  try {
+    if (typeof import.meta.url === 'string' && import.meta.url.startsWith('file://')) {
+      return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+    }
+  } catch {
+    // not a file URL (e.g. Cloudflare Workers)
+  }
+  return null;
+}
+
+const projectRoot = getProjectRoot();
 
 let cachedConfig: AppConfig | null = null;
 
@@ -251,6 +261,10 @@ function parseYaml(input: string): UnknownRecord {
 }
 
 function resolveConfigFilePath(): string | null {
+  if (!projectRoot) {
+    return null;
+  }
+
   const explicit = process.env.AIMETER_CONFIG_FILE?.trim();
   if (explicit) {
     return path.resolve(projectRoot, explicit);
@@ -641,7 +655,7 @@ export function getAppConfig(): AppConfig {
     || process.env.AIMETER_DATABASE_CONNECTION;
   const defaultDatabaseConnection = databaseEngine === 'd1'
     ? 'DB'
-    : path.join(projectRoot, 'data/aimeter.db');
+    : (projectRoot ? path.join(projectRoot, 'data/aimeter.db') : null);
   const databaseEnabled = asBoolean(database.enabled)
     ?? parseEnvBoolean(process.env.AIMETER_DATABASE_ENABLED)
     ?? true;
@@ -738,7 +752,7 @@ export function getAppConfig(): AppConfig {
     database: {
       enabled: databaseEnabled,
       engine: databaseEngine,
-      connection: configuredDatabaseConnection || defaultDatabaseConnection,
+      connection: configuredDatabaseConnection || defaultDatabaseConnection || '',
       encryptionKey: databaseEnabled ? undefined : (asString(database.encryptionKey) || process.env.AIMETER_ENCRYPTION_KEY),
     },
     auth: {
