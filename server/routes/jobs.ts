@@ -9,11 +9,34 @@ interface RefreshBody {
   providerIds?: string[];
 }
 
+type RefreshResult = {
+  id: string;
+  provider: string;
+  status: 'executed' | 'skipped';
+  ok?: boolean;
+  updatedAt?: string;
+  error?: string;
+  reason?: string;
+  nextDueAt?: string;
+};
+
 function safeEqual(a: string, b: string): boolean {
   const aBuffer = Buffer.from(a, 'utf8');
   const bBuffer = Buffer.from(b, 'utf8');
   if (aBuffer.length !== bBuffer.length) return false;
   return crypto.timingSafeEqual(aBuffer, bBuffer);
+}
+
+function parseIsoTime(value: unknown): number | null {
+  if (typeof value !== 'string') return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function resolveIntervalMinutes(value: unknown): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 5;
+  return Math.max(5, Math.floor(numeric));
 }
 
 async function isAuthorized(req: Request): Promise<boolean> {
@@ -22,6 +45,15 @@ async function isAuthorized(req: Request): Promise<boolean> {
   const headerSecret = req.header('x-aimeter-cron-secret')?.trim();
   if (!headerSecret) return false;
   return safeEqual(headerSecret, configuredSecret);
+}
+
+async function patchFetchStateSafe(providerId: string, patch: Record<string, unknown>): Promise<void> {
+  try {
+    await storage.patchFetchState(providerId, patch);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.warn(`[cron] Failed to patch fetch_state for ${providerId}: ${message}`);
+  }
 }
 
 router.post('/refresh', async (req: Request, res: Response) => {
@@ -59,41 +91,71 @@ router.post('/refresh', async (req: Request, res: Response) => {
     return filterIds.has(provider.id);
   });
 
-  const results: Array<{
-    id: string;
-    provider: string;
-    ok: boolean;
-    updatedAt?: string;
-    error?: string;
-  }> = [];
+  const results: RefreshResult[] = [];
 
   for (const provider of providers) {
-    try {
-      const snapshot = await fetchUsageForProvider(provider);
-      await storage.recordUsage(provider.id, snapshot);
+    const intervalMinutes = resolveIntervalMinutes(provider.refreshInterval);
+    const intervalMs = intervalMinutes * 60 * 1000;
+    const fetchState = (provider.fetchState || {}) as Record<string, unknown>;
+    const lastAttemptAtMs = parseIsoTime(fetchState.lastAttemptAt);
+
+    if (lastAttemptAtMs && (Date.now() - lastAttemptAtMs) < intervalMs) {
       results.push({
         id: provider.id,
         provider: provider.provider,
+        status: 'skipped',
+        reason: 'NOT_DUE',
+        nextDueAt: new Date(lastAttemptAtMs + intervalMs).toISOString(),
+      });
+      continue;
+    }
+
+    const attemptAt = new Date().toISOString();
+    await patchFetchStateSafe(provider.id, { lastAttemptAt: attemptAt });
+
+    try {
+      const snapshot = await fetchUsageForProvider(provider);
+      await storage.recordUsage(provider.id, snapshot);
+      await patchFetchStateSafe(provider.id, {
+        lastSuccessAt: snapshot.updatedAt.toISOString(),
+        lastFailedAt: null,
+        lastFailureReason: null,
+      });
+      results.push({
+        id: provider.id,
+        provider: provider.provider,
+        status: 'executed',
         ok: true,
         updatedAt: snapshot.updatedAt.toISOString(),
       });
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      await patchFetchStateSafe(provider.id, {
+        lastFailedAt: new Date().toISOString(),
+        lastFailureReason: errorMessage.substring(0, 200),
+      });
       results.push({
         id: provider.id,
         provider: provider.provider,
+        status: 'executed',
         ok: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
       });
     }
   }
 
-  const successCount = results.filter((item) => item.ok).length;
+  const executed = results.filter((item) => item.status === 'executed').length;
+  const skipped = results.filter((item) => item.status === 'skipped').length;
+  const successCount = results.filter((item) => item.status === 'executed' && item.ok).length;
+  const failedCount = results.filter((item) => item.status === 'executed' && item.ok === false).length;
   res.json({
     success: true,
     data: {
       total: results.length,
+      executed,
+      skipped,
       success: successCount,
-      failed: results.length - successCount,
+      failed: failedCount,
       durationMs: Date.now() - start,
       results,
     },
