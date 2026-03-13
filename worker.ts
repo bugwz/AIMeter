@@ -4,6 +4,8 @@ import type { Application } from 'express';
 
 type AssetsBinding = { fetch(request: Request): Promise<Response> };
 type WorkerEnv = { ASSETS: AssetsBinding };
+type WorkerExecutionContext = { waitUntil(promise: Promise<unknown>): void };
+type WaitUntilFn = (promise: Promise<unknown>) => void;
 
 let appPromise: Promise<Application> | null = null;
 
@@ -24,7 +26,11 @@ async function getApp(): Promise<Application> {
  * responses (where res.end() is called after an await). This manual bridge resolves only
  * when res.end() is explicitly called, making it safe for async route handlers.
  */
-async function fetchToExpress(app: Application, request: Request): Promise<Response> {
+async function fetchToExpress(
+  app: Application,
+  request: Request,
+  waitUntil?: WaitUntilFn,
+): Promise<Response> {
   const url = new URL(request.url);
   const reqHeaders: Record<string, string> = {};
   request.headers.forEach((v, k) => { reqHeaders[k] = v; });
@@ -82,6 +88,7 @@ async function fetchToExpress(app: Application, request: Request): Promise<Respo
     req.complete = false;
     req.body = parsedJsonBody;
     req.__jsonParseError = jsonParseError;
+    req.waitUntil = waitUntil;
     req.trailers = {};
     req.rawTrailers = [];
     req.read = () => {};
@@ -196,13 +203,13 @@ async function fetchToExpress(app: Application, request: Request): Promise<Respo
 }
 
 export default {
-  async fetch(request: Request, env: WorkerEnv): Promise<Response> {
+  async fetch(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     if (url.pathname.startsWith('/api/')) {
       try {
         const app = await getApp();
-        return await fetchToExpress(app, request);
+        return await fetchToExpress(app, request, (promise) => ctx.waitUntil(promise));
       } catch {
         return new Response(
           JSON.stringify({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Internal Server Error' } }),

@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { Router, type Response } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { clearSessionCookie, initSessionSecret, isRequestAuthenticated, issueSessionToken, setSessionCookie, type AuthRole } from '../auth.js';
 import { getAppConfig } from '../config.js';
 import { initDatabase } from '../database.js';
@@ -15,6 +15,12 @@ import {
 
 const router = Router();
 const appConfig = getAppConfig();
+type WaitUntilFn = (promise: Promise<unknown>) => void;
+
+function getRequestWaitUntil(req: Request): WaitUntilFn | undefined {
+  const candidate = (req as Request & { waitUntil?: unknown }).waitUntil;
+  return typeof candidate === 'function' ? candidate as WaitUntilFn : undefined;
+}
 
 function validatePasswordStrength(password: string | undefined): string | null {
   if (!password || password.length < 12) return 'Password must be at least 12 characters';
@@ -150,9 +156,6 @@ router.post('/bootstrap', async (req, res) => {
     if (dbSessionSecret) {
       initSessionSecret(dbSessionSecret);
     }
-    if (runtimeConfig.mockEnabled) {
-      await ensureMockRuntimeProvidersSeeded();
-    }
 
     if (!await storage.getPasswordHash('normal')) {
       await storage.setPassword('normal', normalPassword);
@@ -162,6 +165,21 @@ router.post('/bootstrap', async (req, res) => {
     }
     if (!await storage.getAdminRoutePath()) {
       await storage.setAdminRoutePath(normalizedSecret);
+    }
+    if (runtimeConfig.mockEnabled) {
+      const seedTask = ensureMockRuntimeProvidersSeeded().catch((error) => {
+        console.error(
+          '[mock] Bootstrap background seed failed:',
+          error instanceof Error ? error.message : error
+        );
+      });
+      const waitUntil = getRequestWaitUntil(req);
+      if (runtimeConfig.runtimeMode === 'serverless' && waitUntil) {
+        waitUntil(seedTask);
+      } else {
+        // Keep bootstrap fast and resilient in node runtime.
+        void seedTask;
+      }
     }
 
     const hash = await storage.getPasswordHash('normal');

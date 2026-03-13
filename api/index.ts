@@ -6,14 +6,25 @@ import { fileURLToPath } from 'url';
 import { storage } from '../server/storage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+type WaitUntilFn = (promise: Promise<unknown>) => void;
 
 let appPromise: Promise<Application> | null = null;
+let waitUntilPromise: Promise<WaitUntilFn | null> | null = null;
 
 function getApp(): Promise<Application> {
   if (!appPromise) {
     appPromise = import('../server/app.js').then(({ createApp }) => createApp());
   }
   return appPromise;
+}
+
+async function getVercelWaitUntil(): Promise<WaitUntilFn | null> {
+  if (!waitUntilPromise) {
+    waitUntilPromise = import('@vercel/functions')
+      .then((mod) => (typeof mod.waitUntil === 'function' ? mod.waitUntil as WaitUntilFn : null))
+      .catch(() => null);
+  }
+  return waitUntilPromise;
 }
 
 let cachedTemplate: string | null = null;
@@ -44,6 +55,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   // API routes: handled by Express
   if (url.startsWith('/api/')) {
     const app = await getApp();
+    const waitUntil = await getVercelWaitUntil();
+    if (waitUntil) {
+      (req as IncomingMessage & { waitUntil?: WaitUntilFn }).waitUntil = waitUntil;
+    }
     app(req, res);
     return;
   }
