@@ -152,7 +152,7 @@ npm run cf:deploy      # Cloudflare Workers へデプロイ
 
 対応デプロイモードとドキュメント:
 
-- [deploy/overview/README.md](../../deploy/overview/README.md)
+- [deploy/README.md](../../deploy/README.md)
 - [deploy/container/README.md](../../deploy/container/README.md)
 - [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
 - [deploy/vercel/README.md](../../deploy/vercel/README.md)

@@ -188,7 +188,7 @@ Detailed field mapping and explanations:
 
 Supported deployment modes and links:
 
-- [deploy/overview/README.md](deploy/overview/README.md)
+- [deploy/README.md](deploy/README.md)
 - [deploy/container/README.md](deploy/container/README.md)
 - [deploy/cloudflare/README.md](deploy/cloudflare/README.md)
 - [deploy/vercel/README.md](deploy/vercel/README.md)

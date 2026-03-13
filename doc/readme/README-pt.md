@@ -188,7 +188,7 @@ Mapeamento detalhado de campos e explicacoes:
 
 Modos de deploy suportados:
 
-- [deploy/overview/README.md](../../deploy/overview/README.md)
+- [deploy/README.md](../../deploy/README.md)
 - [deploy/container/README.md](../../deploy/container/README.md)
 - [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
 - [deploy/vercel/README.md](../../deploy/vercel/README.md)

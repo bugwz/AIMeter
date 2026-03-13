@@ -188,7 +188,7 @@ npm run cf:deploy      # 部署到 Cloudflare Workers
 
 支持的部署模式与文档：
 
-- [deploy/overview/README.md](../../deploy/overview/README.md)
+- [deploy/README.md](../../deploy/README.md)
 - [deploy/container/README.md](../../deploy/container/README.md)
 - [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
 - [deploy/vercel/README.md](../../deploy/vercel/README.md)

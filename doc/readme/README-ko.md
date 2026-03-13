@@ -187,7 +187,7 @@ npm run cf:deploy      # Cloudflare Workers 배포
 
 지원 배포 모드 및 링크:
 
-- [deploy/overview/README.md](../../deploy/overview/README.md)
+- [deploy/README.md](../../deploy/README.md)
 - [deploy/container/README.md](../../deploy/container/README.md)
 - [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
 - [deploy/vercel/README.md](../../deploy/vercel/README.md)
