@@ -65,7 +65,7 @@ async function persistUpdatedCredentialIfNeeded(
   ) {
     return;
   }
-  if (!config.id || config.storageMode !== 'database') {
+  if (!config.id) {
     return;
   }
   if (config.credentials.type !== AuthType.OAUTH) {

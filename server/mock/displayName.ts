@@ -6,8 +6,6 @@ const ENGLISH_NAMES = [
   'Noah', 'Olivia', 'Owen', 'Ryan', 'Sophia', 'Stella', 'Theo', 'Violet', 'William', 'Zoe',
 ];
 
-const mockEnvDisplayNameStore = new Map<string, string>();
-
 function randomIndex(max: number): number {
   if (max <= 1) return 0;
   return Math.floor(Math.random() * max);
@@ -25,14 +23,6 @@ export function generateRandomEnglishName(usedNames?: Set<string>): string {
   return candidates[randomIndex(candidates.length)];
 }
 
-function getMockEnvDisplayName(providerId: string): string {
-  const existing = mockEnvDisplayNameStore.get(providerId);
-  if (existing) return existing;
-  const next = generateRandomEnglishName();
-  mockEnvDisplayNameStore.set(providerId, next);
-  return next;
-}
-
 export function resolveMockDisplayNameForResponse(provider: {
   id: string;
   name?: string | null;
@@ -40,8 +30,5 @@ export function resolveMockDisplayNameForResponse(provider: {
   if (!runtimeConfig.mockEnabled) {
     return provider.name || null;
   }
-  if (runtimeConfig.storageMode === 'database') {
-    return provider.name || null;
-  }
-  return getMockEnvDisplayName(provider.id);
+  return provider.name || null;
 }

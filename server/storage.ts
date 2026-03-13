@@ -41,7 +41,6 @@ export class ReadonlyAdminRouteError extends Error {
 export interface ProviderInstance extends ProviderConfig {
   id: string;
   configSource: 'database';
-  storageMode: 'database';
   fetchState?: Record<string, unknown>;
 }
 
@@ -55,7 +54,6 @@ export interface UsageRecordRow {
 
 export interface RuntimeCapabilities {
   viewerRole: AuthRole;
-  storageMode: 'database';
   mockEnabled: boolean;
   providerConfigMutable: boolean;
   auth: Record<AuthRole, {
@@ -141,7 +139,6 @@ function mapDbProvider({ id: _internalId, uid, ...rest }: Omit<ProviderConfig, '
     id: uid,
     fetchState: rest.fetchState,
     configSource: 'database',
-    storageMode: 'database',
   };
 }
 
@@ -170,7 +167,6 @@ async function getCapabilities(viewerRole: AuthRole): Promise<RuntimeCapabilitie
   const authMutable = !runtimeConfig.isReadonlyAuth;
   return {
     viewerRole,
-    storageMode: runtimeConfig.storageMode,
     mockEnabled: runtimeConfig.mockEnabled,
     providerConfigMutable: isAdmin && !runtimeConfig.isReadonlyConfig,
     auth: {
@@ -200,8 +196,8 @@ async function getCapabilities(viewerRole: AuthRole): Promise<RuntimeCapabilitie
       mode: 'database',
     },
     secrets: {
-      managedInDb: runtimeConfig.storageMode === 'database',
-      mutable: runtimeConfig.storageMode === 'database',
+      managedInDb: true,
+      mutable: true,
     },
   };
 }

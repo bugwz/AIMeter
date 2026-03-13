@@ -69,7 +69,6 @@ export interface ProviderConfig {
   opencodeWorkspaceId?: string; // OpenCode: optional workspace ID (wrk_...)
   defaultProgressItem?: string; // progress item name to show as primary in history
   configSource?: 'database';
-  storageMode?: 'database';
 }
 
 // Region enum

@@ -1,6 +1,5 @@
 import { getAppConfig } from './config.js';
 
-export type StorageMode = 'database';
 export type RuntimeMode = 'node' | 'serverless';
 const appConfig = getAppConfig();
 
@@ -13,7 +12,6 @@ function normalizeRuntimeMode(value?: string): RuntimeMode {
 const runtimeMode = normalizeRuntimeMode(appConfig.runtime.mode);
 
 export const runtimeConfig = {
-  storageMode: 'database' as const,
   mockEnabled: appConfig.runtime.mockEnabled,
   mockAutoGenerate: appConfig.runtime.mockAutoGenerate,
   runtimeMode,
@@ -23,10 +21,6 @@ export const runtimeConfig = {
 
 export function isMockMode(): boolean {
   return runtimeConfig.mockEnabled;
-}
-
-export function isDatabaseStorageMode(): boolean {
-  return true;
 }
 
 export function isServerlessRuntime(): boolean {

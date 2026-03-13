@@ -3,7 +3,6 @@ import { Router, type Response } from 'express';
 import { clearSessionCookie, initSessionSecret, isRequestAuthenticated, issueSessionToken, setSessionCookie, type AuthRole } from '../auth.js';
 import { getAppConfig } from '../config.js';
 import { initDatabase } from '../database.js';
-import { runtimeConfig } from '../runtime.js';
 import { storage, tryParseReadonlyError } from '../storage.js';
 import {
   checkLoginRateLimit,
@@ -195,7 +194,7 @@ router.post('/:role/setup', async (req, res) => {
   const role = getRoleOr404(req.params.role, res);
   if (!role) return;
 
-  if (runtimeConfig.storageMode === 'database' && await storage.isInitialSetupRequired()) {
+  if (await storage.isInitialSetupRequired()) {
     return res.status(409).json({
       success: false,
       error: {

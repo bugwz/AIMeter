@@ -34,10 +34,6 @@ curl -b cookies.txt http://localhost:3001/api/system/capabilities
         "needsSetup": false
       }
     },
-    "storage": {
-      "mode": "database",
-      "readonly": false
-    },
     "runtime": {
       "mode": "server",
       "mockEnabled": false
@@ -58,8 +54,6 @@ curl -b cookies.txt http://localhost:3001/api/system/capabilities
 | `auth.normal.mutable` | boolean | Whether the normal password can be changed |
 | `auth.normal.needsSetup` | boolean | Whether the normal password still needs to be set |
 | `auth.admin.*` | — | Same fields for the admin role |
-| `storage.mode` | string | Storage backend: `database` or `env` |
-| `storage.readonly` | boolean | Whether storage is read-only |
 | `runtime.mode` | string | Runtime mode: `server` or `serverless` |
 | `runtime.mockEnabled` | boolean | Whether mock mode is active |
 | `features.scheduler` | boolean | Whether the background scheduler is running |
@@ -308,7 +302,7 @@ curl -X POST -b cookies.txt http://localhost:3001/api/system/secrets/cron/reset
 |--------|------|-------------|
 | 401 | `UNAUTHORIZED` | Not authenticated |
 | 403 | `FORBIDDEN` | Authenticated but not admin |
-| 409 | `READ_ONLY_SECRET` | Secrets are managed by config/env in env storage mode |
+| 409 | `READ_ONLY_SECRET` | Secret mutation is currently read-only |
 
 ---
 
@@ -343,4 +337,4 @@ curl -X POST -b cookies.txt http://localhost:3001/api/system/secrets/endpoint/re
 |--------|------|-------------|
 | 401 | `UNAUTHORIZED` | Not authenticated |
 | 403 | `FORBIDDEN` | Authenticated but not admin |
-| 409 | `READ_ONLY_SECRET` | Secrets are managed by config/env in env storage mode |
+| 409 | `READ_ONLY_SECRET` | Secret mutation is currently read-only |

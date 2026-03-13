@@ -57,10 +57,6 @@ export function initMock() {
     return;
   }
 
-  if (runtimeConfig.storageMode === 'database') {
-    return;
-  }
-
   const MOCK_HISTORY_MODEL_VERSION = '2';
 
   initMockDatabase();
@@ -127,7 +123,7 @@ export function initMock() {
 }
 
 export async function ensureMockRuntimeProvidersSeeded(): Promise<void> {
-  if (!runtimeConfig.mockEnabled || runtimeConfig.storageMode !== 'database') {
+  if (!runtimeConfig.mockEnabled) {
     return;
   }
   if (!runtimeConfig.mockAutoGenerate) {
@@ -150,7 +146,7 @@ export async function ensureMockRuntimeProvidersSeeded(): Promise<void> {
       };
       await storage.createProvider(provider as UsageProvider, config);
     }
-    console.log(`[mock] Seeded ${Object.keys(MOCK_PROVIDER_CONFIGS).length} runtime providers for database mode`);
+    console.log(`[mock] Seeded ${Object.keys(MOCK_PROVIDER_CONFIGS).length} runtime providers`);
   }
 
   const providers = await storage.listProviders();

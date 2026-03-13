@@ -231,7 +231,7 @@ router.post('/latest', async (req: Request, res: Response) => {
   try {
     const allProviders = await storage.listProviders();
     const results: Array<SerializedDashboardProviderData | SerializedUsageError> = [];
-    const isMockDatabaseMode = runtimeConfig.mockEnabled && runtimeConfig.storageMode === 'database';
+    const isMockMode = runtimeConfig.mockEnabled;
     
     for (const provider of allProviders) {
       const latestRecord = await storage.getLatestUsage(provider.id);
@@ -262,7 +262,7 @@ router.post('/latest', async (req: Request, res: Response) => {
           updatedAt: toUnixSeconds(latestRecord.createdAt) ?? Math.floor(Date.now() / 1000),
         };
         results.push(snapshot);
-      } else if (isMockDatabaseMode) {
+      } else if (isMockMode) {
         results.push(serializeUsageError({
           id: provider.id,
           provider: provider.provider,

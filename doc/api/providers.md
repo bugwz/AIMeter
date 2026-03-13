@@ -4,7 +4,7 @@ All endpoints require a **normal or admin session cookie** (`requireApiAuth(['no
 
 Storage note (database mode): `refreshInterval` and `displayOrder` are persisted inside `providers.attrs` (`attrs.refreshInterval`, `attrs.displayOrder`). API responses still expose them as top-level fields.
 
-Display name note: response field `name` is the provider display name. In `mockEnabled=true` + `storageMode=env`, it may be a runtime-generated alias for that provider ID instead of a persisted custom name.
+Display name note: response field `name` is the provider display name.
 
 ---
 

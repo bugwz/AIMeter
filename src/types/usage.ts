@@ -136,7 +136,6 @@ export interface ApiResponse<T> {
 
 export interface RuntimeCapabilities {
   viewerRole: 'normal' | 'admin';
-  storageMode: 'database';
   mockEnabled: boolean;
   providerConfigMutable: boolean;
   auth: {
