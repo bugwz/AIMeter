@@ -97,7 +97,7 @@ const CRON_SECRET_KEY = 'cron_secret';
 const ENDPOINT_SECRET_KEY = 'endpoint_secret';
 const PASSWORD_SCHEME = 'pbkdf2_sha256';
 const PBKDF2_KEYLEN = 32;
-const PBKDF2_DEFAULT_ITERATIONS = 210000;
+const PBKDF2_DEFAULT_ITERATIONS = 100000;
 const appConfig = getAppConfig();
 const latestUsageCache = new Map<string, UsageRecordRow>();
 

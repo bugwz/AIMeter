@@ -167,7 +167,7 @@ function safeEqual(a: string, b: string): boolean {
 
 const PASSWORD_KEY = 'password_hash';
 const PASSWORD_SCHEME = 'pbkdf2_sha256';
-const PBKDF2_ITERATIONS = 210000;
+const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_KEYLEN = 32;
 
 function hashPassword(password: string): string {
