@@ -1,4 +1,3 @@
-import { createRequire } from 'module';
 import { getAppConfig } from '../config.js';
 import type { DbClient, DatabaseEngine, ExecuteResult } from './engine.js';
 import { SqlEngine, runCommonBootstrap } from './sql-engine.js';
@@ -141,8 +140,7 @@ async function initSchema(
 
 export async function createPostgresEngine(): Promise<DatabaseEngine> {
   const appConfig = getAppConfig();
-  const require = createRequire(import.meta.url);
-  const pgModule = require('pg') as { Pool: new (config: { connectionString: string }) => unknown };
+  const pgModule = (await import('pg')) as { Pool: new (config: { connectionString: string }) => unknown };
   const pool = new pgModule.Pool({ connectionString: appConfig.database.connection });
   const client = new PostgresClient(pool);
 

@@ -5,7 +5,13 @@
     "api/index.ts": {
       "maxDuration": 30,
       "memory": 512,
-      "includeFiles": "dist/index.html"
+      "includeFiles": [
+        "dist/index.html",
+        "node_modules/pg/**",
+        "node_modules/pg-pool/**",
+        "node_modules/pg-protocol/**",
+        "node_modules/pg-types/**"
+      ]
     }
   },
   "rewrites": [
