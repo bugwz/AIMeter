@@ -11,14 +11,27 @@
 
 ---
 
+## Deployment Scenarios (Config + Defaults)
+
+Set env variables by scenario (one scenario per row):
+
+| Scenario | Required envs (with defaults/examples) |
+|---|---|
+| MySQL (Mock Off) | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://USER:PASSWORD@HOST:3306/DATABASE` |
+| PostgreSQL (Mock Off) | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require` |
+| MySQL (Mock On) | `AIMETER_MOCK_ENABLED=true`<br>`AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://USER:PASSWORD@HOST:3306/DATABASE` |
+| PostgreSQL (Mock On) | `AIMETER_MOCK_ENABLED=true`<br>`AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require` |
+
+---
+
 ## Environment Variables (Required)
 
 Database configuration is mandatory.
 
-| Mode | Required envs |
+| Mode | Required envs (with examples) |
 |---|---|
-| MySQL | `AIMETER_RUNTIME_MODE`, `AIMETER_SERVER_PROTOCOL`, `AIMETER_DATABASE_ENGINE=mysql`, `AIMETER_DATABASE_CONNECTION` |
-| PostgreSQL | `AIMETER_RUNTIME_MODE`, `AIMETER_SERVER_PROTOCOL`, `AIMETER_DATABASE_ENGINE=postgres`, `AIMETER_DATABASE_CONNECTION` |
+| MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://USER:PASSWORD@HOST:3306/DATABASE` |
+| PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require` |
 
 Mock-only additional env:
 - `AIMETER_MOCK_ENABLED=true`
@@ -42,6 +55,12 @@ openssl rand -hex 16
 mysql://USER:PASSWORD@HOST:3306/DATABASE
 ```
 
+If SSL is required, use `ssl` in the DSN query:
+
+```text
+mysql://USER:PASSWORD@HOST:3306/DATABASE?ssl={"rejectUnauthorized":true}
+```
+
 ### PostgreSQL DSN
 
 ```text
@@ -52,6 +71,18 @@ postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require
 
 Vercel Cron cannot send custom headers, but AIMeter's job endpoint requires `x-aimeter-cron-secret`. Use an external service instead:
 
+Recommended schedule: run every 5 minutes.
+Reason: provider refresh uses a minimum granularity of 5 minutes. Different providers can have
+different refresh intervals, and each API call every 5 minutes will evaluate all providers'
+refresh windows.
+
+Example:
+- Provider A refresh interval = 5 minutes
+- Provider B refresh interval = 30 minutes
+- In 30 minutes, the endpoint runs 6 times
+- A can refresh on every run
+- B may refresh only on the 6th run when its 30-minute window is reached
+
 ### Option A: cron-job.org (free)
 
 1. Create an account at [cron-job.org](https://cron-job.org)
@@ -59,7 +90,7 @@ Vercel Cron cannot send custom headers, but AIMeter's job endpoint requires `x-a
    - **URL**: `https://your-app.vercel.app/api/system/jobs/refresh`
    - **Method**: `POST`
    - **Header**: `x-aimeter-cron-secret: <your AIMETER_CRON_SECRET value>`
-   - **Schedule**: every hour (or your preferred interval)
+   - **Schedule**: every 5 minutes
 
 ### Option B: GitHub Actions
 
@@ -69,7 +100,7 @@ Add `.github/workflows/cron.yml` to your repository:
 name: AIMeter Cron
 on:
   schedule:
-    - cron: '0 * * * *'  # every hour
+    - cron: '*/5 * * * *'  # every 5 minutes
   workflow_dispatch:
 
 jobs:
