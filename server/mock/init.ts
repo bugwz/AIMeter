@@ -1,19 +1,7 @@
-import { 
-  initMockDatabase, 
-  getAllMockProviders, 
-  saveMockProvider, 
-  generateMockHistoryData,
-  clearMockUsageHistory,
-  hasMockHistoryData,
-  getSetting,
-  setSetting,
-  setMockProviderRegion,
-} from './database.js';
 import { MOCK_PROVIDER_CONFIGS } from './config.js';
 import { UsageProvider, ProviderConfig, AuthType, Credential } from '../../src/types/index.js';
 import { runtimeConfig } from '../runtime.js';
 import { storage } from '../storage.js';
-import { fetchUsageForProvider } from '../services/ProviderUsageService.js';
 import { createMockProvider } from './providers/base.js';
 import { generateRandomEnglishName } from './displayName.js';
 
@@ -52,156 +40,78 @@ function getDefaultMockRegion(provider: UsageProvider): string | undefined {
   }
 }
 
-export function initMock() {
-  if (!runtimeConfig.mockEnabled) {
-    return;
+function floorToHour(date: Date): Date {
+  const value = new Date(date);
+  value.setMinutes(0, 0, 0);
+  return value;
+}
+
+function buildHourlyPoints(now: Date, totalPoints: number): Date[] {
+  const latestAt = new Date(floorToHour(now).getTime() - 60 * 60 * 1000);
+  const points: Date[] = [];
+  for (let i = totalPoints - 1; i >= 0; i -= 1) {
+    points.push(new Date(latestAt.getTime() - i * 60 * 60 * 1000));
   }
-
-  const MOCK_HISTORY_MODEL_VERSION = '2';
-
-  initMockDatabase();
-  console.log('Mock Database initialized');
-
-  if (runtimeConfig.mockAutoGenerate) {
-    const existingProviders = getAllMockProviders();
-    if (existingProviders.length === 0) {
-      console.log('Adding default mock providers...');
-      const usedNames = new Set<string>();
-      
-      for (const [provider, mockConfig] of Object.entries(MOCK_PROVIDER_CONFIGS)) {
-        const generatedName = generateRandomEnglishName(usedNames);
-        usedNames.add(generatedName);
-        const config: ProviderConfig = {
-          provider: provider as UsageProvider,
-          credentials: buildDefaultMockCredential(provider as UsageProvider),
-          refreshInterval: 5,
-          name: generatedName,
-          region: getDefaultMockRegion(provider as UsageProvider),
-        };
-        const providerId = saveMockProvider(provider as UsageProvider, config);
-        generateMockHistoryData(providerId, mockConfig);
-      }
-      console.log(`Default mock providers added: ${Object.keys(MOCK_PROVIDER_CONFIGS).length}`);
-      console.log('Mock history data generated for 30 days');
-    } else {
-      console.log('Checking existing providers for history data...');
-      const currentVersion = getSetting('mock_history_model_version');
-      const shouldRegenerateAll = currentVersion !== MOCK_HISTORY_MODEL_VERSION;
-
-      if (shouldRegenerateAll) {
-        clearMockUsageHistory();
-        console.log(`Regenerating mock history with model v${MOCK_HISTORY_MODEL_VERSION}...`);
-      }
-
-      for (const p of existingProviders) {
-        const mockConfig = MOCK_PROVIDER_CONFIGS[p.provider];
-        const defaultRegion = getDefaultMockRegion(p.provider);
-        if (defaultRegion && !p.region) {
-          setMockProviderRegion(p.id, defaultRegion);
-        }
-        if (mockConfig && (shouldRegenerateAll || !hasMockHistoryData(p.id))) {
-          generateMockHistoryData(p.id, mockConfig);
-          console.log(`Generated history data for ${p.provider}`);
-        }
-      }
-
-      if (shouldRegenerateAll) {
-        setSetting('mock_history_model_version', MOCK_HISTORY_MODEL_VERSION);
-      }
-    }
-  } else {
-    console.log('[mock] mockAutoGenerate=false: skip provider/history auto-generation');
-  }
-
-  if (!getSetting('password')) {
-    setSetting('password', 'password');
-  }
-
-  if (!getSetting('mock_history_model_version')) {
-    setSetting('mock_history_model_version', MOCK_HISTORY_MODEL_VERSION);
-  }
+  return points;
 }
 
 export async function ensureMockRuntimeProvidersSeeded(): Promise<void> {
   if (!runtimeConfig.mockEnabled) {
     return;
   }
-  if (!runtimeConfig.mockAutoGenerate) {
-    console.log('[mock] Auto-generation is disabled, skipping runtime provider seeding');
-    return;
-  }
 
-  const currentProviders = await storage.listProviders();
-  if (currentProviders.length === 0) {
-    const usedNames = new Set<string>();
-    for (const [provider, mockConfig] of Object.entries(MOCK_PROVIDER_CONFIGS)) {
-      const generatedName = generateRandomEnglishName(usedNames);
-      usedNames.add(generatedName);
-      const config: ProviderConfig = {
-        provider: provider as UsageProvider,
-        credentials: buildDefaultMockCredential(provider as UsageProvider),
-        refreshInterval: 5,
-        name: generatedName,
-        region: getDefaultMockRegion(provider as UsageProvider),
-      };
-      await storage.createProvider(provider as UsageProvider, config);
+  // Step 1/3: write settings before provider/usage seed.
+  const now = new Date();
+  await storage.setSetting('mock_seed_initialized_at', now.toISOString());
+
+  // Step 2/3: ensure mock runtime providers exist.
+  const existingProviders = await storage.listProviders();
+  const providersByType = new Set(existingProviders.map((item) => item.provider));
+  const usedNames = new Set(existingProviders.map((item) => item.name).filter((name): name is string => typeof name === 'string' && name.length > 0));
+
+  for (const provider of Object.keys(MOCK_PROVIDER_CONFIGS) as UsageProvider[]) {
+    if (providersByType.has(provider)) {
+      continue;
     }
-    console.log(`[mock] Seeded ${Object.keys(MOCK_PROVIDER_CONFIGS).length} runtime providers`);
+    const generatedName = generateRandomEnglishName(usedNames);
+    usedNames.add(generatedName);
+    const config: ProviderConfig = {
+      provider,
+      credentials: buildDefaultMockCredential(provider),
+      refreshInterval: 5,
+      name: generatedName,
+      region: getDefaultMockRegion(provider),
+    };
+    await storage.createProvider(provider, config);
   }
 
   const providers = await storage.listProviders();
-  const BACKFILL_DAYS = 90;
-  const BACKFILL_STEP_MINUTES = 5;
-  const EXPECTED_POINTS = Math.floor((BACKFILL_DAYS * 24 * 60) / BACKFILL_STEP_MINUTES);
-  const BATCH_SIZE = 720;
-
   for (const provider of providers) {
     const defaultRegion = getDefaultMockRegion(provider.provider);
     if (defaultRegion && !provider.region) {
       await storage.updateProvider(provider.id, { region: defaultRegion });
       provider.region = defaultRegion;
     }
+    await storage.clearUsageHistory(provider.id);
+  }
 
-    const historyRows = await storage.getUsageHistory(provider.id, BACKFILL_DAYS);
-    const hasEnoughHistory = historyRows.length >= EXPECTED_POINTS;
-    if (!hasEnoughHistory) {
-      const mockProvider = createMockProvider(provider.provider, provider);
-      if (mockProvider && typeof mockProvider.fetchUsageAt === 'function') {
-        await storage.clearUsageHistory(provider.id);
-        const nowMs = Date.now();
-        const totalMinutes = BACKFILL_DAYS * 24 * 60;
-        const batch: Array<{ snapshot: Awaited<ReturnType<typeof mockProvider.fetchUsageAt>>; createdAt: Date }> = [];
+  // Step 3/3: seed usage records in global order:
+  // oldest hour -> newest hour, and for each hour iterate all providers.
+  const points = buildHourlyPoints(now, 100);
+  const mockProviders = providers
+    .map((provider) => ({
+      provider,
+      source: createMockProvider(provider.provider, provider),
+    }))
+    .filter((item) => item.source && typeof item.source.fetchUsageAt === 'function');
 
-        for (let minutesAgo = totalMinutes; minutesAgo >= BACKFILL_STEP_MINUTES; minutesAgo -= BACKFILL_STEP_MINUTES) {
-          const at = new Date(nowMs - minutesAgo * 60 * 1000);
-          try {
-            const snapshot = await mockProvider.fetchUsageAt(provider.credentials, provider.region, at);
-            batch.push({ snapshot, createdAt: at });
-            if (batch.length >= BATCH_SIZE) {
-              await storage.recordUsageBatchAt(provider.id, batch.splice(0, batch.length));
-            }
-          } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            console.warn(`[mock] Failed to backfill history for ${provider.provider} (${provider.id}) at ${at.toISOString()}: ${message}`);
-            break;
-          }
-        }
-
-        if (batch.length > 0) {
-          await storage.recordUsageBatchAt(provider.id, batch);
-        }
-      }
-    }
-
-    const latest = await storage.getLatestUsage(provider.id);
-    if (latest) continue;
-    try {
-      const snapshot = await fetchUsageForProvider(provider);
-      await storage.recordUsage(provider.id, snapshot);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`[mock] Failed to seed latest usage for ${provider.provider} (${provider.id}): ${message}`);
+  for (const at of points) {
+    for (const item of mockProviders) {
+      const snapshot = await item.source.fetchUsageAt(item.provider.credentials, item.provider.region, at);
+      await storage.recordUsageAt(item.provider.id, snapshot, at);
     }
   }
 
+  await storage.setSetting('mock_seed_usage_points', '100');
+  await storage.setSetting('mock_seed_latest_point_at', points[points.length - 1]?.toISOString() || '');
 }

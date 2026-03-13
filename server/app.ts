@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
 import { initDatabase, getSetting, isDatabaseInitialized } from './database.js';
-import { ensureMockRuntimeProvidersSeeded } from './mock/init.js';
 import { requireApiAuth, requireEndpointAuth } from './middleware/auth.js';
 import { createApiAuditMiddleware } from './middleware/audit.js';
 import { runtimeConfig } from './runtime.js';
@@ -114,9 +113,6 @@ export async function createApp(): Promise<express.Application> {
     const dbSessionSecret = await getSetting('session_secret');
     if (dbSessionSecret) {
       initSessionSecret(dbSessionSecret);
-    }
-    if (isMockMode) {
-      await ensureMockRuntimeProvidersSeeded();
     }
   } else {
     console.log('Database schema is not initialized yet; waiting for initial setup submit');
