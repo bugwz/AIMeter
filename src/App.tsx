@@ -71,6 +71,7 @@ export default function App() {
   const activeTab = getActiveTab();
   const runtimeEntry = getRuntimeEntry();
   const runtimeRole = runtimeEntry.role;
+  const logoSrc = theme === 'dark' ? '/img/logo-dark.svg' : '/img/logo-light.svg';
   const canShowSettings = capabilities ? capabilities.ui.showSettings : runtimeRole === 'admin';
   const knownPaths = ['/', '/endpoint'];
 
@@ -116,7 +117,7 @@ export default function App() {
                 className="w-8 h-8 rounded-lg flex items-center justify-center"
                 style={{ boxShadow: theme === 'dark' ? '0 10px 24px rgba(0,0,0,0.28)' : '0 10px 24px rgba(80,99,114,0.18)' }}
               >
-                <img src="/img/logo.png" alt="AIMeter Logo" className="w-full h-full object-contain" />
+                <img src={logoSrc} alt="AIMeter Logo" className="w-full h-full object-contain" />
               </div>
               <span className="text-base font-semibold text-[var(--color-text-primary)] tracking-tight hidden sm:block">
                 AIMeter
