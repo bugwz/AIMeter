@@ -16,6 +16,7 @@ export interface AppConfig {
   };
   runtime: {
     mockEnabled: boolean;
+    mockAutoGenerate: boolean;
     mode: 'node' | 'serverless';
   };
   database: {
@@ -474,6 +475,11 @@ export function getAppConfig(): AppConfig {
       mockEnabled: (asString(runtime.mockEnabled) === 'true' || process.env.AIMETER_MOCK_ENABLED === 'true')
         ? true
         : false,
+      mockAutoGenerate: (() => {
+        const raw = asString(runtime.mockAutoGenerate) ?? process.env.AIMETER_MOCK_AUTO_GENERATE;
+        if (typeof raw === 'undefined') return true;
+        return raw.trim().toLowerCase() === 'true';
+      })(),
       mode: runtimeMode,
     },
     database: {

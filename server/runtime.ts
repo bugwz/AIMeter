@@ -15,6 +15,7 @@ const runtimeMode = normalizeRuntimeMode(appConfig.runtime.mode);
 export const runtimeConfig = {
   storageMode: 'database' as const,
   mockEnabled: appConfig.runtime.mockEnabled,
+  mockAutoGenerate: appConfig.runtime.mockAutoGenerate,
   runtimeMode,
   isReadonlyConfig: false,
   isReadonlyAuth: false,

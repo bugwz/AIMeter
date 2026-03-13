@@ -12,6 +12,8 @@ server:
 runtime:
   # true: fetch mock data; false: fetch live data
   mockEnabled: false
+  # true: auto-generate mock providers/history on startup; false: skip bootstrap
+  mockAutoGenerate: true
   # node or serverless
   mode: node
 

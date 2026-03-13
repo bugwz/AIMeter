@@ -56,6 +56,10 @@ export function initMock() {
   if (!runtimeConfig.mockEnabled) {
     return;
   }
+  if (!runtimeConfig.mockAutoGenerate) {
+    console.log('[mock] Auto-generation is disabled, skipping mock data bootstrap');
+    return;
+  }
 
   if (runtimeConfig.storageMode === 'database') {
     return;
@@ -124,6 +128,10 @@ export function initMock() {
 
 export async function ensureMockRuntimeProvidersSeeded(): Promise<void> {
   if (!runtimeConfig.mockEnabled || runtimeConfig.storageMode !== 'database') {
+    return;
+  }
+  if (!runtimeConfig.mockAutoGenerate) {
+    console.log('[mock] Auto-generation is disabled, skipping runtime provider seeding');
     return;
   }
 
