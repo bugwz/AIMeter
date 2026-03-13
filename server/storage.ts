@@ -466,11 +466,22 @@ export const storage = {
     }
 
     const uid = await saveDbProvider(provider, config);
-    const created = await getDbProvider(uid);
-    if (!created) {
-      throw new Error('Failed to load created provider');
+    try {
+      const created = await getDbProvider(uid);
+      if (!created) {
+        throw new Error('Failed to load created provider');
+      }
+      return mapDbProvider(created);
+    } catch (error) {
+      // Avoid "write succeeded but API returned 500" partial success semantics.
+      // If post-insert read fails (e.g. decrypt/compat issues), remove the inserted row.
+      try {
+        await deleteDbProvider(uid);
+      } catch {
+        // Keep the original error as primary signal.
+      }
+      throw error;
     }
-    return mapDbProvider(created);
   },
 
   async updateProvider(id: string, updates: Partial<ProviderConfig> & { credentials?: Credential }): Promise<ProviderInstance> {

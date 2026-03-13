@@ -303,11 +303,61 @@ export class SqlEngine implements DatabaseEngine {
     }
   }
 
+  private parseStoredCredentials(raw: string): Credential {
+    const parseCredentialObject = (value: unknown): Credential | null => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+      const candidate = value as Record<string, unknown>;
+      if (typeof candidate.type === 'string') {
+        return candidate as Credential;
+      }
+      if (typeof candidate.accessToken === 'string') {
+        return {
+          type: AuthType.OAUTH,
+          accessToken: candidate.accessToken,
+          refreshToken: typeof candidate.refreshToken === 'string' ? candidate.refreshToken : undefined,
+          idToken: typeof candidate.idToken === 'string' ? candidate.idToken : undefined,
+          expiresAt: typeof candidate.expiresAt === 'string' ? candidate.expiresAt : undefined,
+          clientId: typeof candidate.clientId === 'string' ? candidate.clientId : undefined,
+          clientSecret: typeof candidate.clientSecret === 'string' ? candidate.clientSecret : undefined,
+          projectId: typeof candidate.projectId === 'string' ? candidate.projectId : undefined,
+        };
+      }
+      if (typeof candidate.value === 'string') {
+        const source = candidate.source === 'browser' || candidate.source === 'manual'
+          ? candidate.source
+          : 'manual';
+        return {
+          type: AuthType.COOKIE,
+          value: candidate.value,
+          source,
+        };
+      }
+      return null;
+    };
+
+    try {
+      return JSON.parse(this.decrypt(raw)) as Credential;
+    } catch {
+      // Legacy compatibility: some old deployments stored plain JSON in providers.key.
+      try {
+        const legacy = JSON.parse(raw) as unknown;
+        if (typeof legacy === 'string') {
+          return { type: AuthType.COOKIE, value: legacy, source: 'manual' };
+        }
+        const parsedLegacy = parseCredentialObject(legacy);
+        if (parsedLegacy) return parsedLegacy;
+      } catch {
+        // Preserve the original error contract for truly invalid rows.
+      }
+      throw new Error('Failed to decrypt stored credentials');
+    }
+  }
+
   private mapProviderRow(row: DbProviderRow): StoredProviderConfig {
     const attrs = parseProviderAttrs(row.attrs);
     const refreshInterval = readPositiveNumber(attrs.refreshInterval, 5);
     const displayOrder = readPositiveNumber(attrs.displayOrder, 0);
-    const credentials = JSON.parse(this.decrypt(row.key));
+    const credentials = this.parseStoredCredentials(row.key);
     return {
       id: Number(row.id),
       uid: row.uid || '',
@@ -324,6 +374,17 @@ export class SqlEngine implements DatabaseEngine {
       opencodeWorkspaceId: typeof attrs.opencodeWorkspaceId === 'string' ? attrs.opencodeWorkspaceId : undefined,
       defaultProgressItem: typeof attrs.defaultProgressItem === 'string' ? attrs.defaultProgressItem : undefined,
     };
+  }
+
+  private async getMaxDisplayOrder(): Promise<number> {
+    const rows = await this.client.query<{ attrs: unknown }>(`SELECT attrs FROM ${this.providersTable()} ORDER BY id ASC`);
+    let maxOrder = 0;
+    for (const row of rows) {
+      const attrs = parseProviderAttrs(row.attrs);
+      const displayOrder = readPositiveNumber(attrs.displayOrder, 0);
+      maxOrder = Math.max(maxOrder, displayOrder);
+    }
+    return maxOrder;
   }
 
   private mapUsageRow(row: DbUsageRow): UsageRecordRow {
@@ -360,9 +421,8 @@ export class SqlEngine implements DatabaseEngine {
   async saveProvider(provider: UsageProvider, config: ProviderConfig): Promise<string> {
     const uid = generateProviderUid();
     const encryptedKey = this.encrypt(JSON.stringify(config.credentials));
-    const existing = await this.getAllProviders();
     const now = toUnixSeconds();
-    const maxOrder = existing.reduce((max, item) => Math.max(max, Number(item.displayOrder) || 0), 0);
+    const maxOrder = await this.getMaxDisplayOrder();
     const attrs = buildProviderAttrs({
       ...config,
       displayOrder: config.displayOrder || maxOrder + 1,
@@ -407,7 +467,14 @@ export class SqlEngine implements DatabaseEngine {
   async getAllProviders(): Promise<StoredProviderConfig[]> {
     const rows = await this.client.query<DbProviderRow>(`SELECT * FROM ${this.providersTable()} ORDER BY id ASC`);
     return rows
-      .map((row) => this.mapProviderRow(row))
+      .flatMap((row) => {
+        try {
+          return [this.mapProviderRow(row)];
+        } catch (error) {
+          console.warn(`Skipping unreadable provider row uid=${row.uid || 'unknown'}:`, error);
+          return [];
+        }
+      })
       .sort((left, right) => {
         const orderDiff = (left.displayOrder || 0) - (right.displayOrder || 0);
         if (orderDiff !== 0) return orderDiff;
