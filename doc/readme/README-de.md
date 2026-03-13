@@ -1,6 +1,24 @@
+<div align="center">
+
+<img src="../../public/img/logo-light.svg" width="80" height="80" align="center" alt="AIMeter logo">
+
 # AIMeter
 
-AIMeter ist ein self-hosted Dashboard, um Nutzung, Kontingente und Verlauf mehrerer KI-Provider zentral zu überwachen.
+AIMeter ist ein self-hosted Dashboard zur Verfolgung von Nutzung, Kontingent und Verlaufstrends von AI-Providern.
+
+</div>
+
+<div align="center">
+
+[![React](https://img.shields.io/badge/React-Frontend-61dafb?logo=react&logoColor=white)](#tech-stack)
+[![Express](https://img.shields.io/badge/Express-API-000000?logo=express)](#tech-stack)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?logo=typescript&logoColor=white)](#tech-stack)
+[![Runtime](https://img.shields.io/badge/Runtime-Node%20%7C%20Serverless-22c55e)](#runtime-modi)
+[![Providers](https://img.shields.io/badge/Providers-Multi-0ea5e9)](#unterstützte-provider)
+[![Deploy](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel)](../../deploy/vercel/README.md)
+[![Deploy](https://img.shields.io/badge/Deploy-Cloudflare-f38020?logo=cloudflare&logoColor=white)](../../deploy/cloudflare/README.md)
+
+</div>
 
 <div align="center">
 
@@ -12,139 +30,174 @@ AIMeter ist ein self-hosted Dashboard, um Nutzung, Kontingente und Verlauf mehre
   <img src="../img/dashboard.png" alt="AIMeter dashboard" width="100%" />
 </div>
 
-## Funktionen
+## Features
 
-- Einheitliches Dashboard für mehrere Provider
-- Verwaltung von Provider-Einstellungen und Zugangsdaten
-- Nutzungsverlauf und Diagrammansichten
-- Endpoint- und Widget-bezogene Seiten
-- Automatischer geplanter Refresh im `node`-Modus
-- Mock-Modus für lokale Entwicklung und Demos
-- Speicher-Backends: SQLite, PostgreSQL, MySQL
-- Konfigurationsmodell mit Priorität für Umgebungsvariablen
+- React-Frontend-Dashboard
+- Express-Backend-API
+- Adapter-Architektur für mehrere Provider
+- Runtime-Modi: `node` und `serverless`
+- Datenbankgestützte Speicherung und Bootstrap-Flow
+- Einheitliches Dashboard über mehrere AI-Provider
+- Provider-Credential-Management und Quota-Anzeige
+- Nutzungsverlauf und Chart-Seiten
+- Endpoint-/Proxy-bezogene API-Seiten
+- Bootstrap- und Admin-Initialisierungsflow
+- Datenbank-Engines: `sqlite`, `d1`, `postgres`, `mysql`
 
 ## Unterstützte Provider
 
-Aktuell verfügbare Adapter:
-
-- Aliyun
-- Antigravity
-- Claude
-- Codex
-- Kimi
-- MiniMax
-- z.ai
-- Copilot
-- OpenRouter
-- Ollama
-- OpenCode
-- Cursor
+<div align="center">
+<table>
+  <tr>
+    <td align="center" valign="middle" width="140" height="110">
+      <img src="../../public/providers/aliyun.svg" alt="Aliyun" width="40" height="40" style="object-fit: contain;" /><br />
+      Aliyun
+    </td>
+    <td align="center" valign="middle" width="140" height="110">
+      <img src="../../public/providers/antigravity.svg" alt="Antigravity" width="40" height="40" style="object-fit: contain;" /><br />
+      Antigravity
+    </td>
+    <td align="center" valign="middle" width="140" height="110">
+      <img src="../../public/providers/claude.svg" alt="Claude" width="40" height="40" style="object-fit: contain;" /><br />
+      Claude
+    </td>
+    <td align="center" valign="middle" width="140" height="110">
+      <img src="../../public/providers/codex.svg" alt="Codex" width="40" height="40" style="object-fit: contain;" /><br />
+      Codex
+    </td>
+    <td align="center" valign="middle" width="140" height="110">
+      <img src="../../public/providers/kimi.svg" alt="Kimi" width="40" height="40" style="object-fit: contain;" /><br />
+      Kimi
+    </td>
+    <td align="center" valign="middle" width="140" height="110">
+      <img src="../../public/providers/minimax.svg" alt="MiniMax" width="40" height="40" style="object-fit: contain;" /><br />
+      MiniMax
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="middle" width="140" height="110">
+      <img src="../../public/providers/zai.svg" alt="z.ai" width="40" height="40" style="object-fit: contain;" /><br />
+      z.ai
+    </td>
+    <td align="center" valign="middle" width="140" height="110">
+      <img src="../../public/providers/copilot.svg" alt="Copilot" width="40" height="40" style="object-fit: contain;" /><br />
+      Copilot
+    </td>
+    <td align="center" valign="middle" width="140" height="110">
+      <img src="../../public/providers/openrouter.svg" alt="OpenRouter" width="40" height="40" style="object-fit: contain;" /><br />
+      OpenRouter
+    </td>
+    <td align="center" valign="middle" width="140" height="110">
+      <img src="../../public/providers/ollama.svg" alt="Ollama" width="40" height="40" style="object-fit: contain;" /><br />
+      Ollama
+    </td>
+    <td align="center" valign="middle" width="140" height="110">
+      <img src="../../public/providers/opencode.svg" alt="OpenCode" width="40" height="40" style="object-fit: contain;" /><br />
+      OpenCode
+    </td>
+    <td align="center" valign="middle" width="140" height="110">
+      <img src="../../public/providers/cursor.svg" alt="Cursor" width="40" height="40" style="object-fit: contain;" /><br />
+      Cursor
+    </td>
+  </tr>
+</table>
+</div>
+Provider-spezifische Beispiele und Integrationshinweise: [doc/providers](../providers)
 
 ## Tech Stack
 
 - Frontend: React 18, TypeScript, Vite, Tailwind CSS
 - Backend: Node.js, Express, TypeScript
-- Datenbank: better-sqlite3, pg, mysql2
+- Storage: SQLite / Cloudflare D1 / PostgreSQL / MySQL
 
 ## Projektstruktur
 
 ```text
 .
-├─ src/                 # Frontend-Anwendung
-├─ server/              # Backend-API, Auth, Jobs, Storage
-├─ doc/                 # Design-Notizen, Provider-Beispiele, Übersetzungen
-├─ config.example.yaml  # Vollständige Konfigurationsvorlage
-└─ .env.all         # Vorlage für Umgebungsvariablen
+├─ src/                  # Frontend-App
+├─ server/               # Backend API, Auth, Jobs, Storage
+├─ deploy/               # Deployment-Guides nach Plattform
+├─ doc/                  # API-Doku, Provider-Beispiele, Übersetzungen, Konfig-Doku
+├─ config.all.yaml       # Vollständige Konfigurationsvorlage
+├─ config.yaml           # Aktive lokale Konfiguration (durch Kopie erzeugen)
+└─ .env.all              # Vollständige Env-Vorlage
 ```
 
-## Schnellstart
+## Quick Start
 
-### 1. Abhängigkeiten installieren
+### 1. Installieren
 
 ```bash
 npm install
 ```
 
-### 2. Konfiguration vorbereiten
+### 2. Konfigurieren
 
 ```bash
 cp .env.all .env
-cp config.example.yaml config.yaml
+cp config.all.yaml config.yaml
 ```
 
-Passen Sie `config.yaml` und/oder `.env` an Ihre Umgebung an.
+Danach `.env` und/oder `config.yaml` für das Ziel-Deployment anpassen.
 
-### 3. Frontend + Backend starten
+### 3. Starten
 
 ```bash
 npm run dev:all
 ```
 
-Standard-URLs lokal:
+Standard-Endpunkte lokal:
 
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:3001`
 
-## Häufige Skripte
+## Skripte
 
 ```bash
 npm run dev            # nur Frontend
 npm run start:server   # nur Backend
 npm run dev:all        # Frontend + Backend
-npm run dev:mock:all   # Frontend + Backend im Mock-Modus
-npm run build          # Typprüfung + Frontend-Build
-npm run preview        # Produktions-Build lokal prüfen
+npm run dev:mock:all   # Frontend + Backend (Mock-Modus)
+npm run build          # Type-Check und Frontend-Build
+npm run preview        # Frontend-Build lokal prüfen
+npm run cf:dev         # lokale Cloudflare Workers-Entwicklung
+npm run cf:deploy      # zu Cloudflare Workers deployen
 ```
 
-## Konfigurationsmodell
+## Konfiguration
 
-Prioritätsreihenfolge:
+Quellen und Priorität in der aktuellen Implementierung:
 
-1. Umgebungsvariablen (`.env`)
-2. `config.yaml`
-3. Integrierte Standardwerte
+1. `config.yaml` (oder Pfad aus `AIMETER_CONFIG_FILE`)
+2. Umgebungsvariablen
+3. Eingebaute Defaults
 
-Wichtige Bereiche:
+Wichtig:
 
-- `server`: API-URL, Frontend/Backend-Ports, Proxy-Vertrauen
-- `runtime`: `node` oder `serverless`, Mock-Schalter
-- `database`: Engine, DSN/Pfad, Verschlüsselungsschlüssel
-- `auth`: Session-Secret, Cookie-Optionen, Rate Limits, bootstrap/admin-Secrets
-- `providers`: Provider-Liste (wenn Datenbankmodus deaktiviert ist)
+- `database.engine` / `AIMETER_DATABASE_ENGINE` ist erforderlich.
+- `database.connection` / `AIMETER_DATABASE_CONNECTION` ist erforderlich.
+- Im `serverless`-Modus ist der Scheduler deaktiviert.
+- Im `node`-Modus startet der In-Process-Scheduler automatisch.
 
-## Laufzeitmodi
+Detaillierte Feldzuordnung und Erklärungen:
 
-- `node`: startet einen internen Scheduler für periodische Aktualisierung.
-- `serverless`: Scheduler deaktiviert, Aktualisierung wird durch Requests ausgelöst.
+- [doc/conf/README.md](../conf/README.md)
 
-## Datenbank-Engines
+## Deployment
 
-AIMeter unterstützt:
+Unterstützte Deployment-Modi und Links:
 
-- SQLite (Standard)
-- PostgreSQL
-- MySQL
+- [deploy/overview/README.md](../../deploy/overview/README.md)
+- [deploy/container/README.md](../../deploy/container/README.md)
+- [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
+- [deploy/vercel/README.md](../../deploy/vercel/README.md)
 
+## API-Dokumentation
 
-
-## Container-Deployment
-
-AIMeter bietet eine Single-Container-Konfiguration: **nginx** (HTTPS, Port 3000) terminiert TLS und leitet an Node.js (interner Port 3001) weiter.
-
-```bash
-./deploy/container/build.sh   # Image bauen
-./deploy/container/run.sh     # Dienst starten
-```
-
-Verschlüsselungs- und Session-Keys werden beim ersten Start automatisch generiert — keine manuelle Konfiguration erforderlich.
-
-Details siehe [deploy/container/README.md](../../deploy/container/README.md).
+- [doc/api/README.md](../api/README.md)
 
 ## Sicherheitshinweise
 
-Für den Produktivbetrieb:
-
-- Im Datenbankbetrieb werden `AIMETER_ENCRYPTION_KEY` und `AIMETER_AUTH_SESSION_SECRET` beim ersten Start automatisch generiert und gespeichert. Eine manuelle Konfiguration ist nur bei mehreren Instanzen mit gemeinsamer Datenbank erforderlich.
-- Im Datenbankmodus werden `AIMETER_CRON_SECRET` und `AIMETER_ENDPOINT_SECRET` nur bei der Erstinitialisierung verwendet; danach werden die Werte in der DB verwaltet.
-- Secure Cookies hinter HTTPS aktivieren.
-- admin/cron/endpoint-Secrets geschützt aufbewahren.
+- Session-Secret und verschlüsselungsrelevante Einstellungen werden im DB-Modus beim Bootstrap initialisiert und persistiert.
+- `AIMETER_CRON_SECRET` und `AIMETER_ENDPOINT_SECRET` sind optionale Integrations-Secrets; falls gesetzt, starke 32-Zeichen-Zufallswerte verwenden.
+- In Produktion `AIMETER_SERVER_PROTOCOL=https` setzen, um strengere Transport-Sicherheitsheader zu aktivieren.
