@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express';
 import { UsageProvider, UsageSnapshot, UsageError, UsageErrorCode, ProviderConfig, DashboardProviderData } from '../../src/types/index.js';
 import { requireAdminRole } from '../middleware/auth.js';
 import { storage } from '../storage.js';
-import { fetchUsageForProvider, getAdapterForProvider } from '../services/ProviderUsageService.js';
+import { fetchUsageForProvider } from '../services/ProviderUsageService.js';
+import { isProviderRefreshFailure, refreshProviderWithProtection } from '../services/ProviderRefreshService.js';
 import { runtimeConfig } from '../runtime.js';
 import { enrichProgressTitles } from '../utils/progressTitles.js';
 import { resolveMockDisplayNameForResponse } from '../mock/displayName.js';
@@ -85,9 +86,10 @@ type SerializedProgressItem = Omit<DashboardProviderData['progress'][number], 'r
   resetsAt: number | null;
 };
 
-type SerializedDashboardProviderData = Omit<DashboardProviderData, 'progress' | 'updatedAt' | 'cost'> & {
+type SerializedDashboardProviderData = Omit<DashboardProviderData, 'progress' | 'updatedAt' | 'cost' | 'staleAt'> & {
   progress: SerializedProgressItem[];
   updatedAt: number;
+  staleAt?: number;
 };
 
 type SerializedUsageError = Omit<UsageError, 'timestamp'> & {
@@ -327,58 +329,43 @@ router.post('/refresh', async (req: Request, res: Response) => {
     const results: Array<SerializedDashboardProviderData | SerializedUsageError> = [];
     
     for (const provider of allProviders) {
-      const adapter = getAdapterForProvider(provider.provider);
-      
-      if (!adapter) {
-        results.push(serializeUsageError({
-          id: provider.id,
-          provider: provider.provider,
-          code: UsageErrorCode.UNKNOWN,
-          message: 'Provider adapter not found',
-          timestamp: new Date(),
-        }));
-        continue;
-      }
-      
-      try {
-        const providerConfig: ProviderConfig = {
-          ...provider,
-          region: provider.region || provider.region,
-        };
-        
-        const snapshot = await fetchUsageForProvider(providerConfig);
-        await storage.recordUsage(provider.id, snapshot);
-        
-        const items = extractSnapshotItems(snapshot);
-        const calculatedPlan = provider.provider === UsageProvider.MINIMAX
-          ? calculateMiniMaxPlan(provider.region, items)
-          : undefined;
-        
-        const dashboardData: SerializedDashboardProviderData = {
-          id: provider.id,
-          provider: provider.provider,
-          name: resolveMockDisplayNameForResponse(provider) ?? undefined,
-          region: provider.region || undefined,
-          refreshInterval: provider.refreshInterval,
-          identity: withPlanFallback(
-            snapshot.identity as Record<string, unknown> | undefined,
-            provider.plan,
-            calculatedPlan,
-          ),
-          progress: serializeProgressItems(provider.provider, applyProviderDisplayMode(provider, items)),
-          updatedAt: toUnixSeconds(snapshot.updatedAt) ?? Math.floor(Date.now() / 1000),
-        };
-        results.push(dashboardData);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const refreshed = await refreshProviderWithProtection(provider);
+      if (isProviderRefreshFailure(refreshed)) {
         results.push(serializeUsageError({
           id: provider.id,
           provider: provider.provider,
           code: UsageErrorCode.API_ERROR,
-          message: errorMessage,
+          message: refreshed.message,
           timestamp: new Date(),
         }));
+        continue;
       }
+
+      const snapshot = refreshed.snapshot;
+      const items = extractSnapshotItems(snapshot);
+      const calculatedPlan = provider.provider === UsageProvider.MINIMAX
+        ? calculateMiniMaxPlan(provider.region, items)
+        : undefined;
+
+      const dashboardData: SerializedDashboardProviderData = {
+        id: provider.id,
+        provider: provider.provider,
+        name: resolveMockDisplayNameForResponse(provider) ?? undefined,
+        region: provider.region || undefined,
+        refreshInterval: provider.refreshInterval,
+        identity: withPlanFallback(
+          snapshot.identity as Record<string, unknown> | undefined,
+          provider.plan,
+          calculatedPlan,
+        ),
+        progress: serializeProgressItems(provider.provider, applyProviderDisplayMode(provider, items)),
+        updatedAt: toUnixSeconds(snapshot.updatedAt) ?? Math.floor(Date.now() / 1000),
+        ...(refreshed.fromCache ? { fromCache: true } : {}),
+        ...(refreshed.stale ? { stale: true, staleAt: refreshed.staleAt } : {}),
+        ...(refreshed.fetchError ? { fetchError: refreshed.fetchError } : {}),
+        ...(refreshed.authRequired ? { authRequired: true } : {}),
+      };
+      results.push(dashboardData);
     }
     
     res.json({

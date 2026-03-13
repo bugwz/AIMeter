@@ -14,7 +14,7 @@ type RefreshResult = {
   provider: string;
   status: 'executed' | 'skipped';
   ok?: boolean;
-  updatedAt?: string;
+  updatedAt?: number;
   error?: string;
   reason?: string;
   nextDueAt?: string;
@@ -126,7 +126,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
         provider: provider.provider,
         status: 'executed',
         ok: true,
-        updatedAt: snapshot.updatedAt.toISOString(),
+        updatedAt: Math.floor(snapshot.updatedAt.getTime() / 1000),
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

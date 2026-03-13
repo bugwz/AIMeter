@@ -181,13 +181,13 @@ await fetch(`${BASE_URL}/api/system/jobs/refresh`, {
         "id": "prov_abc123",
         "provider": "claude",
         "ok": true,
-        "updatedAt": "2026-03-09T10:00:00.000Z"
+        "updatedAt": 1773050400
       },
       {
         "id": "prov_xyz789",
         "provider": "kimi",
         "ok": true,
-        "updatedAt": "2026-03-09T10:00:01.000Z"
+        "updatedAt": 1773050401
       },
       {
         "id": "prov_err456",
@@ -207,7 +207,7 @@ await fetch(`${BASE_URL}/api/system/jobs/refresh`, {
 | `failed` | Number of failures |
 | `durationMs` | Total elapsed time in milliseconds |
 | `results[].ok` | Whether this provider refreshed successfully |
-| `results[].updatedAt` | Data timestamp on success (ISO 8601) |
+| `results[].updatedAt` | Data timestamp on success (Unix seconds) |
 | `results[].error` | Error message on failure |
 
 #### Vercel Cron Jobs Integration

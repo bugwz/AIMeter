@@ -95,7 +95,7 @@ Each item in the array is either a usage record (contains `progress`) or an erro
 
 ### `POST /api/proxy/refresh`
 
-Forces a live usage fetch for all configured providers and stores the results. Admin only. May take several seconds depending on the number of providers.
+Refreshes all configured providers with the same per-provider protection rules used by single refresh (recent-cache reuse and failure cooldown). Admin only. May take several seconds depending on the number of providers.
 
 #### Authentication
 
@@ -109,7 +109,10 @@ curl -b cookies.txt -X POST http://localhost:3001/api/proxy/refresh
 
 #### Response Example
 
-Same structure as `/proxy/latest`, but with freshly fetched data.
+Same structure as `/proxy/latest`. Each provider item may additionally include:
+- `fromCache: true` when recent data was reused.
+- `stale: true` and `staleAt` when fallback cached data is returned after a fetch failure/cooldown.
+- `fetchError` and `authRequired` for degraded fallback responses.
 
 #### Error Codes
 

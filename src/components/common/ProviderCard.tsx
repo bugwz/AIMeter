@@ -45,8 +45,8 @@ function formatPlanLabel(plan?: string): string {
 function getUpdatedAtColor(updatedAt: Date | undefined, refreshIntervalMinutes: number): string {
   if (!updatedAt) return 'var(--color-text-secondary)';
   const ageMin = (Date.now() - updatedAt.getTime()) / 60000;
-  if (ageMin >= refreshIntervalMinutes * 5) return '#dc2626';
-  if (ageMin >= refreshIntervalMinutes) return '#d97706';
+  if (ageMin > refreshIntervalMinutes * 5) return '#dc2626';
+  if (ageMin > refreshIntervalMinutes * 2) return '#d97706';
   return 'var(--color-text-secondary)';
 }
 

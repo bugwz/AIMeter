@@ -6,8 +6,9 @@ import { claudeOAuthService } from '../services/ClaudeOAuthService.js';
 import { codexOAuthService } from '../services/CodexOAuthService.js';
 import { antigravityOAuthService } from '../services/AntigravityOAuthService.js';
 import { storage, tryParseReadonlyError } from '../storage.js';
-import type { ProviderInstance, UsageRecordRow } from '../storage.js';
+import type { ProviderInstance } from '../storage.js';
 import { fetchUsageForProvider, getAdapterForProvider } from '../services/ProviderUsageService.js';
+import { isProviderRefreshFailure, refreshProviderWithProtection } from '../services/ProviderRefreshService.js';
 import { isMockMode } from '../runtime.js';
 import { enrichProgressTitles } from '../utils/progressTitles.js';
 import { resolveMockDisplayNameForResponse } from '../mock/displayName.js';
@@ -180,44 +181,6 @@ function serializeProvider(provider: ProviderInstance) {
     defaultProgressItem: provider.defaultProgressItem || null,
     attrs: provider.attrs || {},
   };
-}
-
-function buildSnapshotFromRecord(provider: ProviderInstance, record: UsageRecordRow): UsageSnapshot {
-  const items = (record.progress?.items || []) as UsageSnapshot['progress'];
-  return {
-    provider: provider.provider,
-    progress: items,
-    cost: record.progress?.cost,
-    identity: record.identityData as { plan?: string } | undefined,
-    updatedAt: record.createdAt,
-  };
-}
-
-function isOAuthAuthError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const lower = error.message.toLowerCase();
-  return (
-    lower.includes('token expired') ||
-    lower.includes('access denied') ||
-    lower.includes('oauth error: 401') ||
-    lower.includes('auth invalid') ||
-    lower.includes('oauth token expired') ||
-    lower.includes('antigravity auth') ||
-    lower.includes('authentication failed') ||
-    lower.includes('invalid_client') ||
-    lower.includes('invalid_grant')
-  );
-}
-
-function isProviderAuthError(provider: UsageProvider, error: unknown): boolean {
-  if (
-    provider !== UsageProvider.CLAUDE
-    && provider !== UsageProvider.CODEX
-    && provider !== UsageProvider.ANTIGRAVITY
-  ) {
-    return false;
-  }
-  return isOAuthAuthError(error);
 }
 
 function serializeProviderForViewer(provider: ProviderInstance, role: 'normal' | 'admin') {
@@ -1078,135 +1041,40 @@ router.post('/:id/refresh', async (req: Request, res: Response) => {
       return;
     }
 
-    const adapter = getAdapterForProvider(provider.provider);
-    if (!adapter) {
-      res.status(400).json({
+    const refreshed = await refreshProviderWithProtection(provider);
+    if (isProviderRefreshFailure(refreshed)) {
+      res.status(refreshed.statusCode).json({
         success: false,
-        error: { code: 'ADAPTER_NOT_FOUND', message: 'Provider adapter not found' },
-      });
-      return;
-    }
-
-    const now = Date.now();
-    const CACHE_TTL_MS = 3 * 60 * 1000;
-    const FAILURE_COOLDOWN_MS = 60 * 1000;
-    const LOCK_TIMEOUT_MS = 30 * 1000;
-
-    const latestRecord = await storage.getLatestUsage(id);
-    const fetchState = provider.fetchState || {};
-
-    // 1. Check recent cache
-    if (latestRecord) {
-      const ageMs = now - latestRecord.createdAt.getTime();
-      if (ageMs < CACHE_TTL_MS) {
-        const snapshot = buildSnapshotFromRecord(provider, latestRecord);
-        res.json({
-          success: true,
-          data: {
-            ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode(), fallbackPlan: provider.plan }),
-            fromCache: true,
-            cachedAt: Math.floor(latestRecord.createdAt.getTime() / 1000),
-            refreshInterval: provider.refreshInterval,
-          },
-        });
-        return;
-      }
-    }
-
-    // 2. Check failure cooldown
-    const lastFailedAt = typeof fetchState.lastFailedAt === 'string' ? new Date(fetchState.lastFailedAt).getTime() : null;
-    if (lastFailedAt && (now - lastFailedAt) < FAILURE_COOLDOWN_MS) {
-      if (latestRecord) {
-        const snapshot = buildSnapshotFromRecord(provider, latestRecord);
-        res.json({
-          success: true,
-          data: {
-            ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode(), fallbackPlan: provider.plan }),
-            stale: true,
-            staleAt: Math.floor(Date.now() / 1000),
-            refreshInterval: provider.refreshInterval,
-          },
-        });
-      } else {
-        res.status(503).json({
-          success: false,
-          error: { code: 'TEMPORARILY_UNAVAILABLE', message: 'Data temporarily unavailable due to a recent failure' },
-        });
-      }
-      return;
-    }
-
-    // 3. Check concurrent lock
-    const fetchInProgressSince = typeof fetchState.fetchInProgressSince === 'string' ? new Date(fetchState.fetchInProgressSince).getTime() : null;
-    if (fetchInProgressSince && (now - fetchInProgressSince) < LOCK_TIMEOUT_MS) {
-      if (latestRecord) {
-        const snapshot = buildSnapshotFromRecord(provider, latestRecord);
-        res.json({
-          success: true,
-          data: {
-            ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode(), fallbackPlan: provider.plan }),
-            stale: true,
-            staleAt: Math.floor(Date.now() / 1000),
-            refreshing: true,
-            refreshInterval: provider.refreshInterval,
-          },
-        });
-      } else {
-        res.json({ success: true, data: null, refreshing: true, refreshInterval: provider.refreshInterval });
-      }
-      return;
-    }
-
-    // 4. Set lock
-    await storage.patchFetchState(id, { fetchInProgressSince: new Date(now).toISOString() });
-
-    let snapshot: UsageSnapshot;
-    try {
-      snapshot = await fetchUsageForProvider(provider);
-      await storage.recordUsage(id, snapshot);
-      await storage.patchFetchState(id, {
-        fetchInProgressSince: null,
-        lastFailedAt: null,
-        lastFailureReason: null,
-        authRequired: null,
-      });
-      res.json({
-        success: true,
-        data: {
-          ...serializeUsageSnapshot(snapshot, { excludeCost: isMockMode(), fallbackPlan: provider.plan }),
-          refreshInterval: provider.refreshInterval,
+        error: {
+          code: refreshed.code,
+          message: refreshed.message,
         },
       });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const isAuthErr = isProviderAuthError(provider.provider, error);
-      await storage.patchFetchState(id, {
-        fetchInProgressSince: null,
-        lastFailedAt: new Date().toISOString(),
-        lastFailureReason: errorMessage.substring(0, 200),
-        ...(isAuthErr ? { authRequired: true } : {}),
-      });
-
-      if (latestRecord) {
-        const fallbackSnapshot = buildSnapshotFromRecord(provider, latestRecord);
-        res.json({
-          success: true,
-          data: {
-            ...serializeUsageSnapshot(fallbackSnapshot, { excludeCost: isMockMode(), fallbackPlan: provider.plan }),
-            stale: true,
-            staleAt: Math.floor(Date.now() / 1000),
-            fetchError: errorMessage,
-            refreshInterval: provider.refreshInterval,
-            ...(isAuthErr ? { authRequired: true } : {}),
-          },
-        });
-      } else {
-        res.status(400).json({
-          success: false,
-          error: { code: 'FETCH_ERROR', message: errorMessage },
-        });
-      }
+      return;
     }
+
+    const baseData = {
+      ...serializeUsageSnapshot(refreshed.snapshot, { excludeCost: isMockMode(), fallbackPlan: provider.plan }),
+      refreshInterval: provider.refreshInterval,
+    };
+
+    const extraData = {
+      ...(refreshed.fromCache ? {
+        fromCache: true,
+        cachedAt: Math.floor(refreshed.snapshot.updatedAt.getTime() / 1000),
+      } : {}),
+      ...(refreshed.stale ? { stale: true, staleAt: refreshed.staleAt } : {}),
+      ...(refreshed.fetchError ? { fetchError: refreshed.fetchError } : {}),
+      ...(refreshed.authRequired ? { authRequired: true } : {}),
+    };
+
+    res.json({
+      success: true,
+      data: {
+        ...baseData,
+        ...extraData,
+      },
+    });
   } catch (error) {
     res.status(500).json({
       success: false,

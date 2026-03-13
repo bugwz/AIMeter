@@ -6,3 +6,4 @@ doc/reference
 node_modules
 .env
 config.yaml
+.vercel
