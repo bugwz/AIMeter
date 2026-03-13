@@ -56,10 +56,6 @@ export function initMock() {
   if (!runtimeConfig.mockEnabled) {
     return;
   }
-  if (!runtimeConfig.mockAutoGenerate) {
-    console.log('[mock] Auto-generation is disabled, skipping mock data bootstrap');
-    return;
-  }
 
   if (runtimeConfig.storageMode === 'database') {
     return;
@@ -70,51 +66,55 @@ export function initMock() {
   initMockDatabase();
   console.log('Mock Database initialized');
 
-  const existingProviders = getAllMockProviders();
-  if (existingProviders.length === 0) {
-    console.log('Adding default mock providers...');
-    const usedNames = new Set<string>();
-    
-    for (const [provider, mockConfig] of Object.entries(MOCK_PROVIDER_CONFIGS)) {
-      const generatedName = generateRandomEnglishName(usedNames);
-      usedNames.add(generatedName);
-      const config: ProviderConfig = {
-        provider: provider as UsageProvider,
-        credentials: buildDefaultMockCredential(provider as UsageProvider),
-        refreshInterval: 5,
-        name: generatedName,
-        region: getDefaultMockRegion(provider as UsageProvider),
-      };
-      const providerId = saveMockProvider(provider as UsageProvider, config);
-      generateMockHistoryData(providerId, mockConfig);
+  if (runtimeConfig.mockAutoGenerate) {
+    const existingProviders = getAllMockProviders();
+    if (existingProviders.length === 0) {
+      console.log('Adding default mock providers...');
+      const usedNames = new Set<string>();
+      
+      for (const [provider, mockConfig] of Object.entries(MOCK_PROVIDER_CONFIGS)) {
+        const generatedName = generateRandomEnglishName(usedNames);
+        usedNames.add(generatedName);
+        const config: ProviderConfig = {
+          provider: provider as UsageProvider,
+          credentials: buildDefaultMockCredential(provider as UsageProvider),
+          refreshInterval: 5,
+          name: generatedName,
+          region: getDefaultMockRegion(provider as UsageProvider),
+        };
+        const providerId = saveMockProvider(provider as UsageProvider, config);
+        generateMockHistoryData(providerId, mockConfig);
+      }
+      console.log(`Default mock providers added: ${Object.keys(MOCK_PROVIDER_CONFIGS).length}`);
+      console.log('Mock history data generated for 30 days');
+    } else {
+      console.log('Checking existing providers for history data...');
+      const currentVersion = getSetting('mock_history_model_version');
+      const shouldRegenerateAll = currentVersion !== MOCK_HISTORY_MODEL_VERSION;
+
+      if (shouldRegenerateAll) {
+        clearMockUsageHistory();
+        console.log(`Regenerating mock history with model v${MOCK_HISTORY_MODEL_VERSION}...`);
+      }
+
+      for (const p of existingProviders) {
+        const mockConfig = MOCK_PROVIDER_CONFIGS[p.provider];
+        const defaultRegion = getDefaultMockRegion(p.provider);
+        if (defaultRegion && !p.region) {
+          setMockProviderRegion(p.id, defaultRegion);
+        }
+        if (mockConfig && (shouldRegenerateAll || !hasMockHistoryData(p.id))) {
+          generateMockHistoryData(p.id, mockConfig);
+          console.log(`Generated history data for ${p.provider}`);
+        }
+      }
+
+      if (shouldRegenerateAll) {
+        setSetting('mock_history_model_version', MOCK_HISTORY_MODEL_VERSION);
+      }
     }
-    console.log(`Default mock providers added: ${Object.keys(MOCK_PROVIDER_CONFIGS).length}`);
-    console.log('Mock history data generated for 30 days');
   } else {
-    console.log('Checking existing providers for history data...');
-    const currentVersion = getSetting('mock_history_model_version');
-    const shouldRegenerateAll = currentVersion !== MOCK_HISTORY_MODEL_VERSION;
-
-    if (shouldRegenerateAll) {
-      clearMockUsageHistory();
-      console.log(`Regenerating mock history with model v${MOCK_HISTORY_MODEL_VERSION}...`);
-    }
-
-    for (const p of existingProviders) {
-      const mockConfig = MOCK_PROVIDER_CONFIGS[p.provider];
-      const defaultRegion = getDefaultMockRegion(p.provider);
-      if (defaultRegion && !p.region) {
-        setMockProviderRegion(p.id, defaultRegion);
-      }
-      if (mockConfig && (shouldRegenerateAll || !hasMockHistoryData(p.id))) {
-        generateMockHistoryData(p.id, mockConfig);
-        console.log(`Generated history data for ${p.provider}`);
-      }
-    }
-
-    if (shouldRegenerateAll) {
-      setSetting('mock_history_model_version', MOCK_HISTORY_MODEL_VERSION);
-    }
+    console.log('[mock] mockAutoGenerate=false: skip provider/history auto-generation');
   }
 
   if (!getSetting('password')) {
