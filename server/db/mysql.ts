@@ -89,8 +89,8 @@ async function initSchema(
       \`key\` LONGTEXT NOT NULL,
       attrs JSON NOT NULL,
       fetch_state JSON NOT NULL,
-      created_at BIGINT NOT NULL DEFAULT (UNIX_TIMESTAMP()),
-      updated_at BIGINT NOT NULL DEFAULT (UNIX_TIMESTAMP()),
+      created_at BIGINT NOT NULL,
+      updated_at BIGINT NOT NULL,
       UNIQUE KEY uq_provider_name (provider, name),
       UNIQUE KEY uq_provider_uid (uid)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
@@ -102,7 +102,7 @@ async function initSchema(
       provider_id BIGINT NOT NULL,
       progress LONGTEXT NULL,
       identity_data LONGTEXT NULL,
-      created_at BIGINT NOT NULL DEFAULT (UNIX_TIMESTAMP()),
+      created_at BIGINT NOT NULL,
       INDEX idx_usage_provider_created (provider_id, created_at),
       CONSTRAINT fk_usage_provider FOREIGN KEY (provider_id) REFERENCES providers(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
@@ -112,14 +112,14 @@ async function initSchema(
     CREATE TABLE IF NOT EXISTS settings (
       \`key\` VARCHAR(255) NOT NULL PRIMARY KEY,
       value LONGTEXT NOT NULL,
-      updated_at BIGINT NOT NULL DEFAULT (UNIX_TIMESTAMP())
+      updated_at BIGINT NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
   await client.execute(`
     CREATE TABLE IF NOT EXISTS audit_logs (
       id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-      timestamp BIGINT NOT NULL DEFAULT (UNIX_TIMESTAMP()),
+      timestamp BIGINT NOT NULL,
       ip VARCHAR(255) NULL,
       method VARCHAR(16) NOT NULL,
       path VARCHAR(1024) NOT NULL,
