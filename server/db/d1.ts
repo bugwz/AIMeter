@@ -1,6 +1,7 @@
 import { getAppConfig } from '../config.js';
 import type { DbClient, DatabaseEngine, ExecuteResult } from './engine.js';
 import { SqlEngine, runCommonBootstrap } from './sql-engine.js';
+import { getCurrentRuntimeTableNames } from './table-names.js';
 
 type CloudflareBindings = Record<string, unknown>;
 const CLOUDFLARE_WORKERS_MODULE = 'cloudflare:workers';
@@ -112,8 +113,9 @@ async function initSchema(
   client: DbClient,
   initialSecrets?: Partial<Record<'cron_secret' | 'endpoint_secret', string>>,
 ): Promise<void> {
+  const tables = getCurrentRuntimeTableNames();
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS providers (
+    CREATE TABLE IF NOT EXISTS ${tables.providers} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       uid TEXT NOT NULL,
       provider TEXT NOT NULL,
@@ -129,18 +131,18 @@ async function initSchema(
   `);
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS usage_records (
+    CREATE TABLE IF NOT EXISTS ${tables.usageRecords} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       provider_id INTEGER NOT NULL,
       progress TEXT,
       identity_data TEXT,
       created_at INTEGER DEFAULT (unixepoch()),
-      FOREIGN KEY (provider_id) REFERENCES providers(id) ON DELETE CASCADE
+      FOREIGN KEY (provider_id) REFERENCES ${tables.providers}(id) ON DELETE CASCADE
     )
   `);
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS settings (
+    CREATE TABLE IF NOT EXISTS ${tables.settings} (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL,
       updated_at INTEGER DEFAULT (unixepoch())
@@ -148,7 +150,7 @@ async function initSchema(
   `);
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS audit_logs (
+    CREATE TABLE IF NOT EXISTS ${tables.auditLogs} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       timestamp INTEGER DEFAULT (unixepoch()),
       ip TEXT,
@@ -163,11 +165,11 @@ async function initSchema(
     )
   `);
 
-  await client.execute('CREATE INDEX IF NOT EXISTS idx_usage_provider_created ON usage_records(provider_id, created_at)');
-  await client.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp)');
-  await client.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_path ON audit_logs(path)');
+  await client.execute(`CREATE INDEX IF NOT EXISTS ${tables.usageProviderCreatedIndex} ON ${tables.usageRecords}(provider_id, created_at)`);
+  await client.execute(`CREATE INDEX IF NOT EXISTS ${tables.auditLogsTimestampIndex} ON ${tables.auditLogs}(timestamp)`);
+  await client.execute(`CREATE INDEX IF NOT EXISTS ${tables.auditLogsPathIndex} ON ${tables.auditLogs}(path)`);
 
-  await runCommonBootstrap(client, 'usage_records', initialSecrets, '"key"');
+  await runCommonBootstrap(client, tables, initialSecrets, '"key"');
 }
 
 export async function createD1Engine(): Promise<DatabaseEngine> {
@@ -194,6 +196,7 @@ export async function createD1Engine(): Promise<DatabaseEngine> {
   }
 
   const client = new D1Client(binding);
+  const tables = getCurrentRuntimeTableNames();
 
   await initSchema(client, {
     cron_secret: appConfig.auth.cronSecret,
@@ -201,7 +204,7 @@ export async function createD1Engine(): Promise<DatabaseEngine> {
   });
 
   const encryptionKey = appConfig.database.encryptionKey
-    || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE "key" = ?', ['encryption_key']))?.value;
+    || (await client.queryOne<{ value: string }>(`SELECT value FROM ${tables.settings} WHERE "key" = ?`, ['encryption_key']))?.value;
 
-  return new SqlEngine(client, 'd1', encryptionKey);
+  return new SqlEngine(client, 'd1', tables, encryptionKey);
 }

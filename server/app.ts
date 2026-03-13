@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { initDatabase, getSetting, isDatabaseInitialized } from './database.js';
-import { initMock, ensureMockRuntimeProvidersSeeded } from './mock/init.js';
+import { ensureMockRuntimeProvidersSeeded } from './mock/init.js';
 import { requireApiAuth, requireEndpointAuth } from './middleware/auth.js';
 import { createApiAuditMiddleware } from './middleware/audit.js';
 import { runtimeConfig } from './runtime.js';
@@ -105,11 +105,6 @@ export async function createApp(): Promise<express.Application> {
 
   app.use(createJsonBodyParser(1024 * 1024));
   app.use('/api', createApiAuditMiddleware(isMockMode));
-
-  if (isMockMode) {
-    console.log('Starting with MOCK fetch mode (database storage)');
-    initMock();
-  }
 
   console.log('Starting with DATABASE storage');
   const initialized = await isDatabaseInitialized();

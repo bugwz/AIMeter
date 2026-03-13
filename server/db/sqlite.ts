@@ -3,6 +3,7 @@ import path from 'path';
 import { getAppConfig } from '../config.js';
 import type { DbClient, DatabaseEngine, ExecuteResult } from './engine.js';
 import { SqlEngine, runCommonBootstrap } from './sql-engine.js';
+import { getCurrentRuntimeTableNames } from './table-names.js';
 
 export interface SqliteRuntime {
   engine: DatabaseEngine;
@@ -51,18 +52,19 @@ async function initSchema(
   client: DbClient,
   initialSecrets?: Partial<Record<'cron_secret' | 'endpoint_secret', string>>,
 ): Promise<void> {
+  const tables = getCurrentRuntimeTableNames();
   const legacyUsage = await client.queryOne<{ name: string }>(
     "SELECT name FROM sqlite_master WHERE type='table' AND name='usage'"
   );
   const targetUsage = await client.queryOne<{ name: string }>(
-    "SELECT name FROM sqlite_master WHERE type='table' AND name='usage_records'"
+    `SELECT name FROM sqlite_master WHERE type='table' AND name='${tables.usageRecords}'`
   );
   if (legacyUsage && !targetUsage) {
-    await client.execute('ALTER TABLE usage RENAME TO usage_records');
+    await client.execute(`ALTER TABLE usage RENAME TO ${tables.usageRecords}`);
   }
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS providers (
+    CREATE TABLE IF NOT EXISTS ${tables.providers} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       uid TEXT NOT NULL,
       provider TEXT NOT NULL,
@@ -78,18 +80,18 @@ async function initSchema(
   `);
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS usage_records (
+    CREATE TABLE IF NOT EXISTS ${tables.usageRecords} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       provider_id INTEGER NOT NULL,
       progress TEXT,
       identity_data TEXT,
       created_at INTEGER DEFAULT (unixepoch()),
-      FOREIGN KEY (provider_id) REFERENCES providers(id) ON DELETE CASCADE
+      FOREIGN KEY (provider_id) REFERENCES ${tables.providers}(id) ON DELETE CASCADE
     )
   `);
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS settings (
+    CREATE TABLE IF NOT EXISTS ${tables.settings} (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL,
       updated_at INTEGER DEFAULT (unixepoch())
@@ -97,7 +99,7 @@ async function initSchema(
   `);
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS audit_logs (
+    CREATE TABLE IF NOT EXISTS ${tables.auditLogs} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       timestamp INTEGER DEFAULT (unixepoch()),
       ip TEXT,
@@ -112,36 +114,36 @@ async function initSchema(
     )
   `);
 
-  await client.execute('CREATE INDEX IF NOT EXISTS idx_usage_provider_created ON usage_records(provider_id, created_at)');
-  await client.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp)');
-  await client.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_path ON audit_logs(path)');
+  await client.execute(`CREATE INDEX IF NOT EXISTS ${tables.usageProviderCreatedIndex} ON ${tables.usageRecords}(provider_id, created_at)`);
+  await client.execute(`CREATE INDEX IF NOT EXISTS ${tables.auditLogsTimestampIndex} ON ${tables.auditLogs}(timestamp)`);
+  await client.execute(`CREATE INDEX IF NOT EXISTS ${tables.auditLogsPathIndex} ON ${tables.auditLogs}(path)`);
 
   const usageTableSqlRow = await client.queryOne<{ sql: string | null }>(
-    "SELECT sql FROM sqlite_master WHERE type='table' AND name='usage_records'"
+    `SELECT sql FROM sqlite_master WHERE type='table' AND name='${tables.usageRecords}'`
   );
   const usageTableSql = usageTableSqlRow?.sql || '';
   if (usageTableSql.includes('providers_old')) {
     await client.execute('PRAGMA foreign_keys = OFF');
     await client.execute('BEGIN');
     try {
-      await client.execute('ALTER TABLE usage_records RENAME TO usage_records_old');
+      await client.execute(`ALTER TABLE ${tables.usageRecords} RENAME TO ${tables.usageRecords}_old`);
       await client.execute(`
-        CREATE TABLE usage_records (
+        CREATE TABLE ${tables.usageRecords} (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           provider_id INTEGER NOT NULL,
           progress TEXT,
           identity_data TEXT,
           created_at INTEGER DEFAULT (unixepoch()),
-          FOREIGN KEY (provider_id) REFERENCES providers(id) ON DELETE CASCADE
+          FOREIGN KEY (provider_id) REFERENCES ${tables.providers}(id) ON DELETE CASCADE
         )
       `);
       await client.execute(`
-        INSERT INTO usage_records (id, provider_id, progress, identity_data, created_at)
+        INSERT INTO ${tables.usageRecords} (id, provider_id, progress, identity_data, created_at)
         SELECT id, provider_id, progress, identity_data, created_at
-        FROM usage_records_old
+        FROM ${tables.usageRecords}_old
       `);
-      await client.execute('DROP TABLE usage_records_old');
-      await client.execute('CREATE INDEX IF NOT EXISTS idx_usage_provider_created ON usage_records(provider_id, created_at)');
+      await client.execute(`DROP TABLE ${tables.usageRecords}_old`);
+      await client.execute(`CREATE INDEX IF NOT EXISTS ${tables.usageProviderCreatedIndex} ON ${tables.usageRecords}(provider_id, created_at)`);
       await client.execute('COMMIT');
     } catch (error) {
       await client.execute('ROLLBACK');
@@ -151,7 +153,7 @@ async function initSchema(
     }
   }
 
-  await runCommonBootstrap(client, 'usage_records', initialSecrets, '"key"');
+  await runCommonBootstrap(client, tables, initialSecrets, '"key"');
 }
 
 export async function createSqliteEngine(): Promise<SqliteRuntime> {
@@ -160,16 +162,17 @@ export async function createSqliteEngine(): Promise<SqliteRuntime> {
   raw.pragma('journal_mode = WAL');
 
   const client = new SqliteClient(raw);
+  const tables = getCurrentRuntimeTableNames();
   await initSchema(client, {
     cron_secret: appConfig.auth.cronSecret,
     endpoint_secret: appConfig.auth.endpointSecret,
   });
 
   const encryptionKey = appConfig.database.encryptionKey
-    || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE "key" = ?', ['encryption_key']))?.value;
+    || (await client.queryOne<{ value: string }>(`SELECT value FROM ${tables.settings} WHERE "key" = ?`, ['encryption_key']))?.value;
 
   return {
-    engine: new SqlEngine(client, 'sqlite', encryptionKey),
+    engine: new SqlEngine(client, 'sqlite', tables, encryptionKey),
     raw,
   };
 }

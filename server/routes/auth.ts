@@ -3,6 +3,8 @@ import { Router, type Response } from 'express';
 import { clearSessionCookie, initSessionSecret, isRequestAuthenticated, issueSessionToken, setSessionCookie, type AuthRole } from '../auth.js';
 import { getAppConfig } from '../config.js';
 import { initDatabase } from '../database.js';
+import { ensureMockRuntimeProvidersSeeded } from '../mock/init.js';
+import { runtimeConfig } from '../runtime.js';
 import { storage, tryParseReadonlyError } from '../storage.js';
 import {
   checkLoginRateLimit,
@@ -147,6 +149,9 @@ router.post('/bootstrap', async (req, res) => {
     const dbSessionSecret = await storage.getSetting('session_secret');
     if (dbSessionSecret) {
       initSessionSecret(dbSessionSecret);
+    }
+    if (runtimeConfig.mockEnabled) {
+      await ensureMockRuntimeProvidersSeeded();
     }
 
     if (!await storage.getPasswordHash('normal')) {

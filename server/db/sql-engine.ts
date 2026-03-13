@@ -9,6 +9,7 @@ import {
   UsageSnapshot,
 } from '../../src/types/index.js';
 import type { AuditLogRow, DatabaseEngine, DbClient, StoredProviderConfig, UsageRecordRow } from './engine.js';
+import type { RuntimeTableNames } from './table-names.js';
 
 type EngineType = 'sqlite' | 'postgres' | 'mysql' | 'd1';
 
@@ -200,17 +201,19 @@ function verifyHashedPassword(password: string, storedHash: string): boolean {
 
 export async function runCommonBootstrap(
   client: DbClient,
-  usageTable: string = 'usage_records',
+  tables: Pick<RuntimeTableNames, 'providers' | 'usageRecords' | 'settings'>,
   initialSecrets?: Partial<Record<'cron_secret' | 'endpoint_secret', string>>,
   settingsKeyColumn: string = 'key',
 ): Promise<void> {
-  await client.execute(`DELETE FROM ${usageTable} WHERE provider_id IN (SELECT id FROM providers WHERE provider = 'factory')`);
-  await client.execute("DELETE FROM providers WHERE provider = 'factory'");
+  await client.execute(
+    `DELETE FROM ${tables.usageRecords} WHERE provider_id IN (SELECT id FROM ${tables.providers} WHERE provider = 'factory')`
+  );
+  await client.execute(`DELETE FROM ${tables.providers} WHERE provider = 'factory'`);
 
   // Auto-generate secrets if not yet present
   for (const key of ['cron_secret', 'endpoint_secret', 'encryption_key', 'session_secret']) {
     const existing = await client.query<{ value: string }>(
-      `SELECT value FROM settings WHERE ${settingsKeyColumn} = ?`, [key]
+      `SELECT value FROM ${tables.settings} WHERE ${settingsKeyColumn} = ?`, [key]
     );
     if (existing.length === 0) {
       const configuredSecret = (
@@ -223,7 +226,7 @@ export async function runCommonBootstrap(
       const now = Math.floor(Date.now() / 1000);
       try {
         await client.execute(
-          `INSERT INTO settings (${settingsKeyColumn}, value, updated_at) VALUES (?, ?, ?)`,
+          `INSERT INTO ${tables.settings} (${settingsKeyColumn}, value, updated_at) VALUES (?, ?, ?)`,
           [key, secret, now]
         );
       } catch (error) {
@@ -243,6 +246,7 @@ export class SqlEngine implements DatabaseEngine {
   constructor(
     private readonly client: DbClient,
     private readonly engine: EngineType,
+    private readonly tables: Pick<RuntimeTableNames, 'providers' | 'usageRecords' | 'settings' | 'auditLogs'>,
     encryptionSecret?: string,
   ) {
     if (!encryptionSecret || !encryptionSecret.trim()) {
@@ -253,19 +257,19 @@ export class SqlEngine implements DatabaseEngine {
   }
 
   private usageTable(): string {
-    return this.engine === 'mysql' ? '`usage_records`' : 'usage_records';
+    return this.tables.usageRecords;
   }
 
   private providersTable(): string {
-    return 'providers';
+    return this.tables.providers;
   }
 
   private settingsTable(): string {
-    return 'settings';
+    return this.tables.settings;
   }
 
   private auditLogsTable(): string {
-    return 'audit_logs';
+    return this.tables.auditLogs;
   }
 
   private providerKeyColumn(): string {

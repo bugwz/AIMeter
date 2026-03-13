@@ -1,6 +1,7 @@
 import { getAppConfig } from '../config.js';
 import type { DbClient, DatabaseEngine, ExecuteResult } from './engine.js';
 import { SqlEngine, runCommonBootstrap } from './sql-engine.js';
+import { getCurrentRuntimeTableNames } from './table-names.js';
 
 class MysqlClient implements DbClient {
   constructor(private readonly pool: any) {}
@@ -64,6 +65,7 @@ async function initSchema(
   client: DbClient,
   initialSecrets?: Partial<Record<'cron_secret' | 'endpoint_secret', string>>,
 ): Promise<void> {
+  const tables = getCurrentRuntimeTableNames();
   const legacyUsage = await client.queryOne<{ count: number }>(
     `SELECT COUNT(*) as count
      FROM INFORMATION_SCHEMA.TABLES
@@ -74,14 +76,14 @@ async function initSchema(
     `SELECT COUNT(*) as count
      FROM INFORMATION_SCHEMA.TABLES
      WHERE TABLE_SCHEMA = DATABASE()
-       AND TABLE_NAME = 'usage_records'`
+       AND TABLE_NAME = '${tables.usageRecords}'`
   );
   if (Number(legacyUsage?.count || 0) > 0 && Number(targetUsage?.count || 0) === 0) {
-    await client.execute('RENAME TABLE `usage` TO usage_records');
+    await client.execute(`RENAME TABLE \`usage\` TO ${tables.usageRecords}`);
   }
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS providers (
+    CREATE TABLE IF NOT EXISTS ${tables.providers} (
       id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
       uid VARCHAR(32) NOT NULL,
       provider VARCHAR(255) NOT NULL,
@@ -97,19 +99,19 @@ async function initSchema(
   `);
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS usage_records (
+    CREATE TABLE IF NOT EXISTS ${tables.usageRecords} (
       id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
       provider_id BIGINT NOT NULL,
       progress LONGTEXT NULL,
       identity_data LONGTEXT NULL,
       created_at BIGINT NOT NULL,
-      INDEX idx_usage_provider_created (provider_id, created_at),
-      CONSTRAINT fk_usage_provider FOREIGN KEY (provider_id) REFERENCES providers(id) ON DELETE CASCADE
+      INDEX ${tables.usageProviderCreatedIndex} (provider_id, created_at),
+      CONSTRAINT ${tables.usageRecords}_fk_usage_provider FOREIGN KEY (provider_id) REFERENCES ${tables.providers}(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS settings (
+    CREATE TABLE IF NOT EXISTS ${tables.settings} (
       \`key\` VARCHAR(255) NOT NULL PRIMARY KEY,
       value LONGTEXT NOT NULL,
       updated_at BIGINT NOT NULL
@@ -117,7 +119,7 @@ async function initSchema(
   `);
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS audit_logs (
+    CREATE TABLE IF NOT EXISTS ${tables.auditLogs} (
       id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
       timestamp BIGINT NOT NULL,
       ip VARCHAR(255) NULL,
@@ -129,12 +131,12 @@ async function initSchema(
       authenticated TINYINT(1) NOT NULL DEFAULT 0,
       event_type VARCHAR(255) NOT NULL DEFAULT 'api_access',
       details LONGTEXT NULL,
-      INDEX idx_audit_logs_timestamp (timestamp),
-      INDEX idx_audit_logs_path (path(191))
+      INDEX ${tables.auditLogsTimestampIndex} (timestamp),
+      INDEX ${tables.auditLogsPathIndex} (path(191))
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
-  await runCommonBootstrap(client, 'usage_records', initialSecrets, '`key`');
+  await runCommonBootstrap(client, tables, initialSecrets, '`key`');
 }
 
 export async function createMysqlEngine(): Promise<DatabaseEngine> {
@@ -142,6 +144,7 @@ export async function createMysqlEngine(): Promise<DatabaseEngine> {
   const { default: mysqlModule } = await import('mysql2/promise');
   const pool = mysqlModule.createPool(appConfig.database.connection);
   const client = new MysqlClient(pool);
+  const tables = getCurrentRuntimeTableNames();
 
   await initSchema(client, {
     cron_secret: appConfig.auth.cronSecret,
@@ -149,7 +152,7 @@ export async function createMysqlEngine(): Promise<DatabaseEngine> {
   });
 
   const encryptionKey = appConfig.database.encryptionKey
-    || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE `key` = ?', ['encryption_key']))?.value;
+    || (await client.queryOne<{ value: string }>(`SELECT value FROM ${tables.settings} WHERE \`key\` = ?`, ['encryption_key']))?.value;
 
-  return new SqlEngine(client, 'mysql', encryptionKey);
+  return new SqlEngine(client, 'mysql', tables, encryptionKey);
 }

@@ -5,13 +5,13 @@ import { createRequire } from 'node:module';
 import { getAppConfig } from './config.js';
 import type { Credential, ProviderConfig, UsageProvider, UsageSnapshot } from '../src/types/index.js';
 import type { AuditLogRow, DatabaseEngine, UsageRecordRow } from './db/engine.js';
+import { getCurrentRuntimeTableNames } from './db/table-names.js';
 
 let engineInstance: DatabaseEngine | null = null;
 let sqliteRaw: BetterSqlite3Database | null = null;
 let initPromise: Promise<void> | null = null;
 let initializedState: boolean | null = null;
 
-const REQUIRED_TABLES = ['providers', 'usage_records', 'settings', 'audit_logs'] as const;
 const CLOUDFLARE_WORKERS_MODULE = 'cloudflare:workers';
 
 interface D1QueryResult<T = Record<string, unknown>> {
@@ -39,6 +39,7 @@ function isValidBindingName(value: string): boolean {
 }
 
 async function isSqliteSchemaInitialized(connection: string): Promise<boolean> {
+  const tables = getCurrentRuntimeTableNames();
   const dbPath = path.resolve(process.cwd(), connection || './data/aimeter.db');
   if (!existsSync(dbPath)) {
     return false;
@@ -49,17 +50,18 @@ async function isSqliteSchemaInitialized(connection: string): Promise<boolean> {
   try {
     const rows = db
       .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('providers','usage_records','settings','audit_logs')"
+        `SELECT name FROM sqlite_master WHERE type='table' AND name IN ('${tables.providers}','${tables.usageRecords}','${tables.settings}','${tables.auditLogs}')`
       )
       .all() as Array<{ name: string }>;
     const names = new Set(rows.map((row) => row.name));
-    return REQUIRED_TABLES.every((table) => names.has(table));
+    return [tables.providers, tables.usageRecords, tables.settings, tables.auditLogs].every((table) => names.has(table));
   } finally {
     db.close();
   }
 }
 
 async function isPostgresSchemaInitialized(connection: string): Promise<boolean> {
+  const tables = getCurrentRuntimeTableNames();
   const require = createRequire(import.meta.url);
   const pgModule = require('pg') as {
     Pool: new (config: { connectionString: string }) => {
@@ -70,19 +72,20 @@ async function isPostgresSchemaInitialized(connection: string): Promise<boolean>
   const pool = new pgModule.Pool({ connectionString: connection });
   try {
     const result = await pool.query(
-      "SELECT to_regclass('public.providers') AS providers, " +
-      "to_regclass('public.usage_records') AS usage_records, " +
-      "to_regclass('public.settings') AS settings, " +
-      "to_regclass('public.audit_logs') AS audit_logs"
+      `SELECT to_regclass('public.${tables.providers}') AS providers, ` +
+      `to_regclass('public.${tables.usageRecords}') AS usage_records, ` +
+      `to_regclass('public.${tables.settings}') AS settings, ` +
+      `to_regclass('public.${tables.auditLogs}') AS audit_logs`
     );
     const row = result.rows[0] || {};
-    return REQUIRED_TABLES.every((table) => Boolean(row[table]));
+    return Boolean(row.providers) && Boolean(row.usage_records) && Boolean(row.settings) && Boolean(row.audit_logs);
   } finally {
     await pool.end();
   }
 }
 
 async function isMysqlSchemaInitialized(connection: string): Promise<boolean> {
+  const tables = getCurrentRuntimeTableNames();
   const { default: mysqlModule } = await import('mysql2/promise');
   const pool = mysqlModule.createPool(connection);
   try {
@@ -90,10 +93,10 @@ async function isMysqlSchemaInitialized(connection: string): Promise<boolean> {
       `SELECT TABLE_NAME
        FROM INFORMATION_SCHEMA.TABLES
        WHERE TABLE_SCHEMA = DATABASE()
-         AND TABLE_NAME IN ('providers', 'usage_records', 'settings', 'audit_logs')`
+         AND TABLE_NAME IN ('${tables.providers}', '${tables.usageRecords}', '${tables.settings}', '${tables.auditLogs}')`
     ) as [Array<{ TABLE_NAME: string }>, unknown];
     const names = new Set(rows.map((row) => row.TABLE_NAME));
-    return REQUIRED_TABLES.every((table) => names.has(table));
+    return [tables.providers, tables.usageRecords, tables.settings, tables.auditLogs].every((table) => names.has(table));
   } finally {
     await pool.end();
   }
@@ -115,6 +118,7 @@ async function resolveCloudflareBindings(): Promise<Record<string, unknown>> {
 }
 
 async function isD1SchemaInitialized(bindingName: string): Promise<boolean> {
+  const tables = getCurrentRuntimeTableNames();
   const normalized = (bindingName || '').trim();
   if (!normalized) {
     throw new Error('AIMETER_DATABASE_CONNECTION is required when AIMETER_DATABASE_ENGINE=d1.');
@@ -136,11 +140,13 @@ async function isD1SchemaInitialized(bindingName: string): Promise<boolean> {
   }
 
   const result = await binding
-    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('providers','usage_records','settings','audit_logs')")
+    .prepare(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name IN ('${tables.providers}','${tables.usageRecords}','${tables.settings}','${tables.auditLogs}')`
+    )
     .all<{ name: string }>();
   const rows = Array.isArray(result.results) ? result.results : [];
   const names = new Set(rows.map((row) => row.name));
-  return REQUIRED_TABLES.every((table) => names.has(table));
+  return [tables.providers, tables.usageRecords, tables.settings, tables.auditLogs].every((table) => names.has(table));
 }
 
 async function detectDatabaseInitialized(): Promise<boolean> {

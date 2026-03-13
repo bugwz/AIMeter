@@ -1,6 +1,7 @@
 import { getAppConfig } from '../config.js';
 import type { DbClient, DatabaseEngine, ExecuteResult } from './engine.js';
 import { SqlEngine, runCommonBootstrap } from './sql-engine.js';
+import { getCurrentRuntimeTableNames } from './table-names.js';
 
 function convertQuestionMarksToPg(sql: string): string {
   let idx = 0;
@@ -72,18 +73,19 @@ async function initSchema(
   client: DbClient,
   initialSecrets?: Partial<Record<'cron_secret' | 'endpoint_secret', string>>,
 ): Promise<void> {
+  const tables = getCurrentRuntimeTableNames();
   const legacyUsage = await client.queryOne<{ to_regclass: string | null }>(
     "SELECT to_regclass('public.usage')"
   );
   const targetUsage = await client.queryOne<{ to_regclass: string | null }>(
-    "SELECT to_regclass('public.usage_records')"
+    `SELECT to_regclass('public.${tables.usageRecords}')`
   );
   if (legacyUsage?.to_regclass && !targetUsage?.to_regclass) {
-    await client.execute('ALTER TABLE usage RENAME TO usage_records');
+    await client.execute(`ALTER TABLE usage RENAME TO ${tables.usageRecords}`);
   }
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS providers (
+    CREATE TABLE IF NOT EXISTS ${tables.providers} (
       id BIGSERIAL PRIMARY KEY,
       uid TEXT NOT NULL UNIQUE,
       provider TEXT NOT NULL,
@@ -98,9 +100,9 @@ async function initSchema(
   `);
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS usage_records (
+    CREATE TABLE IF NOT EXISTS ${tables.usageRecords} (
       id BIGSERIAL PRIMARY KEY,
-      provider_id BIGINT NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+      provider_id BIGINT NOT NULL REFERENCES ${tables.providers}(id) ON DELETE CASCADE,
       progress TEXT,
       identity_data TEXT,
       created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW())::BIGINT)
@@ -108,7 +110,7 @@ async function initSchema(
   `);
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS settings (
+    CREATE TABLE IF NOT EXISTS ${tables.settings} (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL,
       updated_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW())::BIGINT)
@@ -116,7 +118,7 @@ async function initSchema(
   `);
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS audit_logs (
+    CREATE TABLE IF NOT EXISTS ${tables.auditLogs} (
       id BIGSERIAL PRIMARY KEY,
       timestamp BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW())::BIGINT),
       ip TEXT,
@@ -131,11 +133,11 @@ async function initSchema(
     )
   `);
 
-  await client.execute('CREATE INDEX IF NOT EXISTS idx_usage_provider_created ON usage_records(provider_id, created_at)');
-  await client.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp)');
-  await client.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_path ON audit_logs(path)');
+  await client.execute(`CREATE INDEX IF NOT EXISTS ${tables.usageProviderCreatedIndex} ON ${tables.usageRecords}(provider_id, created_at)`);
+  await client.execute(`CREATE INDEX IF NOT EXISTS ${tables.auditLogsTimestampIndex} ON ${tables.auditLogs}(timestamp)`);
+  await client.execute(`CREATE INDEX IF NOT EXISTS ${tables.auditLogsPathIndex} ON ${tables.auditLogs}(path)`);
 
-  await runCommonBootstrap(client, 'usage_records', initialSecrets, '"key"');
+  await runCommonBootstrap(client, tables, initialSecrets, '"key"');
 }
 
 export async function createPostgresEngine(): Promise<DatabaseEngine> {
@@ -143,6 +145,7 @@ export async function createPostgresEngine(): Promise<DatabaseEngine> {
   const pgModule = (await import('pg')) as { Pool: new (config: { connectionString: string }) => unknown };
   const pool = new pgModule.Pool({ connectionString: appConfig.database.connection });
   const client = new PostgresClient(pool);
+  const tables = getCurrentRuntimeTableNames();
 
   await initSchema(client, {
     cron_secret: appConfig.auth.cronSecret,
@@ -150,7 +153,7 @@ export async function createPostgresEngine(): Promise<DatabaseEngine> {
   });
 
   const encryptionKey = appConfig.database.encryptionKey
-    || (await client.queryOne<{ value: string }>('SELECT value FROM settings WHERE "key" = ?', ['encryption_key']))?.value;
+    || (await client.queryOne<{ value: string }>(`SELECT value FROM ${tables.settings} WHERE "key" = ?`, ['encryption_key']))?.value;
 
-  return new SqlEngine(client, 'postgres', encryptionKey);
+  return new SqlEngine(client, 'postgres', tables, encryptionKey);
 }
