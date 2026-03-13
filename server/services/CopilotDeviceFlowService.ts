@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { getSetting as getDatabaseSetting } from '../database.js';
 
 interface DeviceCodeResponse {
   device_code: string;
@@ -15,23 +16,16 @@ interface AccessTokenResponse {
 type FlowStatus = 'pending' | 'authorized' | 'expired' | 'error';
 
 interface FlowState {
-  id: string;
   deviceCode: string;
   userCode: string;
   verificationUri: string;
   interval: number;
   expiresAt: number;
-  nextPollAt: number;
-  transientFailureCount: number;
-  status: FlowStatus;
-  error?: string;
-  tempCredentialId?: string;
 }
 
 interface TempCredential {
-  id: string;
   token: string;
-  createdAt: number;
+  expiresAt: number;
 }
 
 export interface CopilotAuthStartResult {
@@ -63,9 +57,8 @@ export class FlowNotFoundError extends Error {
 class CopilotDeviceFlowService {
   private readonly clientID = process.env.GITHUB_COPILOT_CLIENT_ID || 'Iv1.b507a08c87ecfe98';
   private readonly scopes = 'read:user';
-  private readonly flows = new Map<string, FlowState>();
-  private readonly tempCredentials = new Map<string, TempCredential>();
   private readonly tempCredentialTTL = 10 * 60 * 1000;
+  private signingSecret: string | null = null;
 
   async start(): Promise<CopilotAuthStartResult> {
     const response = await fetch('https://github.com/login/device/code', {
@@ -85,20 +78,16 @@ class CopilotDeviceFlowService {
     }
 
     const data = await response.json() as DeviceCodeResponse;
-    const flowId = crypto.randomUUID();
     const now = Date.now();
     const expiresAt = now + (data.expires_in * 1000);
-
-    this.flows.set(flowId, {
-      id: flowId,
+    const flowId = await this.signToken({
+      kind: 'copilot_flow',
+      v: 1,
       deviceCode: data.device_code,
       userCode: data.user_code,
       verificationUri: data.verification_uri,
       interval: data.interval,
       expiresAt,
-      nextPollAt: now,
-      transientFailureCount: 0,
-      status: 'pending',
     });
 
     return {
@@ -111,45 +100,41 @@ class CopilotDeviceFlowService {
   }
 
   async getStatus(flowId: string): Promise<CopilotAuthStatusResult> {
-    this.cleanupExpiredCredentials();
+    const flow = await this.readFlowToken(flowId);
+    if (!flow || Date.now() >= flow.expiresAt) {
+      return {
+        status: 'expired',
+        userCode: flow?.userCode,
+        verificationUri: flow?.verificationUri,
+        expiresAt: flow ? new Date(flow.expiresAt).toISOString() : undefined,
+      };
+    }
 
-    const flow = this.flows.get(flowId);
-    if (!flow) {
+    const polled = await this.pollForToken(flow);
+    if (!polled) {
       throw new FlowNotFoundError();
     }
 
-    const now = Date.now();
-    if (now >= flow.expiresAt) {
-      flow.status = 'expired';
-    }
-
-    if (flow.status === 'pending' && now >= flow.nextPollAt) {
-      await this.pollForToken(flow);
-    }
-
-    return {
-      status: flow.status,
+    const result: CopilotAuthStatusResult = {
+      status: polled.status,
       userCode: flow.userCode,
       verificationUri: flow.verificationUri,
       expiresAt: new Date(flow.expiresAt).toISOString(),
-      tempCredentialId: flow.tempCredentialId,
-      error: flow.error,
     };
+    if (polled.tempCredentialId) result.tempCredentialId = polled.tempCredentialId;
+    if (polled.error) result.error = polled.error;
+    return result;
   }
 
-  consumeTempCredential(tempCredentialId: string): string {
-    this.cleanupExpiredCredentials();
-
-    const credential = this.tempCredentials.get(tempCredentialId);
-    if (!credential) {
+  async consumeTempCredential(tempCredentialId: string): Promise<string> {
+    const credential = await this.readTempCredentialToken(tempCredentialId);
+    if (!credential || Date.now() >= credential.expiresAt) {
       throw new Error('Copilot authorization is missing or expired');
     }
-
-    this.tempCredentials.delete(tempCredentialId);
     return credential.token;
   }
 
-  private async pollForToken(flow: FlowState): Promise<void> {
+  private async pollForToken(flow: FlowState): Promise<{ status: FlowStatus; error?: string; tempCredentialId?: string } | null> {
     try {
       const response = await fetch('https://github.com/login/oauth/access_token', {
         method: 'POST',
@@ -165,71 +150,131 @@ class CopilotDeviceFlowService {
       });
 
       if (!response.ok) {
-        flow.status = 'error';
-        flow.error = `GitHub token polling failed: HTTP ${response.status}`;
-        return;
+        return {
+          status: 'error',
+          error: `GitHub token polling failed: HTTP ${response.status}`,
+        };
       }
 
       const data = await response.json() as { error?: string } & Partial<AccessTokenResponse>;
       if (data.error) {
         if (data.error === 'authorization_pending') {
-          flow.error = undefined;
-          flow.nextPollAt = Date.now() + (flow.interval * 1000);
-          return;
+          return { status: 'pending' };
         }
 
         if (data.error === 'slow_down') {
-          flow.error = undefined;
-          flow.nextPollAt = Date.now() + ((flow.interval + 5) * 1000);
-          return;
+          return { status: 'pending' };
         }
 
         if (data.error === 'expired_token') {
-          flow.status = 'expired';
-          flow.error = undefined;
-          return;
+          return { status: 'expired' };
         }
 
-        flow.status = 'error';
-        flow.error = data.error;
-        return;
+        return { status: 'error', error: data.error };
       }
 
       if (!data.access_token) {
-        flow.status = 'error';
-        flow.error = 'GitHub did not return an access token';
-        return;
+        return { status: 'error', error: 'GitHub did not return an access token' };
       }
 
-      const tempCredentialId = crypto.randomUUID();
-      this.tempCredentials.set(tempCredentialId, {
-        id: tempCredentialId,
+      const tempCredentialId = await this.signToken({
+        kind: 'copilot_temp_credential',
+        v: 1,
         token: data.access_token,
-        createdAt: Date.now(),
+        expiresAt: Date.now() + this.tempCredentialTTL,
       });
 
-      flow.status = 'authorized';
-      flow.tempCredentialId = tempCredentialId;
-      flow.nextPollAt = Number.MAX_SAFE_INTEGER;
-      flow.error = undefined;
-      flow.transientFailureCount = 0;
+      return {
+        status: 'authorized',
+        tempCredentialId,
+      };
     } catch (error) {
-      flow.status = 'pending';
-      flow.transientFailureCount += 1;
       const message = error instanceof Error ? error.message : 'Unknown network error';
-      flow.error = `Temporary network error while polling GitHub token (${message}). Retrying...`;
-      const delayMs = Math.min((flow.interval + (flow.transientFailureCount * 5)) * 1000, 60_000);
-      flow.nextPollAt = Date.now() + delayMs;
+      return {
+        status: 'pending',
+        error: `Temporary network error while polling GitHub token (${message}). Retrying...`,
+      };
     }
   }
 
-  private cleanupExpiredCredentials(): void {
-    const now = Date.now();
-    for (const [id, credential] of this.tempCredentials.entries()) {
-      if (now - credential.createdAt > this.tempCredentialTTL) {
-        this.tempCredentials.delete(id);
-      }
+  private async getSigningSecret(): Promise<string> {
+    if (this.signingSecret) {
+      return this.signingSecret;
     }
+    const configured = process.env.AIMETER_COPILOT_FLOW_SECRET?.trim()
+      || process.env.AIMETER_AUTH_SESSION_SECRET?.trim();
+    if (configured) {
+      this.signingSecret = configured;
+      return this.signingSecret;
+    }
+    const dbSecret = (await getDatabaseSetting('session_secret'))?.trim();
+    if (!dbSecret) {
+      throw new Error('Session secret is not initialized for Copilot flow');
+    }
+    this.signingSecret = dbSecret;
+    return this.signingSecret;
+  }
+
+  private async signToken(payload: Record<string, unknown>): Promise<string> {
+    const body = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+    const signature = crypto
+      .createHmac('sha256', await this.getSigningSecret())
+      .update(body)
+      .digest('base64url');
+    return `${body}.${signature}`;
+  }
+
+  private async verifyToken(token: string): Promise<Record<string, unknown> | null> {
+    const [body, signature] = token.split('.');
+    if (!body || !signature) return null;
+    const expectedSignature = crypto
+      .createHmac('sha256', await this.getSigningSecret())
+      .update(body)
+      .digest('base64url');
+    const left = Buffer.from(signature, 'utf8');
+    const right = Buffer.from(expectedSignature, 'utf8');
+    if (left.length !== right.length || !crypto.timingSafeEqual(left, right)) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as Record<string, unknown>;
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async readFlowToken(flowToken: string): Promise<FlowState | null> {
+    const payload = await this.verifyToken(flowToken);
+    if (!payload) return null;
+    if (payload.kind !== 'copilot_flow' || payload.v !== 1) return null;
+    if (
+      typeof payload.deviceCode !== 'string'
+      || typeof payload.userCode !== 'string'
+      || typeof payload.verificationUri !== 'string'
+      || typeof payload.interval !== 'number'
+      || typeof payload.expiresAt !== 'number'
+    ) {
+      return null;
+    }
+    return {
+      deviceCode: payload.deviceCode,
+      userCode: payload.userCode,
+      verificationUri: payload.verificationUri,
+      interval: payload.interval,
+      expiresAt: payload.expiresAt,
+    };
+  }
+
+  private async readTempCredentialToken(token: string): Promise<TempCredential | null> {
+    const payload = await this.verifyToken(token);
+    if (!payload) return null;
+    if (payload.kind !== 'copilot_temp_credential' || payload.v !== 1) return null;
+    if (typeof payload.token !== 'string' || typeof payload.expiresAt !== 'number') return null;
+    return {
+      token: payload.token,
+      expiresAt: payload.expiresAt,
+    };
   }
 
   private formEncode(values: Record<string, string>): string {

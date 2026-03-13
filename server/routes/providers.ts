@@ -395,7 +395,7 @@ router.post('/copilot/auth/complete', async (req: Request, res: Response) => {
       return;
     }
 
-    const token = copilotDeviceFlowService.consumeTempCredential(tempCredentialId);
+    const token = await copilotDeviceFlowService.consumeTempCredential(tempCredentialId);
     const credential: Credential = {
       type: AuthType.OAUTH,
       accessToken: token,
