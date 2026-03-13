@@ -18,11 +18,17 @@ runtime:
 database:
   # Required. One of: sqlite, d1, mysql, postgres
   engine: sqlite
+  # Note: For mysql/postgres, the target database must be created in advance.
+  # AIMeter initializes tables only and does not create databases automatically.
   # Required. Examples:
   # sqlite: ./data/aimeter.db
   # d1: DB
   # mysql: mysql://root:password@127.0.0.1:3306/aimeter
+  # mysql + ssl: mysql://root:password@127.0.0.1:3306/aimeter?ssl={"rejectUnauthorized":true}
+  # mysql + ssl (self-signed cert): mysql://root:password@127.0.0.1:3306/aimeter?ssl={"rejectUnauthorized":false}
   # postgres: postgresql://postgres:password@127.0.0.1:5432/aimeter
+  # postgres + ssl: postgresql://postgres:password@127.0.0.1:5432/aimeter?sslmode=require
+  # postgres + ssl (self-signed cert): postgresql://postgres:password@127.0.0.1:5432/aimeter?sslmode=no-verify
   connection: ./data/aimeter.db
 
 auth:

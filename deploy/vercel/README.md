@@ -49,6 +49,11 @@ openssl rand -hex 16
 
 ## Database Setup
 
+Important:
+- For MySQL/PostgreSQL, the target database must be created before deployment.
+- AIMeter initializes required tables only (`providers`, `usage_records`, `settings`, `audit_logs`).
+- AIMeter does not create the database itself.
+
 ### MySQL DSN
 
 ```text
@@ -61,10 +66,22 @@ If SSL is required, use `ssl` in the DSN query:
 mysql://USER:PASSWORD@HOST:3306/DATABASE?ssl={"rejectUnauthorized":true}
 ```
 
+If your MySQL uses a self-signed certificate, use:
+
+```text
+mysql://USER:PASSWORD@HOST:3306/DATABASE?ssl={"rejectUnauthorized":false}
+```
+
 ### PostgreSQL DSN
 
 ```text
 postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require
+```
+
+If your PostgreSQL uses a self-signed certificate, use:
+
+```text
+postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=no-verify
 ```
 
 ## Cron / Background Jobs Setup
