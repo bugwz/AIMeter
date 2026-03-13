@@ -30,6 +30,22 @@ AIMeter ist ein self-hosted Dashboard zur Verfolgung von Nutzung, Kontingent und
   <img src="../img/dashboard.png" alt="AIMeter dashboard" width="100%" />
 </div>
 
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="33.33%">
+        <img src="../img/history.png" alt="AIMeter usage history" width="100%" />
+      </td>
+      <td align="center" width="33.33%">
+        <img src="../img/endpoint.png" alt="AIMeter endpoint" width="100%" />
+      </td>
+      <td align="center" width="33.33%">
+        <img src="../img/settings.png" alt="AIMeter settings" width="100%" />
+      </td>
+    </tr>
+  </table>
+</div>
+
 ## Features
 
 - React-Frontend-Dashboard

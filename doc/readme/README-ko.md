@@ -30,6 +30,22 @@ AIMeter는 AI provider 사용량, quota, 이력 추세를 추적하는 self-host
   <img src="../img/dashboard.png" alt="AIMeter dashboard" width="100%" />
 </div>
 
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="33.33%">
+        <img src="../img/history.png" alt="AIMeter usage history" width="100%" />
+      </td>
+      <td align="center" width="33.33%">
+        <img src="../img/endpoint.png" alt="AIMeter endpoint" width="100%" />
+      </td>
+      <td align="center" width="33.33%">
+        <img src="../img/settings.png" alt="AIMeter settings" width="100%" />
+      </td>
+    </tr>
+  </table>
+</div>
+
 ## 주요 기능
 
 - React 프론트엔드 대시보드
