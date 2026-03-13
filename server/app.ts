@@ -10,6 +10,63 @@ import { getAppConfig } from './config.js';
 import { checkEntryContextRateLimit } from './security/loginRateLimit.js';
 import { initSessionSecret } from './auth.js';
 
+function createJsonBodyParser(limitBytes: number = 1024 * 1024) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const method = req.method.toUpperCase();
+    if (method === 'GET' || method === 'HEAD') {
+      next();
+      return;
+    }
+
+    const contentType = (req.headers['content-type'] || '').toString().toLowerCase();
+    if (!contentType.includes('application/json')) {
+      next();
+      return;
+    }
+
+    const chunks: Buffer[] = [];
+    let total = 0;
+
+    req.on('data', (chunk: Buffer | string) => {
+      const data = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      total += data.length;
+      if (total > limitBytes) {
+        res.status(413).json({
+          success: false,
+          error: {
+            code: 'PAYLOAD_TOO_LARGE',
+            message: 'Request body is too large',
+          },
+        });
+        req.removeAllListeners('data');
+        req.removeAllListeners('end');
+        return;
+      }
+      chunks.push(data);
+    });
+
+    req.on('end', () => {
+      try {
+        const raw = chunks.length > 0 ? Buffer.concat(chunks).toString('utf8') : '';
+        (req as express.Request & { body?: unknown }).body = raw ? JSON.parse(raw) : {};
+        next();
+      } catch {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_JSON',
+            message: 'Malformed JSON request body',
+          },
+        });
+      }
+    });
+
+    req.on('error', (error: Error) => {
+      next(error);
+    });
+  };
+}
+
 export async function createApp(): Promise<express.Application> {
   await import('../src/adapters/index.js');
 
@@ -30,7 +87,7 @@ export async function createApp(): Promise<express.Application> {
     next();
   });
 
-  app.use(express.json({ limit: '1mb' }));
+  app.use(createJsonBodyParser(1024 * 1024));
   app.use('/api', createApiAuditMiddleware(isMockMode));
 
   if (isMockMode) {
@@ -121,6 +178,20 @@ export async function createApp(): Promise<express.Application> {
         role: isAdminPath ? 'admin' : 'normal',
         basePath: isAdminPath ? adminBasePath : '/',
         invalidAdminPath: false,
+      },
+    });
+  });
+
+  app.use('/api', (error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error('Unhandled API error:', error);
+    if (res.headersSent) {
+      return;
+    }
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'Internal Server Error',
       },
     });
   });

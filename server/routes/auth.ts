@@ -76,75 +76,74 @@ router.get('/:role/status', async (req, res) => {
 });
 
 router.post('/bootstrap', async (req, res) => {
-  if (!await storage.isInitialSetupRequired()) {
-    return res.status(410).json({
-      success: false,
-      error: {
-        code: 'BOOTSTRAP_DISABLED',
-        message: 'Initial setup endpoint is disabled after setup completion',
-      },
-    });
-  }
-
-  const limitCheck = checkEntryContextRateLimit(req);
-  if (!limitCheck.allowed) {
-    return res.status(429).json({
-      success: false,
-      error: {
-        code: 'RATE_LIMITED',
-        message: `Too many requests. Try again in ${limitCheck.retryAfterSeconds ?? 60} seconds.`,
-      },
-    });
-  }
-
-
-  const { normalPassword, adminPassword, adminRoutePath } = req.body as {
-    normalPassword?: string;
-    adminPassword?: string;
-    adminRoutePath?: string;
-  };
-  if (typeof normalPassword !== 'string' || typeof adminPassword !== 'string') {
-    return res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_PASSWORD', message: 'Both normal and admin passwords are required' },
-    });
-  }
-
-  const passwordError = validatePasswordStrength(normalPassword) || validatePasswordStrength(adminPassword);
-  if (passwordError) {
-    return res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_PASSWORD', message: passwordError },
-    });
-  }
-  if (normalPassword === adminPassword) {
-    return res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_PASSWORD', message: 'Normal and admin passwords must be different' },
-    });
-  }
-
-  const normalizedSecret = typeof adminRoutePath === 'string' ? adminRoutePath.trim() : '';
-  if (normalizedSecret.length !== 32) {
-    return res.status(400).json({
-      success: false,
-      error: {
-        code: 'INVALID_ADMIN_ROUTE_PATH',
-        message: 'Admin route path must be exactly 32 characters',
-      },
-    });
-  }
-  if (!/^[a-zA-Z0-9]+$/.test(normalizedSecret)) {
-    return res.status(400).json({
-      success: false,
-      error: {
-        code: 'INVALID_ADMIN_ROUTE_PATH',
-        message: 'Admin route path must contain only letters and digits (no special characters)',
-      },
-    });
-  }
-
   try {
+    if (!await storage.isInitialSetupRequired()) {
+      return res.status(410).json({
+        success: false,
+        error: {
+          code: 'BOOTSTRAP_DISABLED',
+          message: 'Initial setup endpoint is disabled after setup completion',
+        },
+      });
+    }
+
+    const limitCheck = checkEntryContextRateLimit(req);
+    if (!limitCheck.allowed) {
+      return res.status(429).json({
+        success: false,
+        error: {
+          code: 'RATE_LIMITED',
+          message: `Too many requests. Try again in ${limitCheck.retryAfterSeconds ?? 60} seconds.`,
+        },
+      });
+    }
+
+    const { normalPassword, adminPassword, adminRoutePath } = req.body as {
+      normalPassword?: string;
+      adminPassword?: string;
+      adminRoutePath?: string;
+    };
+    if (typeof normalPassword !== 'string' || typeof adminPassword !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_PASSWORD', message: 'Both normal and admin passwords are required' },
+      });
+    }
+
+    const passwordError = validatePasswordStrength(normalPassword) || validatePasswordStrength(adminPassword);
+    if (passwordError) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_PASSWORD', message: passwordError },
+      });
+    }
+    if (normalPassword === adminPassword) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_PASSWORD', message: 'Normal and admin passwords must be different' },
+      });
+    }
+
+    const normalizedSecret = typeof adminRoutePath === 'string' ? adminRoutePath.trim() : '';
+    if (normalizedSecret.length !== 32) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_ADMIN_ROUTE_PATH',
+          message: 'Admin route path must be exactly 32 characters',
+        },
+      });
+    }
+    if (!/^[a-zA-Z0-9]+$/.test(normalizedSecret)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_ADMIN_ROUTE_PATH',
+          message: 'Admin route path must contain only letters and digits (no special characters)',
+        },
+      });
+    }
+
     await initDatabase();
     const dbSessionSecret = await storage.getSetting('session_secret');
     if (dbSessionSecret) {
@@ -160,6 +159,19 @@ router.post('/bootstrap', async (req, res) => {
     if (!await storage.getAdminRoutePath()) {
       await storage.setAdminRoutePath(normalizedSecret);
     }
+
+    const hash = await storage.getPasswordHash('normal');
+    if (hash) {
+      setSessionCookie('normal', res, issueSessionToken(hash));
+    }
+
+    res.json({
+      success: true,
+      data: {
+        adminBasePath: `/${await storage.getAdminRoutePath()}`,
+        message: 'Initial setup completed successfully',
+      },
+    });
   } catch (error) {
     const readonly = tryParseReadonlyError(error);
     if (readonly) {
@@ -176,19 +188,6 @@ router.post('/bootstrap', async (req, res) => {
       },
     });
   }
-
-  const hash = await storage.getPasswordHash('normal');
-  if (hash) {
-    setSessionCookie('normal', res, issueSessionToken(hash));
-  }
-
-  res.json({
-    success: true,
-    data: {
-      adminBasePath: `/${await storage.getAdminRoutePath()}`,
-      message: 'Initial setup completed successfully',
-    },
-  });
 });
 
 router.post('/:role/setup', async (req, res) => {
