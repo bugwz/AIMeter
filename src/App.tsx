@@ -1,15 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Dashboard } from './components/dashboard/Dashboard';
-import { Settings } from './components/settings/Settings';
-import { History } from './components/history/History';
 import { Endpoint } from './components/endpoint/Endpoint';
 import { LockScreen, checkAuth } from './components/auth/LockScreen';
 import { NotFoundPage } from './components/common/NotFoundPage';
+import { PageLoader } from './components/common';
 import { apiService } from './services/ApiService';
 import { getRuntimeEntry } from './runtimeContext';
 import { AppTheme, applyTheme, getStoredTheme, persistTheme } from './theme';
 import { RuntimeCapabilities } from './types';
+
+const History = lazy(() =>
+  import('./components/history/History').then((module) => ({ default: module.History })),
+);
+
+const Settings = lazy(() =>
+  import('./components/settings/Settings').then((module) => ({ default: module.Settings })),
+);
 
 export default function App() {
   const navigate = useNavigate();
@@ -290,13 +297,15 @@ export default function App() {
       </header>
       
       <main className={isNotFoundRoute ? 'h-[calc(100svh-4rem)] overflow-hidden' : undefined}>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          {capabilities?.history.enabled !== false && <Route path="/history" element={<History />} />}
-          <Route path="/endpoint" element={<Endpoint />} />
-          {canShowSettings && <Route path="/settings" element={<Settings />} />}
-          <Route path="*" element={<NotFoundPage fullViewport={false} />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            {capabilities?.history.enabled !== false && <Route path="/history" element={<History />} />}
+            <Route path="/endpoint" element={<Endpoint />} />
+            {canShowSettings && <Route path="/settings" element={<Settings />} />}
+            <Route path="*" element={<NotFoundPage fullViewport={false} />} />
+          </Routes>
+        </Suspense>
       </main>
     </div>
   );
