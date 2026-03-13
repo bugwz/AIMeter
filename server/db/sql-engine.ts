@@ -283,9 +283,11 @@ export class SqlEngine implements DatabaseEngine {
   private encrypt(text: string): string {
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv('aes-256-cbc', this.encryptionKey, iv);
-    let encrypted = cipher.update(text, 'utf-8', 'base64');
-    encrypted += cipher.final('base64');
-    return JSON.stringify({ iv: iv.toString('base64'), data: encrypted });
+    const encrypted = Buffer.concat([
+      cipher.update(text, 'utf8'),
+      cipher.final(),
+    ]);
+    return JSON.stringify({ iv: iv.toString('base64'), data: encrypted.toString('base64') });
   }
 
   private decrypt(encryptedStr: string): string {
@@ -295,7 +297,8 @@ export class SqlEngine implements DatabaseEngine {
         throw new Error('Invalid encrypted credential payload');
       }
       const decipher = crypto.createDecipheriv('aes-256-cbc', this.encryptionKey, Buffer.from(payload.iv, 'base64'));
-      let decrypted = decipher.update(payload.data, 'base64', 'utf-8');
+      const encrypted = Buffer.from(payload.data, 'base64');
+      let decrypted = decipher.update(encrypted, undefined, 'utf8');
       decrypted += decipher.final('utf-8');
       return decrypted;
     } catch {
@@ -304,53 +307,7 @@ export class SqlEngine implements DatabaseEngine {
   }
 
   private parseStoredCredentials(raw: string): Credential {
-    const parseCredentialObject = (value: unknown): Credential | null => {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-      const candidate = value as Record<string, unknown>;
-      if (typeof candidate.type === 'string') {
-        return candidate as Credential;
-      }
-      if (typeof candidate.accessToken === 'string') {
-        return {
-          type: AuthType.OAUTH,
-          accessToken: candidate.accessToken,
-          refreshToken: typeof candidate.refreshToken === 'string' ? candidate.refreshToken : undefined,
-          idToken: typeof candidate.idToken === 'string' ? candidate.idToken : undefined,
-          expiresAt: typeof candidate.expiresAt === 'string' ? candidate.expiresAt : undefined,
-          clientId: typeof candidate.clientId === 'string' ? candidate.clientId : undefined,
-          clientSecret: typeof candidate.clientSecret === 'string' ? candidate.clientSecret : undefined,
-          projectId: typeof candidate.projectId === 'string' ? candidate.projectId : undefined,
-        };
-      }
-      if (typeof candidate.value === 'string') {
-        const source = candidate.source === 'browser' || candidate.source === 'manual'
-          ? candidate.source
-          : 'manual';
-        return {
-          type: AuthType.COOKIE,
-          value: candidate.value,
-          source,
-        };
-      }
-      return null;
-    };
-
-    try {
-      return JSON.parse(this.decrypt(raw)) as Credential;
-    } catch {
-      // Legacy compatibility: some old deployments stored plain JSON in providers.key.
-      try {
-        const legacy = JSON.parse(raw) as unknown;
-        if (typeof legacy === 'string') {
-          return { type: AuthType.COOKIE, value: legacy, source: 'manual' };
-        }
-        const parsedLegacy = parseCredentialObject(legacy);
-        if (parsedLegacy) return parsedLegacy;
-      } catch {
-        // Preserve the original error contract for truly invalid rows.
-      }
-      throw new Error('Failed to decrypt stored credentials');
-    }
+    return JSON.parse(this.decrypt(raw)) as Credential;
   }
 
   private mapProviderRow(row: DbProviderRow): StoredProviderConfig {
@@ -467,14 +424,7 @@ export class SqlEngine implements DatabaseEngine {
   async getAllProviders(): Promise<StoredProviderConfig[]> {
     const rows = await this.client.query<DbProviderRow>(`SELECT * FROM ${this.providersTable()} ORDER BY id ASC`);
     return rows
-      .flatMap((row) => {
-        try {
-          return [this.mapProviderRow(row)];
-        } catch (error) {
-          console.warn(`Skipping unreadable provider row uid=${row.uid || 'unknown'}:`, error);
-          return [];
-        }
-      })
+      .map((row) => this.mapProviderRow(row))
       .sort((left, right) => {
         const orderDiff = (left.displayOrder || 0) - (right.displayOrder || 0);
         if (orderDiff !== 0) return orderDiff;
