@@ -144,9 +144,6 @@ async function isD1SchemaInitialized(bindingName: string): Promise<boolean> {
 
 async function detectDatabaseInitialized(): Promise<boolean> {
   const appConfig = getAppConfig();
-  if (!appConfig.database.enabled) {
-    return false;
-  }
 
   if (appConfig.database.engine === 'sqlite') {
     return isSqliteSchemaInitialized(appConfig.database.connection || './data/aimeter.db');

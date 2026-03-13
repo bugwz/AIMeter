@@ -23,9 +23,8 @@ import {
   isDatabaseInitialized,
 } from './database.js';
 import { runtimeConfig } from './runtime.js';
-import { getAppConfig } from './config.js';
 import type { AuthRole } from './auth.js';
-import { AuthType, Credential, ProgressData, ProgressItem, ProviderConfig, UsageProvider, UsageSnapshot } from '../src/types/index.js';
+import { Credential, ProgressData, ProgressItem, ProviderConfig, UsageProvider, UsageSnapshot } from '../src/types/index.js';
 
 export class ReadonlyStoreError extends Error {
   code = 'READ_ONLY_STORE';
@@ -39,14 +38,10 @@ export class ReadonlyAdminRouteError extends Error {
   code = 'READ_ONLY_ADMIN_ROUTE';
 }
 
-export class ReadonlySecretError extends Error {
-  code = 'READ_ONLY_SECRET';
-}
-
 export interface ProviderInstance extends ProviderConfig {
   id: string;
-  configSource: 'database' | 'environment' | 'config';
-  storageMode: 'database' | 'env';
+  configSource: 'database';
+  storageMode: 'database';
   fetchState?: Record<string, unknown>;
 }
 
@@ -60,7 +55,7 @@ export interface UsageRecordRow {
 
 export interface RuntimeCapabilities {
   viewerRole: AuthRole;
-  storageMode: 'database' | 'env';
+  storageMode: 'database';
   mockEnabled: boolean;
   providerConfigMutable: boolean;
   auth: Record<AuthRole, {
@@ -98,28 +93,7 @@ const ENDPOINT_SECRET_KEY = 'endpoint_secret';
 const PASSWORD_SCHEME = 'pbkdf2_sha256';
 const PBKDF2_KEYLEN = 32;
 const PBKDF2_DEFAULT_ITERATIONS = 100000;
-const appConfig = getAppConfig();
 const latestUsageCache = new Map<string, UsageRecordRow>();
-
-function getConfiguredPasswordHash(role: AuthRole): string | null {
-  const configuredPassword = role === 'normal'
-    ? appConfig.auth.normalPassword
-    : appConfig.auth.adminPassword;
-  if (!configuredPassword) return null;
-  // Keep storage/session logic hash-based even when env/config provides plaintext.
-  return crypto.createHash('sha256').update(configuredPassword).digest('hex');
-}
-
-function getConfiguredPasswordPlain(role: AuthRole): string | null {
-  if (role === 'normal') {
-    return appConfig.auth.normalPassword || null;
-  }
-  return appConfig.auth.adminPassword || null;
-}
-
-function getConfiguredAdminRoutePath(): string | null {
-  return normalizeAdminRoutePath(appConfig.auth.adminRoutePath);
-}
 
 function normalizeAdminRoutePath(value: string | null | undefined): string | null {
   if (typeof value !== 'string') return null;
@@ -160,85 +134,6 @@ function hashPassword(password: string): string {
     .pbkdf2Sync(password, salt, PBKDF2_DEFAULT_ITERATIONS, PBKDF2_KEYLEN, 'sha256')
     .toString('base64url');
   return `${PASSWORD_SCHEME}$${PBKDF2_DEFAULT_ITERATIONS}$${salt}$${digest}`;
-}
-
-function toConfigExternalId(alias: string): string {
-  return `cfg:${alias}`;
-}
-
-function parseConfiguredCredential(provider: UsageProvider, authType: string, raw: string): Credential {
-  const parseOAuthJSONCredential = (value: string): Credential | null => {
-    const trimmed = value.trim();
-    if (!trimmed.startsWith('{')) return null;
-    try {
-      const payload = JSON.parse(trimmed) as Record<string, unknown>;
-      const accessToken = typeof payload.accessToken === 'string'
-        ? payload.accessToken
-        : (typeof payload.access_token === 'string' ? payload.access_token : '');
-      if (!accessToken) return null;
-      return {
-        type: AuthType.OAUTH,
-        accessToken,
-        refreshToken: typeof payload.refreshToken === 'string'
-          ? payload.refreshToken
-          : (typeof payload.refresh_token === 'string' ? payload.refresh_token : undefined),
-        idToken: typeof payload.idToken === 'string'
-          ? payload.idToken
-          : (typeof payload.id_token === 'string' ? payload.id_token : undefined),
-        expiresAt: typeof payload.expiresAt === 'string'
-          ? payload.expiresAt
-          : (typeof payload.expiry_date === 'string' ? payload.expiry_date : undefined),
-        clientId: typeof payload.clientId === 'string'
-          ? payload.clientId
-          : (typeof payload.client_id === 'string' ? payload.client_id : undefined),
-        clientSecret: typeof payload.clientSecret === 'string'
-          ? payload.clientSecret
-          : (typeof payload.client_secret === 'string' ? payload.client_secret : undefined),
-        projectId: typeof payload.projectId === 'string'
-          ? payload.projectId
-          : (typeof payload.project_id === 'string' ? payload.project_id : undefined),
-      };
-    } catch {
-      return null;
-    }
-  };
-
-  switch (authType) {
-    case AuthType.API_KEY:
-      return { type: AuthType.API_KEY, value: raw, keyPrefix: raw.slice(0, 8) };
-    case AuthType.OAUTH:
-      if (
-        provider === UsageProvider.CLAUDE
-        || provider === UsageProvider.CODEX
-        || provider === UsageProvider.ANTIGRAVITY
-      ) {
-        const parsed = parseOAuthJSONCredential(raw);
-        if (parsed) return parsed;
-      }
-      return { type: AuthType.OAUTH, accessToken: raw };
-    case AuthType.JWT:
-      return { type: AuthType.JWT, value: raw };
-    case AuthType.COOKIE:
-    default:
-      return { type: AuthType.COOKIE, value: raw, source: 'manual' };
-  }
-}
-
-function listConfiguredProviders(): ProviderInstance[] {
-  return appConfig.providers.map((provider, index) => ({
-    id: toConfigExternalId(provider.id),
-    provider: provider.provider,
-    credentials: parseConfiguredCredential(provider.provider, provider.authType, provider.credential),
-    refreshInterval: provider.refreshInterval,
-    displayOrder: index + 1,
-    region: provider.region,
-    name: provider.name,
-    claudeAuthMode: provider.claudeAuthMode,
-    opencodeWorkspaceId: provider.opencodeWorkspaceId,
-    defaultProgressItem: provider.defaultProgressItem,
-    configSource: provider.source,
-    storageMode: 'env',
-  }));
 }
 
 function mapDbProvider({ id: _internalId, uid, ...rest }: Omit<ProviderConfig, 'id'> & { id: number; uid: string; fetchState?: Record<string, unknown> }): ProviderInstance {
@@ -307,9 +202,6 @@ async function listDbProviders(): Promise<ProviderInstance[]> {
 }
 
 async function hasInitializedDatabaseSchema(): Promise<boolean> {
-  if (runtimeConfig.storageMode !== 'database') {
-    return false;
-  }
   return isDatabaseInitialized();
 }
 
@@ -360,9 +252,6 @@ export const storage = {
   getCapabilities,
 
   async getPasswordHash(role: AuthRole): Promise<string | null> {
-    if (runtimeConfig.storageMode === 'env') {
-      return getConfiguredPasswordHash(role);
-    }
     if (!await hasInitializedDatabaseSchema()) {
       return null;
     }
@@ -370,9 +259,6 @@ export const storage = {
   },
 
   async getAdminRoutePath(): Promise<string | null> {
-    if (runtimeConfig.storageMode === 'env') {
-      return getConfiguredAdminRoutePath();
-    }
     if (!await hasInitializedDatabaseSchema()) {
       return null;
     }
@@ -381,7 +267,7 @@ export const storage = {
 
   async setAdminRoutePath(value: string): Promise<void> {
     if (runtimeConfig.isReadonlyAuth) {
-      throw new ReadonlyAdminRouteError('Admin route path is managed by environment variables');
+      throw new ReadonlyAdminRouteError('Admin route path is currently read-only');
     }
     const normalized = normalizeAdminRoutePath(value);
     if (!normalized) {
@@ -391,47 +277,32 @@ export const storage = {
   },
 
   async getCronSecret(): Promise<string | null> {
-    if (runtimeConfig.storageMode === 'database') {
-      if (!await hasInitializedDatabaseSchema()) {
-        return null;
-      }
-      return getDbSetting(CRON_SECRET_KEY);
+    if (!await hasInitializedDatabaseSchema()) {
+      return null;
     }
-    return getAppConfig().auth.cronSecret?.trim() || null;
+    return getDbSetting(CRON_SECRET_KEY);
   },
 
   async getEndpointSecret(): Promise<string | null> {
-    if (runtimeConfig.storageMode === 'database') {
-      if (!await hasInitializedDatabaseSchema()) {
-        return null;
-      }
-      return getDbSetting(ENDPOINT_SECRET_KEY);
+    if (!await hasInitializedDatabaseSchema()) {
+      return null;
     }
-    return getAppConfig().auth.endpointSecret?.trim() || null;
+    return getDbSetting(ENDPOINT_SECRET_KEY);
   },
 
   async resetCronSecret(): Promise<string> {
-    if (runtimeConfig.storageMode !== 'database') {
-      throw new ReadonlySecretError('Not editable in env mode; modify config and restart.');
-    }
     const secret = crypto.randomBytes(16).toString('hex');
     await setDbSetting(CRON_SECRET_KEY, secret);
     return secret;
   },
 
   async resetEndpointSecret(): Promise<string> {
-    if (runtimeConfig.storageMode !== 'database') {
-      throw new ReadonlySecretError('Not editable in env mode; modify config and restart.');
-    }
     const secret = crypto.randomBytes(16).toString('hex');
     await setDbSetting(ENDPOINT_SECRET_KEY, secret);
     return secret;
   },
 
   async isInitialSetupRequired(): Promise<boolean> {
-    if (runtimeConfig.storageMode !== 'database') {
-      return false;
-    }
     if (!await hasInitializedDatabaseSchema()) {
       return true;
     }
@@ -439,30 +310,22 @@ export const storage = {
   },
 
   async listProviders(): Promise<ProviderInstance[]> {
-    return runtimeConfig.storageMode === 'env' ? listConfiguredProviders() : listDbProviders();
+    return listDbProviders();
   },
 
   async getProvider(id: string): Promise<ProviderInstance | null> {
-    if (runtimeConfig.storageMode === 'env') {
-      return listConfiguredProviders().find((provider) => provider.id === id) || null;
-    }
-
     const row = await getDbProvider(id);
     return row ? mapDbProvider(row) : null;
   },
 
   async getProviderByName(provider: UsageProvider, name: string): Promise<ProviderInstance | null> {
-    if (runtimeConfig.storageMode === 'env') {
-      return listConfiguredProviders().find((item) => item.provider === provider && item.name === name) || null;
-    }
-
     const row = await getDbProviderByName(provider, name);
     return row ? mapDbProvider(row) : null;
   },
 
   async createProvider(provider: UsageProvider, config: ProviderConfig): Promise<ProviderInstance> {
     if (runtimeConfig.isReadonlyConfig) {
-      throw new ReadonlyStoreError('Provider configuration is managed by environment variables');
+      throw new ReadonlyStoreError('Provider configuration is currently read-only');
     }
 
     const uid = await saveDbProvider(provider, config);
@@ -486,7 +349,7 @@ export const storage = {
 
   async updateProvider(id: string, updates: Partial<ProviderConfig> & { credentials?: Credential }): Promise<ProviderInstance> {
     if (runtimeConfig.isReadonlyConfig) {
-      throw new ReadonlyStoreError('Provider configuration is managed by environment variables');
+      throw new ReadonlyStoreError('Provider configuration is currently read-only');
     }
 
     await updateDbProvider(id, updates);
@@ -499,7 +362,7 @@ export const storage = {
 
   async updateProviderOrder(idsInOrder: string[]): Promise<ProviderInstance[]> {
     if (runtimeConfig.isReadonlyConfig) {
-      throw new ReadonlyStoreError('Provider configuration is managed by environment variables');
+      throw new ReadonlyStoreError('Provider configuration is currently read-only');
     }
 
     const currentProviders = await listDbProviders();
@@ -534,7 +397,7 @@ export const storage = {
 
   async deleteProvider(id: string): Promise<void> {
     if (runtimeConfig.isReadonlyConfig) {
-      throw new ReadonlyStoreError('Provider configuration is managed by environment variables');
+      throw new ReadonlyStoreError('Provider configuration is currently read-only');
     }
 
     await deleteDbProvider(id);
@@ -628,9 +491,6 @@ export const storage = {
   },
 
   async getSetting(key: string): Promise<string | null> {
-    if (runtimeConfig.storageMode === 'env') {
-      return null;
-    }
     if (!await hasInitializedDatabaseSchema()) {
       return null;
     }
@@ -638,25 +498,14 @@ export const storage = {
   },
 
   async patchProviderAttrs(id: string, patch: Record<string, unknown>): Promise<void> {
-    if (runtimeConfig.storageMode === 'env') return;
     await patchDbProviderAttrs(id, patch);
   },
 
   async patchFetchState(id: string, patch: Record<string, unknown>): Promise<void> {
-    if (runtimeConfig.storageMode === 'env') return;
     await patchDbFetchState(id, patch);
   },
 
   async setSetting(key: string, value: string): Promise<void> {
-    if (runtimeConfig.storageMode === 'env') {
-      if (Object.values(ROLE_PASSWORD_KEYS).includes(key as (typeof ROLE_PASSWORD_KEYS)[AuthRole])) {
-        throw new ReadonlyAuthError('Authentication is managed by environment variables');
-      }
-      if (key === ADMIN_ROUTE_PATH_KEY) {
-        throw new ReadonlyAdminRouteError('Admin route path is managed by environment variables');
-      }
-      throw new ReadonlyStoreError('Settings are not writable in env storage mode');
-    }
     await setDbSetting(key, value);
   },
 
@@ -666,17 +515,12 @@ export const storage = {
 
   async setPassword(role: AuthRole, password: string): Promise<void> {
     if (runtimeConfig.isReadonlyAuth) {
-      throw new ReadonlyAuthError('Authentication is managed by environment variables');
+      throw new ReadonlyAuthError('Authentication is currently read-only');
     }
     await setDbSetting(getPasswordSettingKey(role), hashPassword(password));
   },
 
   async verifyPassword(role: AuthRole, password: string): Promise<boolean> {
-    if (runtimeConfig.storageMode === 'env') {
-      const configuredPassword = getConfiguredPasswordPlain(role);
-      if (!configuredPassword) return false;
-      return safeEqual(password, configuredPassword);
-    }
     if (!await hasInitializedDatabaseSchema()) {
       return false;
     }
@@ -686,9 +530,6 @@ export const storage = {
   },
 
   async getAuditLogs(limit: number) {
-    if (runtimeConfig.storageMode === 'env') {
-      return [];
-    }
     if (!await hasInitializedDatabaseSchema()) {
       return [];
     }
@@ -706,9 +547,6 @@ export const storage = {
     eventType?: string;
     details?: Record<string, unknown>;
   }): Promise<void> {
-    if (runtimeConfig.storageMode === 'env') {
-      return;
-    }
     if (!await hasInitializedDatabaseSchema()) {
       return;
     }
@@ -721,7 +559,6 @@ export function tryParseReadonlyError(error: unknown): { code: string; message: 
     error instanceof ReadonlyStoreError
     || error instanceof ReadonlyAuthError
     || error instanceof ReadonlyAdminRouteError
-    || error instanceof ReadonlySecretError
   ) {
     return {
       code: error.code,

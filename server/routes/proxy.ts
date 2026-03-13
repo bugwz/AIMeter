@@ -231,44 +231,9 @@ router.post('/latest', async (req: Request, res: Response) => {
   try {
     const allProviders = await storage.listProviders();
     const results: Array<SerializedDashboardProviderData | SerializedUsageError> = [];
-    const isMockEnvMode = runtimeConfig.mockEnabled && runtimeConfig.storageMode === 'env';
     const isMockDatabaseMode = runtimeConfig.mockEnabled && runtimeConfig.storageMode === 'database';
     
     for (const provider of allProviders) {
-      if (isMockEnvMode) {
-        try {
-          const liveSnapshot = await fetchUsageForProvider(provider);
-          await storage.recordUsage(provider.id, liveSnapshot);
-          const items = extractSnapshotItems(liveSnapshot);
-          const calculatedPlan = provider.provider === UsageProvider.MINIMAX
-            ? calculateMiniMaxPlan(provider.region, items)
-            : undefined;
-          results.push({
-            id: provider.id,
-            provider: provider.provider,
-            name: resolveMockDisplayNameForResponse(provider) ?? undefined,
-            region: provider.region || undefined,
-            refreshInterval: provider.refreshInterval,
-            identity: withPlanFallback(
-              liveSnapshot.identity as Record<string, unknown> | undefined,
-              provider.plan,
-              calculatedPlan,
-            ),
-            progress: serializeProgressItems(provider.provider, applyProviderDisplayMode(provider, items)),
-            updatedAt: toUnixSeconds(liveSnapshot.updatedAt) ?? Math.floor(Date.now() / 1000),
-          });
-        } catch (error) {
-          results.push(serializeUsageError({
-            id: provider.id,
-            provider: provider.provider,
-            code: UsageErrorCode.UNKNOWN,
-            message: error instanceof Error ? error.message : 'No data available',
-            timestamp: new Date(),
-          }));
-        }
-        continue;
-      }
-
       const latestRecord = await storage.getLatestUsage(provider.id);
       
       if (latestRecord && latestRecord.progress) {

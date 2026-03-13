@@ -1,23 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { AuthType, ProviderConfig, UsageProvider } from '../src/types/index.js';
 
 type UnknownRecord = Record<string, unknown>;
 
-export interface ConfiguredProvider {
-  id: string;
-  provider: UsageProvider;
-  authType: AuthType;
-  credential: string;
-  refreshInterval: number;
-  region?: string;
-  name?: string;
-  claudeAuthMode?: ProviderConfig['claudeAuthMode'];
-  opencodeWorkspaceId?: string;
-  defaultProgressItem?: string;
-  source: 'environment' | 'config';
-}
+type DatabaseEngineType = 'sqlite' | 'postgres' | 'mysql' | 'd1';
 
 export interface AppConfig {
   configFilePath: string | null;
@@ -32,17 +19,11 @@ export interface AppConfig {
     mode: 'node' | 'serverless';
   };
   database: {
-    enabled: boolean;
-    engine: 'sqlite' | 'postgres' | 'mysql' | 'd1';
+    engine: DatabaseEngineType;
     connection: string;
-    encryptionKey?: string;
   };
   auth: {
-    sessionSecret?: string;
     sessionTtlSeconds: number;
-    normalPassword?: string;
-    adminPassword?: string;
-    adminRoutePath?: string;
     cronSecret?: string;
     endpointSecret?: string;
     rateLimit: {
@@ -51,7 +32,6 @@ export interface AppConfig {
       blockMs: number;
     };
   };
-  providers: ConfiguredProvider[];
 }
 
 interface ParsedLine {
@@ -66,11 +46,6 @@ interface ConfigIssue {
   expected: string;
   actualMasked?: string;
   hint: string;
-}
-
-interface ParseProvidersJsonResult {
-  providers: ConfiguredProvider[] | null;
-  issues: ConfigIssue[];
 }
 
 function getProjectRoot(): string | null {
@@ -313,45 +288,11 @@ function asNumber(value: unknown): number | undefined {
   return undefined;
 }
 
-function asBoolean(value: unknown): boolean | undefined {
-  if (typeof value === 'boolean') return value;
-  if (typeof value === 'string') {
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-  }
-  return undefined;
-}
-
-function parseEnvBoolean(value: string | undefined): boolean | undefined {
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  return undefined;
-}
-
 function parseEnvNumber(value: string | undefined): number | undefined {
   if (!value || !value.trim()) return undefined;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return undefined;
   return parsed;
-}
-
-function isWeakSecret(value: string | undefined, placeholders: string[] = []): boolean {
-  const trimmed = value?.trim();
-  if (!trimmed) return true;
-  if (trimmed.length < 24) return true;
-  const lower = trimmed.toLowerCase();
-  if (lower.includes('change-me') || lower.includes('replace-with')) return true;
-  if (placeholders.some((item) => lower === item.toLowerCase())) return true;
-  return false;
-}
-
-function isWeakAdminRoutePath(value: string | undefined): boolean {
-  const trimmed = value?.trim();
-  if (!trimmed) return true;
-  if (trimmed.length !== 32) return true;
-  const lower = trimmed.toLowerCase();
-  if (lower.includes('replace-with')) return true;
-  return false;
 }
 
 function isWeakIntegrationSecret(value: string | undefined): boolean {
@@ -369,109 +310,77 @@ function maskSecret(value: string | undefined): string {
   return `<redacted len=${trimmed.length}>`;
 }
 
-function collectSecurityIssues(config: AppConfig, providerIssues: ConfigIssue[], protocolIssue: ConfigIssue | null): ConfigIssue[] {
+function parseDatabaseEngine(value: string | undefined): DatabaseEngineType | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'sqlite' || normalized === 'postgres' || normalized === 'mysql' || normalized === 'd1') {
+    return normalized;
+  }
+  return undefined;
+}
+
+function collectConfigIssues(
+  protocolIssue: ConfigIssue | null,
+  rawDatabaseEngine: string | undefined,
+  databaseEngine: DatabaseEngineType | undefined,
+  databaseConnection: string,
+  cronSecret: string | undefined,
+  endpointSecret: string | undefined,
+): ConfigIssue[] {
   const issues: ConfigIssue[] = [];
 
   if (protocolIssue) {
     issues.push(protocolIssue);
   }
 
-  issues.push(...providerIssues);
-
-  if (!config.database.enabled) {
-    if (!config.auth.sessionSecret) {
-      issues.push({
-        code: 'MISSING_SESSION_SECRET',
-        field: 'AIMETER_AUTH_SESSION_SECRET',
-        reason: 'Session secret is required in env-only mode',
-        expected: 'A non-empty strong secret (>=24 chars)',
-        actualMasked: '<unset>',
-        hint: 'Set AIMETER_AUTH_SESSION_SECRET to a strong random value.',
-      });
-    } else if (isWeakSecret(config.auth.sessionSecret)) {
-      issues.push({
-        code: 'WEAK_SESSION_SECRET',
-        field: 'AIMETER_AUTH_SESSION_SECRET',
-        reason: 'Session secret is too weak',
-        expected: 'A strong random secret with at least 24 characters',
-        actualMasked: maskSecret(config.auth.sessionSecret),
-        hint: 'Generate one with: openssl rand -hex 16',
-      });
-    }
-
-    if (!config.auth.normalPassword) {
-      issues.push({
-        code: 'MISSING_NORMAL_PASSWORD',
-        field: 'AIMETER_NORMAL_PASSWORD',
-        reason: 'Normal password is required in env-only mode',
-        expected: 'Password with >=12 chars containing letters and digits',
-        actualMasked: '<unset>',
-        hint: 'Set AIMETER_NORMAL_PASSWORD in env/config for env-only deployment.',
-      });
-    }
-    if (!config.auth.adminPassword) {
-      issues.push({
-        code: 'MISSING_ADMIN_PASSWORD',
-        field: 'AIMETER_ADMIN_PASSWORD',
-        reason: 'Admin password is required in env-only mode',
-        expected: 'Password with >=12 chars containing letters and digits',
-        actualMasked: '<unset>',
-        hint: 'Set AIMETER_ADMIN_PASSWORD in env/config for env-only deployment.',
-      });
-    }
-    if (
-      config.auth.normalPassword
-      && config.auth.adminPassword
-      && config.auth.normalPassword === config.auth.adminPassword
-    ) {
-      issues.push({
-        code: 'DUPLICATE_PASSWORDS',
-        field: 'AIMETER_NORMAL_PASSWORD,AIMETER_ADMIN_PASSWORD',
-        reason: 'Normal and admin passwords must not be the same',
-        expected: 'Two different password values',
-        hint: 'Use different credentials for normal/admin roles.',
-      });
-    }
-
-    if (!config.auth.adminRoutePath) {
-      issues.push({
-        code: 'MISSING_ADMIN_ROUTE_PATH',
-        field: 'AIMETER_ADMIN_ROUTE_PATH',
-        reason: 'Admin route path is required in env-only mode',
-        expected: 'Exactly 32 random alphanumeric characters',
-        actualMasked: '<unset>',
-        hint: 'Set AIMETER_ADMIN_ROUTE_PATH to a 32-char random value.',
-      });
-    } else if (isWeakAdminRoutePath(config.auth.adminRoutePath)) {
-      issues.push({
-        code: 'WEAK_ADMIN_ROUTE_PATH',
-        field: 'AIMETER_ADMIN_ROUTE_PATH',
-        reason: 'Admin route path is weak or invalid',
-        expected: 'Exactly 32 random alphanumeric characters',
-        actualMasked: maskSecret(config.auth.adminRoutePath),
-        hint: 'Regenerate a 32-char random path with only letters/numbers.',
-      });
-    }
-
+  if (!rawDatabaseEngine?.trim()) {
+    issues.push({
+      code: 'MISSING_DATABASE_ENGINE',
+      field: 'database.engine/AIMETER_DATABASE_ENGINE',
+      reason: 'Database engine is required',
+      expected: 'One of: sqlite, d1, mysql, postgres',
+      actualMasked: '<unset>',
+      hint: 'Set database.engine in config.yaml or AIMETER_DATABASE_ENGINE in env.',
+    });
+  } else if (!databaseEngine) {
+    issues.push({
+      code: 'INVALID_DATABASE_ENGINE',
+      field: 'database.engine/AIMETER_DATABASE_ENGINE',
+      reason: 'Unsupported database engine value',
+      expected: 'sqlite, d1, mysql, or postgres',
+      actualMasked: rawDatabaseEngine.trim(),
+      hint: 'Use one of the supported database engines.',
+    });
   }
 
-  if (config.auth.cronSecret && isWeakIntegrationSecret(config.auth.cronSecret)) {
+  if (!databaseConnection) {
+    issues.push({
+      code: 'MISSING_DATABASE_CONNECTION',
+      field: 'database.connection/AIMETER_DATABASE_CONNECTION',
+      reason: 'Database connection is required',
+      expected: 'A non-empty database connection string or binding name',
+      actualMasked: '<unset>',
+      hint: 'Set database.connection in config.yaml or AIMETER_DATABASE_CONNECTION in env.',
+    });
+  }
+
+  if (cronSecret && isWeakIntegrationSecret(cronSecret)) {
     issues.push({
       code: 'WEAK_CRON_SECRET',
       field: 'AIMETER_CRON_SECRET',
       reason: 'Cron secret is weak or invalid',
       expected: 'Exactly 32 random characters when set',
-      actualMasked: maskSecret(config.auth.cronSecret),
+      actualMasked: maskSecret(cronSecret),
       hint: 'Regenerate a strong 32-char secret.',
     });
   }
-  if (config.auth.endpointSecret && isWeakIntegrationSecret(config.auth.endpointSecret)) {
+  if (endpointSecret && isWeakIntegrationSecret(endpointSecret)) {
     issues.push({
       code: 'WEAK_ENDPOINT_SECRET',
       field: 'AIMETER_ENDPOINT_SECRET',
       reason: 'Endpoint secret is weak or invalid',
       expected: 'Exactly 32 random characters when set',
-      actualMasked: maskSecret(config.auth.endpointSecret),
+      actualMasked: maskSecret(endpointSecret),
       hint: 'Regenerate a strong 32-char secret.',
     });
   }
@@ -479,18 +388,12 @@ function collectSecurityIssues(config: AppConfig, providerIssues: ConfigIssue[],
   return issues;
 }
 
-function validateSecurityConfig(config: AppConfig, providerIssues: ConfigIssue[], protocolIssue: ConfigIssue | null): void {
-  const issues = collectSecurityIssues(config, providerIssues, protocolIssue);
+function validateConfig(issues: ConfigIssue[]): void {
   if (issues.length === 0) {
-    if (!config.database.enabled) {
-      console.log(`[CONFIG] Validation passed (mode=env, protocol=${config.server.protocol})`);
-    }
     return;
   }
 
-  console.error(config.database.enabled
-    ? '[CONFIG] Validation failed (database mode)'
-    : '[CONFIG] Validation failed (env-only)');
+  console.error('[CONFIG] Validation failed');
   for (const issue of issues) {
     const details = [
       `[CONFIG][${issue.code}] field=${issue.field}`,
@@ -508,121 +411,6 @@ function validateSecurityConfig(config: AppConfig, providerIssues: ConfigIssue[]
   throw new Error(`Configuration validation failed with ${issues.length} issue(s).`);
 }
 
-function normalizeAlias(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-}
-
-function hasLegacyProviderEnv(): boolean {
-  if ((process.env.AIMETER_PROVIDER_IDS || '').trim()) return true;
-  return Object.keys(process.env).some((key) => key.startsWith('AIMETER_PROVIDER__'));
-}
-
-function parseProvidersJson(raw: string): ParseProvidersJsonResult {
-  const issues: ConfigIssue[] = [];
-  const providers: ConfiguredProvider[] = [];
-  let parsed: unknown;
-
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return {
-      providers: null,
-      issues: [{
-        code: 'INVALID_PROVIDERS_JSON',
-        field: 'AIMETER_PROVIDERS_JSON',
-        reason: 'JSON parsing failed',
-        expected: 'A valid JSON array of provider objects',
-        actualMasked: `<redacted len=${raw.length}>`,
-        hint: 'Ensure AIMETER_PROVIDERS_JSON is valid JSON (double quotes, no trailing commas).',
-      }],
-    };
-  }
-
-  if (!Array.isArray(parsed)) {
-    return {
-      providers: null,
-      issues: [{
-        code: 'INVALID_PROVIDERS_JSON',
-        field: 'AIMETER_PROVIDERS_JSON',
-        reason: 'Top-level JSON value must be an array',
-        expected: 'A JSON array with at least one provider object',
-        hint: 'Wrap providers in [ ... ].',
-      }],
-    };
-  }
-
-  if (parsed.length === 0) {
-    return {
-      providers: null,
-      issues: [{
-        code: 'EMPTY_PROVIDERS_JSON',
-        field: 'AIMETER_PROVIDERS_JSON',
-        reason: 'Provider list is empty',
-        expected: 'A non-empty provider array',
-        hint: 'Add at least one provider object in AIMETER_PROVIDERS_JSON.',
-      }],
-    };
-  }
-
-  parsed.forEach((item, index) => {
-    const obj = asRecord(item);
-    const id = normalizeAlias(asString(obj.id) || '');
-    const provider = (asString(obj.type) || '').trim().toLowerCase() as UsageProvider;
-    const authType = (asString(obj.authType) || AuthType.COOKIE).trim() as AuthType;
-    const credential = asString(obj.credential) || '';
-    const fieldPrefix = `AIMETER_PROVIDERS_JSON[${index}]`;
-
-    if (!id) {
-      issues.push({
-        code: 'INVALID_PROVIDER_ITEM',
-        field: `${fieldPrefix}.id`,
-        reason: 'Missing or invalid id',
-        expected: 'Non-empty provider id',
-        hint: 'Set id to a unique provider identifier (snake_case recommended).',
-      });
-    }
-    if (!provider) {
-      issues.push({
-        code: 'INVALID_PROVIDER_ITEM',
-        field: `${fieldPrefix}.type`,
-        reason: 'Missing provider type',
-        expected: 'A supported provider type string',
-        hint: 'Set type, for example cursor/openrouter/claude.',
-      });
-    }
-    if (!credential.trim()) {
-      issues.push({
-        code: 'INVALID_PROVIDER_ITEM',
-        field: `${fieldPrefix}.credential`,
-        reason: 'Missing credential',
-        expected: 'Non-empty credential string',
-        actualMasked: '<unset>',
-        hint: 'Provide credential for the selected authType.',
-      });
-    }
-
-    if (!id || !provider || !credential.trim()) {
-      return;
-    }
-
-    providers.push({
-      id,
-      provider,
-      authType,
-      credential,
-      refreshInterval: asNumber(obj.refreshInterval) ?? 0,
-      region: asString(obj.region),
-      name: asString(obj.name),
-      claudeAuthMode: asString(obj.claudeAuthMode) as ProviderConfig['claudeAuthMode'] | undefined,
-      opencodeWorkspaceId: asString(obj.opencodeWorkspaceId),
-      defaultProgressItem: asString(obj.defaultProgressItem),
-      source: 'environment' as const,
-    });
-  });
-
-  return { providers, issues };
-}
-
 export function getAppConfig(): AppConfig {
   if (cachedConfig) {
     return cachedConfig;
@@ -634,17 +422,11 @@ export function getAppConfig(): AppConfig {
   const database = asRecord(config.database);
   const auth = asRecord(config.auth);
   const authRateLimit = asRecord(auth.rateLimit);
-  const databaseEngine = (asString(database.engine)
-    || process.env.AIMETER_DATABASE_ENGINE
-    || 'sqlite') as AppConfig['database']['engine'];
-  const configuredDatabaseConnection = asString(database.connection)
-    || process.env.AIMETER_DATABASE_CONNECTION;
-  const defaultDatabaseConnection = databaseEngine === 'd1'
-    ? 'DB'
-    : (projectRoot ? path.join(projectRoot, 'data/aimeter.db') : null);
-  const databaseEnabled = asBoolean(database.enabled)
-    ?? parseEnvBoolean(process.env.AIMETER_DATABASE_ENABLED)
-    ?? true;
+
+  const rawDatabaseEngine = asString(database.engine) || process.env.AIMETER_DATABASE_ENGINE;
+  const databaseEngine = parseDatabaseEngine(rawDatabaseEngine);
+  const databaseConnection = (asString(database.connection) || process.env.AIMETER_DATABASE_CONNECTION || '').trim();
+
   const runtimeMode = (asString(runtime.mode) || process.env.AIMETER_RUNTIME_MODE || 'node') as 'node' | 'serverless';
   const protocolRaw = (asString(server.protocol) || process.env.AIMETER_SERVER_PROTOCOL || '').trim().toLowerCase();
   const protocolFallback: 'http' | 'https' = runtimeMode === 'serverless' ? 'https' : 'http';
@@ -665,56 +447,18 @@ export function getAppConfig(): AppConfig {
     }
   }
 
-  if (databaseEnabled) {
-    if (asString(database.encryptionKey)?.trim() || process.env.AIMETER_ENCRYPTION_KEY?.trim()) {
-      console.warn('[CONFIG] Ignoring AIMETER_ENCRYPTION_KEY from env/config in database mode (auto-managed in DB).');
-    }
-    if (asString(auth.sessionSecret)?.trim() || process.env.AIMETER_AUTH_SESSION_SECRET?.trim()) {
-      console.warn('[CONFIG] Ignoring AIMETER_AUTH_SESSION_SECRET from env/config in database mode (auto-managed in DB).');
-    }
-    if (asString(auth.adminRoutePath)?.trim() || process.env.AIMETER_ADMIN_ROUTE_PATH?.trim()) {
-      console.warn('[CONFIG] Ignoring AIMETER_ADMIN_ROUTE_PATH from env/config in database mode (managed by bootstrap/DB).');
-    }
-    if ((process.env.AIMETER_PROVIDERS_JSON || '').trim()) {
-      console.warn('[CONFIG] Ignoring AIMETER_PROVIDERS_JSON in database mode (providers are managed in DB).');
-    }
-    if (hasLegacyProviderEnv()) {
-      console.warn('[CONFIG] Ignoring deprecated provider env vars in database mode (providers are managed in DB).');
-    }
-  }
+  const cronSecret = asString(auth.cronSecret) || process.env.AIMETER_CRON_SECRET;
+  const endpointSecret = asString(auth.endpointSecret)?.trim() || process.env.AIMETER_ENDPOINT_SECRET?.trim() || undefined;
 
-  const providerIssues: ConfigIssue[] = [];
-  let providersFromJson: ConfiguredProvider[] = [];
-  if (!databaseEnabled) {
-    if (Object.prototype.hasOwnProperty.call(config, 'providers')) {
-      providerIssues.push({
-        code: 'DEPRECATED_PROVIDER_CONFIG_BLOCK',
-        field: 'config.yaml:providers',
-        reason: 'File-based providers configuration has been removed',
-        expected: 'Use AIMETER_PROVIDERS_JSON only',
-        hint: 'Remove providers block from config.yaml and move data to AIMETER_PROVIDERS_JSON.',
-      });
-    }
-    if (hasLegacyProviderEnv()) {
-      providerIssues.push({
-        code: 'DEPRECATED_PROVIDER_ENV_VARS',
-        field: 'AIMETER_PROVIDER_IDS/AIMETER_PROVIDER__*',
-        reason: 'Legacy provider environment variables have been removed',
-        expected: 'Use AIMETER_PROVIDERS_JSON only',
-        hint: 'Migrate legacy provider variables into AIMETER_PROVIDERS_JSON.',
-      });
-    }
-
-    const providersJsonRaw = (process.env.AIMETER_PROVIDERS_JSON || '').trim();
-    if (providersJsonRaw) {
-      const parsed = parseProvidersJson(providersJsonRaw);
-      providersFromJson = parsed.providers || [];
-      providerIssues.push(...parsed.issues);
-    }
-  }
-
-  const configuredSessionSecret = asString(auth.sessionSecret) || process.env.AIMETER_AUTH_SESSION_SECRET;
-  const configuredAdminRoutePath = asString(auth.adminRoutePath) || process.env.AIMETER_ADMIN_ROUTE_PATH;
+  const issues = collectConfigIssues(
+    protocolIssue,
+    rawDatabaseEngine,
+    databaseEngine,
+    databaseConnection,
+    cronSecret,
+    endpointSecret,
+  );
+  validateConfig(issues);
 
   cachedConfig = {
     configFilePath,
@@ -725,30 +469,21 @@ export function getAppConfig(): AppConfig {
       protocol,
     },
     runtime: {
-      mockEnabled: asBoolean(runtime.mockEnabled)
-        ?? parseEnvBoolean(process.env.AIMETER_MOCK_ENABLED)
-        ?? false,
+      mockEnabled: (asString(runtime.mockEnabled) === 'true' || process.env.AIMETER_MOCK_ENABLED === 'true')
+        ? true
+        : false,
       mode: runtimeMode,
     },
     database: {
-      enabled: databaseEnabled,
-      engine: databaseEngine,
-      connection: configuredDatabaseConnection || defaultDatabaseConnection || '',
-      encryptionKey: databaseEnabled ? undefined : (asString(database.encryptionKey) || process.env.AIMETER_ENCRYPTION_KEY),
+      engine: databaseEngine as DatabaseEngineType,
+      connection: databaseConnection,
     },
     auth: {
-      sessionSecret: databaseEnabled ? undefined : configuredSessionSecret,
       sessionTtlSeconds: asNumber(auth.sessionTtlSeconds)
         ?? parseEnvNumber(process.env.AIMETER_AUTH_SESSION_TTL_SECONDS)
         ?? 4 * 60 * 60,
-      normalPassword: asString(auth.normalPassword)
-        || process.env.AIMETER_NORMAL_PASSWORD,
-      adminPassword: asString(auth.adminPassword)
-        || process.env.AIMETER_ADMIN_PASSWORD,
-      adminRoutePath: databaseEnabled ? undefined : configuredAdminRoutePath,
-      cronSecret: asString(auth.cronSecret)
-        || process.env.AIMETER_CRON_SECRET,
-      endpointSecret: asString(auth.endpointSecret)?.trim() || process.env.AIMETER_ENDPOINT_SECRET?.trim() || undefined,
+      cronSecret,
+      endpointSecret,
       rateLimit: {
         windowMs: asNumber(authRateLimit.windowMs)
           ?? parseEnvNumber(process.env.AIMETER_AUTH_RATE_LIMIT_WINDOW_MS)
@@ -761,10 +496,7 @@ export function getAppConfig(): AppConfig {
           ?? 300_000,
       },
     },
-    providers: databaseEnabled ? [] : providersFromJson,
   };
-
-  validateSecurityConfig(cachedConfig, providerIssues, protocolIssue);
 
   return cachedConfig;
 }

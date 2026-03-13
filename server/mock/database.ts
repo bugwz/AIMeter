@@ -26,17 +26,13 @@ function getBetterSqliteCtor(): BetterSqliteCtor {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `better-sqlite3 is required only for env-storage mock mode. ` +
-      `Disable AIMETER_MOCK_ENABLED or install better-sqlite3. Inner error: ${message}`,
+      `better-sqlite3 is required for sqlite mock mode. ` +
+      `Use AIMETER_DATABASE_ENGINE=sqlite with a valid AIMETER_DATABASE_CONNECTION, or disable AIMETER_MOCK_ENABLED. Inner error: ${message}`,
     );
   }
 }
 
 function resolveMockDatabasePath(): string {
-  if (!appConfig.database.enabled) {
-    return ':memory:';
-  }
-
   const baseConnection = appConfig.database.connection || './data/aimeter.db';
   return path.resolve(process.cwd(), baseConnection);
 }

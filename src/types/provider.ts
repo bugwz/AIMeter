@@ -68,8 +68,8 @@ export interface ProviderConfig {
   plan?: string; // Claude: optional manually selected plan
   opencodeWorkspaceId?: string; // OpenCode: optional workspace ID (wrk_...)
   defaultProgressItem?: string; // progress item name to show as primary in history
-  configSource?: 'database' | 'environment' | 'config';
-  storageMode?: 'database' | 'env';
+  configSource?: 'database';
+  storageMode?: 'database';
 }
 
 // Region enum

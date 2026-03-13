@@ -107,34 +107,24 @@ export async function createApp(): Promise<express.Application> {
   app.use('/api', createApiAuditMiddleware(isMockMode));
 
   if (isMockMode) {
-    if (runtimeConfig.storageMode === 'env') {
-      console.log('Starting with MOCK fetch mode (env storage)');
-      initMock();
-    } else {
-      console.log('Starting with MOCK fetch mode (database storage)');
-    }
+    console.log('Starting with MOCK fetch mode (database storage)');
+    initMock();
   }
 
-  if (runtimeConfig.storageMode === 'database') {
-    console.log('Starting with DATABASE storage');
-    const initialized = await isDatabaseInitialized();
-    if (initialized) {
-      await initDatabase();
-      console.log('Database initialized');
-      if (!appConfig.auth.sessionSecret) {
-        const dbSessionSecret = await getSetting('session_secret');
-        if (dbSessionSecret) {
-          initSessionSecret(dbSessionSecret);
-        }
-      }
-      if (isMockMode) {
-        await ensureMockRuntimeProvidersSeeded();
-      }
-    } else {
-      console.log('Database schema is not initialized yet; waiting for initial setup submit');
+  console.log('Starting with DATABASE storage');
+  const initialized = await isDatabaseInitialized();
+  if (initialized) {
+    await initDatabase();
+    console.log('Database initialized');
+    const dbSessionSecret = await getSetting('session_secret');
+    if (dbSessionSecret) {
+      initSessionSecret(dbSessionSecret);
+    }
+    if (isMockMode) {
+      await ensureMockRuntimeProvidersSeeded();
     }
   } else {
-    console.log('Starting with ENV storage');
+    console.log('Database schema is not initialized yet; waiting for initial setup submit');
   }
 
   async function getAdminBasePath(): Promise<string | null> {
@@ -208,7 +198,7 @@ export async function createApp(): Promise<express.Application> {
       error: {
         code: 'INTERNAL_ERROR',
         message: error instanceof Error ? error.message : 'Internal Server Error',
-      },
+      }
     });
   });
 

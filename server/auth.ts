@@ -11,12 +11,8 @@ const SESSION_COOKIE_NAMES: Record<AuthRole, string> = {
 
 const appConfig = getAppConfig();
 const SESSION_TTL_SECONDS = Math.max(appConfig.auth.sessionTtlSeconds || 12 * 60 * 60, 300);
-let SESSION_SECRET = appConfig.auth.sessionSecret?.trim() || '';
+let SESSION_SECRET = '';
 const USE_SECURE_COOKIE = appConfig.server.protocol === 'https';
-
-if (!appConfig.auth.sessionSecret && !appConfig.database.enabled) {
-  console.warn('[SECURITY] AIMETER_AUTH_SESSION_SECRET is not set in env-only mode; sessions will be invalidated on restart.');
-}
 
 export function initSessionSecret(secret: string): void {
   SESSION_SECRET = secret;

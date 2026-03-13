@@ -112,9 +112,8 @@ Key areas:
 
 - `server`: API URL, frontend/backend ports, HTTP/HTTPS protocol
 - `runtime`: `node` or `serverless`, mock switch
-- `database`: engine, DSN/path, encryption keys
-- `auth`: session secret, rate limits, admin secrets
-- `AIMETER_PROVIDERS_JSON`: provider list env var (used when database mode is disabled)
+- `database`: required engine + connection (DSN/path/binding)
+- `auth`: session TTL, rate limits, optional integration secrets
 
 ## Runtime Modes
 
@@ -125,7 +124,7 @@ Key areas:
 
 AIMeter supports:
 
-- SQLite (default)
+- SQLite
 - Cloudflare D1 (Workers runtime)
 - PostgreSQL
 - MySQL
@@ -147,7 +146,7 @@ For full details see [deploy/container/README.md](deploy/container/README.md).
 
 ## Cloudflare Workers Deployment
 
-For Cloudflare Workers deployment (including `env-only` and `database.engine=d1`), see:
+For Cloudflare Workers deployment (including `database.engine=d1`), see:
 
 - [deploy/cloudflare/README.md](deploy/cloudflare/README.md)
 
@@ -155,8 +154,7 @@ For Cloudflare Workers deployment (including `env-only` and `database.engine=d1`
 
 For production deployment:
 
-- In database mode, `AIMETER_ENCRYPTION_KEY` and `AIMETER_AUTH_SESSION_SECRET` are auto-generated on first start and stored in the database. Both values from env/config are ignored in database mode.
-- `AIMETER_CRON_SECRET` and `AIMETER_ENDPOINT_SECRET` are optional in env-only mode, but the related secret-auth endpoint stays unavailable until configured.
+- Sensitive runtime secrets are auto-generated on first start and stored in the database.
 - In database mode, `AIMETER_CRON_SECRET` and `AIMETER_ENDPOINT_SECRET` are used only for first-time initialization; after that, values are managed in DB.
 - Set `AIMETER_SERVER_PROTOCOL=https` for HTTPS deployments (enables HSTS and Secure cookies).
 - Keep admin/cron/endpoint secrets private.

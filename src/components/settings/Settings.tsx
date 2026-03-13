@@ -219,7 +219,7 @@ export const Settings: React.FC = () => {
 
         {capabilities?.auth.admin.mutable === false ? (
           <div className="rounded-lg bg-[var(--color-bg-subtle)] p-4 text-sm text-[var(--color-text-secondary)]">
-            Passwords are managed by environment variables in the current deployment mode.
+            Password management is currently read-only.
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
@@ -410,7 +410,7 @@ export const Settings: React.FC = () => {
                 </div>
                 {capabilities.secrets.mutable !== true && (
                   <p className="text-xs text-[var(--color-text-muted)]">
-                    Not editable in env mode; modify config and restart.
+                    Secret management is currently read-only.
                   </p>
                 )}
                 {confirmReset === key && (

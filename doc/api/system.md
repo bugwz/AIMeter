@@ -279,7 +279,7 @@ curl -b cookies.txt http://localhost:3001/api/system/secrets
 
 ### `POST /api/system/secrets/cron/reset`
 
-Rotates the cron secret — generates a new 32-character hex secret and overwrites the value in the `settings` table. **The old secret stops working immediately.** In env/config mode this endpoint is read-only and returns `409`.
+Rotates the cron secret — generates a new 32-character hex secret and overwrites the value in the `settings` table. **The old secret stops working immediately.**
 
 #### Authentication
 

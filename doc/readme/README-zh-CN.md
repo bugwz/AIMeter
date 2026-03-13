@@ -108,9 +108,8 @@ npm run preview        # 预览生产构建
 
 - `server`：API 地址、前后端端口、反向代理信任
 - `runtime`：`node` 或 `serverless`、mock 开关
-- `database`：引擎、DSN/路径、加密密钥
-- `auth`：会话密钥、Cookie 选项、限流、bootstrap/admin 密钥
-- `providers`：Provider 列表（仅数据库模式关闭时生效）
+- `database`：数据库引擎与连接字符串（必填）
+- `auth`：会话时长、限流与可选集成密钥
 
 ## 运行模式
 
@@ -145,7 +144,6 @@ AIMeter 提供单容器部署方案：**nginx**（HTTPS，端口 3000）终止 T
 生产部署建议：
 
 - 数据库模式下，`AIMETER_ENCRYPTION_KEY` 和 `AIMETER_AUTH_SESSION_SECRET` 在首次启动时自动生成并持久化，仅多实例共享数据库时需手动覆盖。
-- 在无数据库模式下，`AIMETER_CRON_SECRET` 与 `AIMETER_ENDPOINT_SECRET` 可不配置，但未配置时对应的 secret 鉴权接口不可用。
 - 在数据库模式下，`AIMETER_CRON_SECRET` 与 `AIMETER_ENDPOINT_SECRET` 仅用于首次初始化，后续以数据库中的值为准。
 - 在 HTTPS 后启用安全 Cookie。
 - 妥善保管 admin/cron/endpoint 等敏感密钥。

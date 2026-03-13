@@ -183,8 +183,8 @@ Applied to every response:
 |--------|------|-------------|------|
 | GET | `/api/system/capabilities` | Get runtime capabilities | normal/admin |
 | GET | `/api/system/secrets` | Get effective cron & endpoint secrets | admin |
-| POST | `/api/system/secrets/cron/reset` | Rotate cron secret (DB mode only; env mode read-only) | admin |
-| POST | `/api/system/secrets/endpoint/reset` | Rotate endpoint secret (DB mode only; env mode read-only) | admin |
+| POST | `/api/system/secrets/cron/reset` | Rotate cron secret | admin |
+| POST | `/api/system/secrets/endpoint/reset` | Rotate endpoint secret | admin |
 | POST | `/api/system/jobs/refresh` | Cron batch refresh | Cron Secret |
 
 ### [Miscellaneous](./misc.md)

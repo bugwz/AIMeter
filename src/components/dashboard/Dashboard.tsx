@@ -13,7 +13,6 @@ interface ProviderData extends DashboardProviderData {
 }
 
 type DashboardItem = ProviderData | UsageError;
-type StorageMode = RuntimeCapabilities['storageMode'];
 
 interface DragState {
   pointerId: number;
@@ -30,8 +29,6 @@ interface DragState {
   pointerOffsetX: number;
   pointerOffsetY: number;
 }
-
-const DASHBOARD_ORDER_KEY = 'aimeter_dashboard_order';
 
 function toDate(value: Date | string | number | null | undefined): Date {
   if (typeof value === 'number') {
@@ -58,27 +55,6 @@ function getItemId(item: DashboardItem): string | undefined {
   return 'id' in item && typeof item.id === 'string' ? item.id : undefined;
 }
 
-function loadLocalDashboardOrder(): string[] {
-  try {
-    const raw = window.localStorage.getItem(DASHBOARD_ORDER_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
-  } catch (error) {
-    console.error('Failed to load dashboard order:', error);
-    return [];
-  }
-}
-
-function saveLocalDashboardOrder(ids: string[]): void {
-  try {
-    window.localStorage.setItem(DASHBOARD_ORDER_KEY, JSON.stringify(ids));
-  } catch (error) {
-    console.error('Failed to save dashboard order:', error);
-  }
-}
-
 function orderItemsByIds(items: DashboardItem[], orderedIds: string[]): DashboardItem[] {
   const itemMap = new Map<string, DashboardItem>();
   const idlessItems: DashboardItem[] = [];
@@ -101,20 +77,6 @@ function orderItemsByIds(items: DashboardItem[], orderedIds: string[]): Dashboar
   });
 
   return [...orderedItems, ...remainingItems, ...idlessItems];
-}
-
-function normalizeLocalOrder(items: DashboardItem[], storedIds: string[]): { items: DashboardItem[]; ids: string[] } {
-  const currentIds = items
-    .map(getItemId)
-    .filter((id): id is string => Boolean(id));
-  const validStoredIds = storedIds.filter((id, index) => currentIds.includes(id) && storedIds.indexOf(id) === index);
-  const missingIds = currentIds.filter((id) => !validStoredIds.includes(id));
-  const normalizedIds = [...validStoredIds, ...missingIds];
-
-  return {
-    items: orderItemsByIds(items, normalizedIds),
-    ids: normalizedIds,
-  };
 }
 
 function moveId(ids: string[], draggedId: string, targetId: string, placement: 'before' | 'after'): string[] {
@@ -183,23 +145,14 @@ export const Dashboard: React.FC = () => {
     usagesRef.current = usages;
   }, [usages]);
 
-  const applyDisplayOrdering = useCallback((items: DashboardItem[], mode?: StorageMode): DashboardItem[] => {
-    const resolvedMode = mode || capabilitiesRef.current?.storageMode;
-    if (resolvedMode !== 'env') {
-      return items;
-    }
-
-    const ordered = normalizeLocalOrder(items, loadLocalDashboardOrder());
-    saveLocalDashboardOrder(ordered.ids);
-    return ordered.items;
-  }, []);
+  const applyDisplayOrdering = useCallback((items: DashboardItem[]): DashboardItem[] => items, []);
 
   const loadCapabilities = useCallback(async () => {
     try {
       const nextCapabilities = await apiService.getCapabilities();
       capabilitiesRef.current = nextCapabilities;
       setCapabilities(nextCapabilities);
-      setUsages((prev) => applyDisplayOrdering(prev, nextCapabilities.storageMode));
+      setUsages((prev) => applyDisplayOrdering(prev));
     } catch (error) {
       console.error('Failed to load runtime capabilities:', error);
     }
@@ -224,17 +177,7 @@ export const Dashboard: React.FC = () => {
   }, [fetchAllUsage, loadCapabilities]);
 
   const persistOrder = useCallback(async (ids: string[], previousOrder: string[]) => {
-    const storageMode = capabilitiesRef.current?.storageMode;
     if (!ids.length) return;
-
-    if (storageMode === 'env') {
-      saveLocalDashboardOrder(ids);
-      return;
-    }
-
-    if (storageMode !== 'database') {
-      return;
-    }
 
     setSavingOrder(true);
     try {

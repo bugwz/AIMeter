@@ -1,13 +1,9 @@
 import { getAppConfig } from './config.js';
 
-export type StorageMode = 'database' | 'env';
+export type StorageMode = 'database';
 export type RuntimeMode = 'node' | 'serverless';
-export type HistoryMode = 'database' | 'disabled';
+export type HistoryMode = 'database';
 const appConfig = getAppConfig();
-
-function normalizeStorageMode(databaseEnabled: boolean): StorageMode {
-  return databaseEnabled ? 'database' : 'env';
-}
 
 function normalizeRuntimeMode(value?: string): RuntimeMode {
   if (value === 'serverless') return 'serverless';
@@ -15,21 +11,15 @@ function normalizeRuntimeMode(value?: string): RuntimeMode {
   return 'node';
 }
 
-function normalizeHistoryMode(storageMode: StorageMode): HistoryMode {
-  return storageMode === 'database' ? 'database' : 'disabled';
-}
-
-const storageMode = normalizeStorageMode(appConfig.database.enabled);
 const runtimeMode = normalizeRuntimeMode(appConfig.runtime.mode);
-const historyMode = normalizeHistoryMode(storageMode);
 
 export const runtimeConfig = {
-  storageMode,
+  storageMode: 'database' as const,
   mockEnabled: appConfig.runtime.mockEnabled,
   runtimeMode,
-  historyMode,
-  isReadonlyConfig: storageMode === 'env',
-  isReadonlyAuth: storageMode === 'env',
+  historyMode: 'database' as const,
+  isReadonlyConfig: false,
+  isReadonlyAuth: false,
 };
 
 export function isMockMode(): boolean {
@@ -37,11 +27,7 @@ export function isMockMode(): boolean {
 }
 
 export function isDatabaseStorageMode(): boolean {
-  return runtimeConfig.storageMode === 'database';
-}
-
-export function isEnvStorageMode(): boolean {
-  return runtimeConfig.storageMode === 'env';
+  return true;
 }
 
 export function isServerlessRuntime(): boolean {

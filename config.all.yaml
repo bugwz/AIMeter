@@ -1,153 +1,41 @@
 # AIMeter main configuration file example
 # Priority: this file > environment variables > built-in defaults
+# NOTE: Database configuration is mandatory. engine + connection must be set.
 
 server:
-  # API base path or absolute API URL.
-  # Allowed:
-  # - URL path, for example /api: use the same host as the frontend
-  # - absolute URL, for example https://api.example.com: call a separate backend origin
-  # Built-in default when unset in both env and this file: /api
   apiUrl: /api
-  # Frontend dev server port for local development.
-  # Allowed:
-  # - any positive integer port, for example 3000
-  # Built-in default when unset in both env and this file: 3000
   frontendPort: 3000
-  # Backend HTTP server listen port.
-  # Allowed:
-  # - any positive integer port, for example 3001
-  # Built-in default when unset in both env and this file: 3001
   backendPort: 3001
-  # Public protocol used by the deployed service.
-  # Allowed:
-  # - http: local/non-TLS deployment
-  # - https: TLS-terminated deployment (enables HSTS + Secure cookies)
-  # Built-in default when unset in both env and this file:
-  # - https when runtime.mode=serverless
-  # - http otherwise
+  # http or https
   protocol: http
 
 runtime:
-  # Switch all provider data fetching to mock mode.
-  # Allowed:
-  # - true: all provider usage comes from mock data
-  # - false: all provider usage comes from live adapters
-  # Built-in default when unset in both env and this file: false
+  # true: fetch mock data; false: fetch live data
   mockEnabled: false
-  # Select the process runtime model.
-  # Allowed:
-  # - node: enable in-process scheduler (node-cron)
-  # - serverless: disable in-process scheduler; refresh is request-triggered only
-  # Built-in default when unset in both env and this file: node
+  # node or serverless
   mode: node
 
 database:
-  # Enable or disable database-backed mode.
-  # Allowed:
-  # - true: provider config comes from database; history is persisted
-  # - false: provider config comes from AIMETER_PROVIDERS_JSON; history is disabled
-  # Built-in default when unset in both env and this file: true
-  enabled: true
-  # Select database engine.
-  # Allowed:
-  # - sqlite: use a local SQLite database file
-  # - d1: use Cloudflare D1 (connection is the D1 binding name, for example DB)
-  # - postgres: use a PostgreSQL database via DSN connection string
-  # - mysql: use a MySQL database via DSN connection string
-  # Built-in default when unset in both env and this file: sqlite
+  # Required. One of: sqlite, d1, mysql, postgres
   engine: sqlite
-  # Main database connection string.
-  # Allowed:
-  # - sqlite file path, for example ./data/aimeter.db: store data in a local SQLite file
-  # - d1 binding name, for example DB (Cloudflare Workers only)
-  # - postgres DSN, for example postgres://user:pass@127.0.0.1:5432/aimeter
-  # - mysql DSN, for example mysql://user:pass@127.0.0.1:3306/aimeter
-  # Built-in default when unset in both env and this file:
-  # - d1 engine: DB
-  # - other engines: ./data/aimeter.db
+  # Required. Examples:
+  # sqlite: ./data/aimeter.db
+  # d1: DB
+  # mysql: mysql://root:password@127.0.0.1:3306/aimeter
+  # postgres: postgresql://postgres:password@127.0.0.1:5432/aimeter
   connection: ./data/aimeter.db
-  # Examples by engine:
-  # - sqlite: ./data/aimeter.db
-  # - d1: DB
-  # - mysql: mysql://root:password@127.0.0.1:3306/aimeter
-  # - postgres: postgresql://postgres:password@127.0.0.1:5432/aimeter
-  # Encrypt provider credentials stored in the main database.
-  # Allowed:
-  # - any non-empty string: used as the encryption secret
-  # Default when unset in database mode: auto-generated on first start and stored in the database
-  # Default when unset in env mode: ignored
-  # In database mode this field is ignored; encryption key is system-managed in DB.
-  # encryptionKey:
 
 auth:
-  # Sign authentication session cookies.
-  # Allowed:
-  # - any non-empty string: used to sign session cookies
-  # Default when unset in database mode: auto-generated on first start and stored in the database
-  # Default when unset in env mode: startup validation fails
-  # In database mode this field is ignored; session secret is system-managed in DB.
-  # sessionSecret:
-  # Session cookie lifetime in seconds.
-  # Allowed:
-  # - any positive integer: session lifetime in seconds
-  # Built-in default when unset in both env and this file: 43200 (12 hours)
+  # Session cookie lifetime in seconds
   sessionTtlSeconds: 43200
-  # Read-only normal-entry password source when database mode is disabled.
-  # Allowed:
-  # - plaintext password string: enable normal-entry password verification from env/config
-  # Password format requirement:
-  # - at least 12 characters
-  # - contains at least one letter
-  # - contains at least one digit
-  # Default when unset in both env and this file: unset
-  # normalPassword: replace-with-normal-password
-  # Read-only admin-entry password source when database mode is disabled.
-  # Allowed:
-  # - plaintext password string: enable admin-entry password verification from env/config
-  # Password format requirement:
-  # - at least 12 characters
-  # - contains at least one letter
-  # - contains at least one digit
-  # Default when unset in both env and this file: unset
-  # adminPassword: replace-with-admin-password
-  # Admin route path used for the management entry URL.
-  # Allowed:
-  # - exactly 32 random characters: admin UI is served from http://host:3000/<secret>
-  # Default when unset in env mode: startup validation fails
-  # In database mode this field is ignored; admin route path is managed during bootstrap and stored in DB.
-  # adminRoutePath: replace-with-32-char-random-secret
-  # Shared secret for external cron/webhook refresh in serverless deployments.
-  # Allowed:
-  # - exactly 32 random characters: caller must send this value in X-AIMETER-CRON-SECRET
-  # Default when unset in both env and this file:
-  # - env storage mode: unset (cron endpoint disabled)
-  # - database storage mode: auto-generated on first start and stored in database
-  # cronSecret: replace-with-32-char-random-secret
-  # Shared secret for external script access to /api/endpoint/subscriptions.
-  # Allowed:
-  # - exactly 32 random characters: caller must send this value in x-aimeter-endpoint-secret
-  # Default when unset in both env and this file:
-  # - env storage mode: unset (secret-based access disabled)
-  # - database storage mode: auto-generated on first start and stored in database
-  # endpointSecret: replace-with-32-char-random-secret
-  rateLimit:
-    # Rate-limit evaluation window length.
-    # Allowed:
-    # - any positive integer: window length in milliseconds
-    # Built-in default when unset in both env and this file: 60000
-    windowMs: 60000
-    # Maximum allowed failed attempts within the rate-limit window.
-    # Allowed:
-    # - any positive integer: maximum failed attempts before blocking
-    # Built-in default when unset in both env and this file: 5
-    maxAttempts: 5
-    # Temporary block duration after exceeding rate limit.
-    # Allowed:
-    # - any positive integer: block duration in milliseconds
-    # Built-in default when unset in both env and this file: 300000
-    blockMs: 300000
 
-# Provider configuration in env-only mode is now managed only by AIMETER_PROVIDERS_JSON.
-# The "providers" block in config.yaml has been removed and is no longer supported.
-# Example:
-# AIMETER_PROVIDERS_JSON=[{"id":"primary","type":"cursor","authType":"cookie","credential":"replace-with-cursor-cookie","refreshInterval":5}]
+  # Optional integration secrets (32 random chars when set)
+  # In database mode these are only used during first initialization,
+  # then managed in DB.
+  # cronSecret: replace-with-32-char-random-secret
+  # endpointSecret: replace-with-32-char-random-secret
+
+  rateLimit:
+    windowMs: 60000
+    maxAttempts: 5
+    blockMs: 300000

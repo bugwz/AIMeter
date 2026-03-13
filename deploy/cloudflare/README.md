@@ -2,7 +2,6 @@
 
 This guide covers Cloudflare Workers deployment for AIMeter with:
 
-- `env-only` mode
 - `database.engine=d1` mode
 - External `mysql` / `postgres` modes
 
@@ -16,17 +15,15 @@ This guide covers Cloudflare Workers deployment for AIMeter with:
 
    In Cloudflare's deploy page:
 
-   - Connect/authorize GitHub if prompted. (If you see an error about being unable to fetch repository content, try disabling proxy software and retry.)
+   - Connect/authorize GitHub if prompted.
    - Confirm project import.
-   - Set required env variables by mode (one mode per row; one required key per line with example):
-   - `AIMETER_ADMIN_ROUTE_PATH` and `AIMETER_AUTH_SESSION_SECRET` should be 32-character random strings (do not reuse example values).
+   - Set required env variables by mode (one mode per row):
 
    | Mode | Required envs (with examples) |
    |---|---|
-   | Env-only | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=false`<br>`AIMETER_NORMAL_PASSWORD=normalpassword123`<br>`AIMETER_ADMIN_PASSWORD=adminpassword123`<br>`AIMETER_ADMIN_ROUTE_PATH=f84c1b56d2a90e37c4f1a8b62d95e013`<br>`AIMETER_AUTH_SESSION_SECRET=7f1c39b8e2d64a01c5f73a9d0b4e8c26`<br>`AIMETER_PROVIDERS_JSON=[{"id":"openai","enabled":true}]` |
-   | D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=true`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
-   | MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=true`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://user:pass@host:3306/aimeter` |
-   | PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=true`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://user:pass@host:5432/aimeter` |
+   | D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
+   | MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://user:pass@host:3306/aimeter` |
+   | PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://user:pass@host:5432/aimeter` |
 
 2. Wait for the first build/deploy to complete.
 3. If you selected `d1`, complete the D1 binding steps in the next section.
@@ -76,7 +73,6 @@ Initial Setup page, and click submit. At that moment the system initializes requ
 |---|---|
 | SQLite local file persistence in Workers | Not supported |
 | D1 database mode | Supported (Cloudflare Workers runtime only) |
-| Env-only mode | Supported |
 | MySQL/PostgreSQL mode | Supported (external DB required) |
 | In-process scheduler (`runtime=node`) | Not recommended on Workers |
 | Serverless refresh flow | Supported via API-triggered refresh / external scheduler |
@@ -93,14 +89,11 @@ Initial Setup page, and click submit. At that moment the system initializes requ
 
 ## Required Env Variables (Reference)
 
-Only required env variables are listed below (one mode per row; one required key per line with example).
-
 | Mode | Required envs |
 |---|---|
-| Env-only | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=false`<br>`AIMETER_NORMAL_PASSWORD=normalpassword123`<br>`AIMETER_ADMIN_PASSWORD=adminpassword123`<br>`AIMETER_ADMIN_ROUTE_PATH=f84c1b56d2a90e37c4f1a8b62d95e013`<br>`AIMETER_AUTH_SESSION_SECRET=7f1c39b8e2d64a01c5f73a9d0b4e8c26`<br>`AIMETER_PROVIDERS_JSON=[{"id":"openai","enabled":true}]` |
-| D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=true`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
-| MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=true`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://user:pass@host:3306/aimeter` |
-| PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENABLED=true`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://user:pass@host:5432/aimeter` |
+| D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
+| MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://user:pass@host:3306/aimeter` |
+| PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://user:pass@host:5432/aimeter` |
 
 ### D1 Variable Semantics
 
