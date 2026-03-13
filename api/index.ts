@@ -20,8 +20,11 @@ function getApp(): Promise<Application> {
 
 async function getVercelWaitUntil(): Promise<WaitUntilFn | null> {
   if (!waitUntilPromise) {
-    waitUntilPromise = import('@vercel/functions')
-      .then((mod) => (typeof mod.waitUntil === 'function' ? mod.waitUntil as WaitUntilFn : null))
+    waitUntilPromise = (new Function('m', 'return import(m)') as (m: string) => Promise<unknown>)('@vercel/functions')
+      .then((mod) => {
+        const candidate = mod as { waitUntil?: unknown };
+        return typeof candidate.waitUntil === 'function' ? candidate.waitUntil as WaitUntilFn : null;
+      })
       .catch(() => null);
   }
   return waitUntilPromise;
