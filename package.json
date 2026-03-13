@@ -15,7 +15,7 @@
     "cf:deploy": "npx wrangler deploy",
     "start:server": "node --import tsx server/index.ts",
     "start:mock": "AIMETER_MOCK_ENABLED=true node --import tsx server/index.ts",
-    "vercel-build": "vite build"
+    "vercel-build": "node scripts/vercel-build.mjs"
   },
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",
