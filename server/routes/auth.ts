@@ -173,6 +173,7 @@ router.post('/bootstrap', async (req, res) => {
       },
     });
   } catch (error) {
+    console.error('Bootstrap failed:', error);
     const readonly = tryParseReadonlyError(error);
     if (readonly) {
       return res.status(409).json({

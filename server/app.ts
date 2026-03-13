@@ -12,6 +12,22 @@ import { initSessionSecret } from './auth.js';
 
 function createJsonBodyParser(limitBytes: number = 1024 * 1024) {
   return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const reqWithBody = req as express.Request & { body?: unknown; __jsonParseError?: string };
+    if (reqWithBody.__jsonParseError) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_JSON',
+          message: reqWithBody.__jsonParseError,
+        },
+      });
+      return;
+    }
+    if (typeof reqWithBody.body !== 'undefined') {
+      next();
+      return;
+    }
+
     const method = req.method.toUpperCase();
     if (method === 'GET' || method === 'HEAD') {
       next();
@@ -48,7 +64,7 @@ function createJsonBodyParser(limitBytes: number = 1024 * 1024) {
     req.on('end', () => {
       try {
         const raw = chunks.length > 0 ? Buffer.concat(chunks).toString('utf8') : '';
-        (req as express.Request & { body?: unknown }).body = raw ? JSON.parse(raw) : {};
+        reqWithBody.body = raw ? JSON.parse(raw) : {};
         next();
       } catch {
         res.status(400).json({

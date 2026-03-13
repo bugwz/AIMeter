@@ -34,6 +34,17 @@ async function fetchToExpress(app: Application, request: Request): Promise<Respo
     const ab = await request.arrayBuffer();
     if (ab.byteLength > 0) bodyBuffer = Buffer.from(ab);
   }
+  const contentType = (request.headers.get('content-type') || '').toLowerCase();
+  let parsedJsonBody: unknown = undefined;
+  let jsonParseError: string | undefined;
+  if (contentType.includes('application/json')) {
+    try {
+      const raw = bodyBuffer ? bodyBuffer.toString('utf8') : '';
+      parsedJsonBody = raw ? JSON.parse(raw) : {};
+    } catch {
+      jsonParseError = 'Malformed JSON request body';
+    }
+  }
 
   return new Promise<Response>((resolve, reject) => {
     const clientIp =
@@ -69,6 +80,8 @@ async function fetchToExpress(app: Application, request: Request): Promise<Respo
     req.readable = true;
     req.readableEnded = false;
     req.complete = false;
+    req.body = parsedJsonBody;
+    req.__jsonParseError = jsonParseError;
     req.trailers = {};
     req.rawTrailers = [];
     req.read = () => {};
