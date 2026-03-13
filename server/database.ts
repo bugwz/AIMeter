@@ -12,6 +12,7 @@ let initPromise: Promise<void> | null = null;
 let initializedState: boolean | null = null;
 
 const REQUIRED_TABLES = ['providers', 'usage_records', 'settings', 'audit_logs'] as const;
+const CLOUDFLARE_WORKERS_MODULE = 'cloudflare:workers';
 
 interface D1QueryResult<T = Record<string, unknown>> {
   results?: T[];
@@ -100,7 +101,7 @@ async function isMysqlSchemaInitialized(connection: string): Promise<boolean> {
 
 async function resolveCloudflareBindings(): Promise<Record<string, unknown>> {
   try {
-    const mod = await import('cloudflare:workers') as { env?: Record<string, unknown> };
+    const mod = await import(CLOUDFLARE_WORKERS_MODULE) as { env?: Record<string, unknown> };
     if (!mod.env || typeof mod.env !== 'object') {
       throw new Error('Cloudflare bindings are unavailable');
     }

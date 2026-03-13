@@ -24,7 +24,7 @@ import {
 } from './database.js';
 import { runtimeConfig } from './runtime.js';
 import type { AuthRole } from './auth.js';
-import { Credential, ProgressData, ProgressItem, ProviderConfig, UsageProvider, UsageSnapshot } from '../src/types/index.js';
+import { Credential, ProgressData, ProviderConfig, UsageProvider, UsageSnapshot } from '../src/types/index.js';
 
 export class ReadonlyStoreError extends Error {
   code = 'READ_ONLY_STORE';
@@ -75,7 +75,7 @@ export interface RuntimeCapabilities {
   history: {
     enabled: boolean;
     persisted: boolean;
-    mode: 'database' | 'disabled';
+    mode: 'database';
   };
   secrets: {
     managedInDb: boolean;
@@ -93,7 +93,6 @@ const ENDPOINT_SECRET_KEY = 'endpoint_secret';
 const PASSWORD_SCHEME = 'pbkdf2_sha256';
 const PBKDF2_KEYLEN = 32;
 const PBKDF2_DEFAULT_ITERATIONS = 100000;
-const latestUsageCache = new Map<string, UsageRecordRow>();
 
 function normalizeAdminRoutePath(value: string | null | undefined): string | null {
   if (typeof value !== 'string') return null;
@@ -146,47 +145,6 @@ function mapDbProvider({ id: _internalId, uid, ...rest }: Omit<ProviderConfig, '
   };
 }
 
-function normalizeSnapshot(snapshot: UsageSnapshot): UsageRecordRow {
-  const items: ProgressItem[] = [];
-  if (Array.isArray(snapshot.progress) && snapshot.progress.length > 0) {
-    items.push(...snapshot.progress);
-  } else {
-    const legacy = snapshot as UsageSnapshot & Record<string, unknown>;
-    const primary = legacy.primary as ProgressItem | undefined;
-    const secondary = legacy.secondary as ProgressItem | undefined;
-    const tertiary = legacy.tertiary as ProgressItem | undefined;
-    if (primary) {
-      const { name: _name, ...rest } = primary;
-      items.push({ name: 'Primary', ...rest });
-    }
-    if (secondary) {
-      const { name: _name, ...rest } = secondary;
-      items.push({ name: 'Secondary', ...rest });
-    }
-    if (tertiary) {
-      const { name: _name, ...rest } = tertiary;
-      items.push({ name: 'Tertiary', ...rest });
-    }
-  }
-
-  return {
-    id: Date.now(),
-    providerId: '',
-    progress: {
-      items,
-      cost: snapshot.cost,
-    },
-    identityData: snapshot.identity ? { ...snapshot.identity } : null,
-    createdAt: snapshot.updatedAt,
-  };
-}
-
-function setLatestUsage(providerId: string, snapshot: UsageSnapshot): void {
-  const record = normalizeSnapshot(snapshot);
-  record.providerId = providerId;
-  latestUsageCache.set(providerId, record);
-}
-
 function hasPersistableProgress(snapshot: UsageSnapshot): boolean {
   if (Array.isArray(snapshot.progress) && snapshot.progress.length > 0) {
     return true;
@@ -237,9 +195,9 @@ async function getCapabilities(viewerRole: AuthRole): Promise<RuntimeCapabilitie
       allowManualRefresh: isAdmin,
     },
     history: {
-      enabled: runtimeConfig.historyMode !== 'disabled',
-      persisted: runtimeConfig.historyMode === 'database',
-      mode: runtimeConfig.historyMode,
+      enabled: true,
+      persisted: true,
+      mode: 'database',
     },
     secrets: {
       managedInDb: runtimeConfig.storageMode === 'database',
@@ -407,31 +365,18 @@ export const storage = {
     if (!hasPersistableProgress(snapshot)) {
       return;
     }
-
-    if (runtimeConfig.historyMode === 'database') {
-      await recordDbUsage(id, snapshot);
-      setLatestUsage(id, snapshot);
-      return;
-    }
-    setLatestUsage(id, snapshot);
+    await recordDbUsage(id, snapshot);
   },
 
   async recordUsageAt(id: string, snapshot: UsageSnapshot, createdAt: Date): Promise<void> {
     if (!hasPersistableProgress(snapshot)) {
       return;
     }
-
-    if (runtimeConfig.historyMode === 'database') {
-      await recordDbUsageAt(id, snapshot, createdAt);
-    }
+    await recordDbUsageAt(id, snapshot, createdAt);
   },
 
   async recordUsageBatchAt(id: string, entries: Array<{ snapshot: UsageSnapshot; createdAt: Date }>): Promise<void> {
     if (entries.length === 0) {
-      return;
-    }
-
-    if (runtimeConfig.historyMode !== 'database') {
       return;
     }
 
@@ -444,50 +389,28 @@ export const storage = {
   },
 
   async clearUsageHistory(id: string): Promise<void> {
-    if (runtimeConfig.historyMode !== 'database') {
-      return;
-    }
-
     await clearDbUsageHistory(id);
   },
 
   async getUsageHistory(id: string, days: number = 30): Promise<UsageRecordRow[]> {
-    if (runtimeConfig.historyMode === 'disabled') return [];
-
-    if (runtimeConfig.historyMode === 'database') {
-      return (await getDbUsageHistory(id, days)).map((row) => ({
-        ...row,
-        providerId: id,
-      }));
-    }
-
-    void id;
-    void days;
-    return [];
+    return (await getDbUsageHistory(id, days)).map((row) => ({
+      ...row,
+      providerId: id,
+    }));
   },
 
   async getAllUsageHistory(days: number = 30): Promise<Record<string, UsageRecordRow[]>> {
-    if (runtimeConfig.historyMode === 'disabled') return {};
-
-    if (runtimeConfig.historyMode === 'database') {
-      const data = await getDbAllUsageHistory(days);
-      const result: Record<string, UsageRecordRow[]> = {};
-      for (const [uid, rows] of data.entries()) {
-        result[uid] = rows.map((row) => ({ ...row, providerId: uid }));
-      }
-      return result;
+    const data = await getDbAllUsageHistory(days);
+    const result: Record<string, UsageRecordRow[]> = {};
+    for (const [uid, rows] of data.entries()) {
+      result[uid] = rows.map((row) => ({ ...row, providerId: uid }));
     }
-
-    void days;
-    return {};
+    return result;
   },
 
   async getLatestUsage(id: string): Promise<UsageRecordRow | null> {
-    if (runtimeConfig.historyMode === 'database') {
-      const row = await getDbLatestUsage(id);
-      return row ? { ...row, providerId: id } : null;
-    }
-    return latestUsageCache.get(id) || null;
+    const row = await getDbLatestUsage(id);
+    return row ? { ...row, providerId: id } : null;
   },
 
   async getSetting(key: string): Promise<string | null> {

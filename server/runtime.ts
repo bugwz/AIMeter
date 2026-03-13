@@ -2,7 +2,6 @@ import { getAppConfig } from './config.js';
 
 export type StorageMode = 'database';
 export type RuntimeMode = 'node' | 'serverless';
-export type HistoryMode = 'database';
 const appConfig = getAppConfig();
 
 function normalizeRuntimeMode(value?: string): RuntimeMode {
@@ -17,7 +16,6 @@ export const runtimeConfig = {
   storageMode: 'database' as const,
   mockEnabled: appConfig.runtime.mockEnabled,
   runtimeMode,
-  historyMode: 'database' as const,
   isReadonlyConfig: false,
   isReadonlyAuth: false,
 };

@@ -21,6 +21,7 @@ export interface AppConfig {
   database: {
     engine: DatabaseEngineType;
     connection: string;
+    encryptionKey?: string;
   };
   auth: {
     sessionTtlSeconds: number;
@@ -426,6 +427,7 @@ export function getAppConfig(): AppConfig {
   const rawDatabaseEngine = asString(database.engine) || process.env.AIMETER_DATABASE_ENGINE;
   const databaseEngine = parseDatabaseEngine(rawDatabaseEngine);
   const databaseConnection = (asString(database.connection) || process.env.AIMETER_DATABASE_CONNECTION || '').trim();
+  const databaseEncryptionKey = asString(database.encryptionKey)?.trim() || process.env.AIMETER_ENCRYPTION_KEY?.trim() || undefined;
 
   const runtimeMode = (asString(runtime.mode) || process.env.AIMETER_RUNTIME_MODE || 'node') as 'node' | 'serverless';
   const protocolRaw = (asString(server.protocol) || process.env.AIMETER_SERVER_PROTOCOL || '').trim().toLowerCase();
@@ -477,6 +479,7 @@ export function getAppConfig(): AppConfig {
     database: {
       engine: databaseEngine as DatabaseEngineType,
       connection: databaseConnection,
+      encryptionKey: databaseEncryptionKey,
     },
     auth: {
       sessionTtlSeconds: asNumber(auth.sessionTtlSeconds)

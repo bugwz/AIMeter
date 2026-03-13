@@ -3,6 +3,7 @@ import type { DbClient, DatabaseEngine, ExecuteResult } from './engine.js';
 import { SqlEngine, runCommonBootstrap } from './sql-engine.js';
 
 type CloudflareBindings = Record<string, unknown>;
+const CLOUDFLARE_WORKERS_MODULE = 'cloudflare:workers';
 
 interface D1QueryMeta {
   changes?: number;
@@ -38,7 +39,7 @@ function isValidBindingName(value: string): boolean {
 
 async function resolveCloudflareBindings(): Promise<CloudflareBindings> {
   try {
-    const mod = await import('cloudflare:workers') as { env?: CloudflareBindings };
+    const mod = await import(CLOUDFLARE_WORKERS_MODULE) as { env?: CloudflareBindings };
     if (!mod.env || typeof mod.env !== 'object') {
       throw new Error('Cloudflare bindings are unavailable');
     }
