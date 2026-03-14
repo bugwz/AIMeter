@@ -453,12 +453,12 @@ class ApiService {
   async getUsageHistory(
     provider?: string,
     days: number = 30,
-    bucketMinutes?: number
+    intervalMinutes?: number
   ): Promise<Record<string, UsageRecord[]>> {
     const params = new URLSearchParams();
     params.append('days', days.toString());
-    if (bucketMinutes && Number.isFinite(bucketMinutes) && bucketMinutes > 0) {
-      params.append('bucketMinutes', Math.floor(bucketMinutes).toString());
+    if (intervalMinutes && Number.isFinite(intervalMinutes) && intervalMinutes > 0) {
+      params.append('intervalMinutes', Math.floor(intervalMinutes).toString());
     }
     if (provider) {
       params.append('provider', provider);

@@ -35,8 +35,10 @@ interface UsageRecord {
   createdAt: Date;
 }
 
-type TimeRange = 7 | 14 | 30 | 60 | 90;
-type BucketValue = 5 | 10 | 15 | 20 | 30 | 60 | 180;
+type IntervalMinutes = 5 | 10 | 15 | 20 | 30 | 60 | 180;
+type IntervalValue = 'auto' | IntervalMinutes;
+type PresetRangeValue = '5h' | '12h' | '1d' | '2d' | '1w' | '2w' | '1m' | '2m' | '3m';
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 
 const formatProviderDisplayName = (providerName: string, customName?: string | null): string => {
@@ -62,15 +64,17 @@ const ProviderDisplay: React.FC<{
   const label = meta.displayName || seriesKey;
 
   return (
-    <span className={`inline-flex min-w-0 items-center gap-2 ${className || ''}`}>
+    <span className={`inline-flex max-w-full min-w-0 items-center gap-2 ${className || ''}`}>
       {meta.provider ? (
-        <ProviderLogo provider={meta.provider} size={20} alt={label} />
+        <span className="shrink-0">
+          <ProviderLogo provider={meta.provider} size={20} alt={label} />
+        </span>
       ) : (
-        <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-[var(--color-bg-subtle)] text-[10px] font-semibold text-[var(--color-text-secondary)]">
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[var(--color-bg-subtle)] text-[10px] font-semibold text-[var(--color-text-secondary)]">
           {(label || '?')[0]}
         </span>
       )}
-      <span className="truncate">{label}</span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
     </span>
   );
 };
@@ -79,12 +83,71 @@ const SkeletonLine: React.FC<{ className?: string }> = ({ className = '' }) => (
   <div className={`rounded skeleton-shimmer ${className}`} />
 );
 
-const getDefaultBucketByRange = (range: TimeRange): 5 | 10 | 15 | 20 | 30 => {
-  if (range <= 7) return 5;
-  if (range <= 14) return 10;
-  if (range <= 30) return 15;
-  if (range <= 60) return 20;
-  return 30;
+const PRESET_RANGE_MS: Record<PresetRangeValue, number> = {
+  '5h': 5 * 60 * 60 * 1000,
+  '12h': 12 * 60 * 60 * 1000,
+  '1d': 1 * DAY_MS,
+  '2d': 2 * DAY_MS,
+  '1w': 7 * DAY_MS,
+  '2w': 14 * DAY_MS,
+  '1m': 30 * DAY_MS,
+  '2m': 60 * DAY_MS,
+  '3m': 90 * DAY_MS,
+};
+const PRESET_RANGE_LABEL: Record<PresetRangeValue, string> = {
+  '5h': 'Last 5 hours',
+  '12h': 'Last 12 hours',
+  '1d': 'Last 1 day',
+  '2d': 'Last 2 days',
+  '1w': 'Last 1 week',
+  '2w': 'Last 2 weeks',
+  '1m': 'Last 1 month',
+  '2m': 'Last 2 months',
+  '3m': 'Last 3 months',
+};
+const PRESET_RANGE_DAYS: Partial<Record<PresetRangeValue, number>> = {
+  '1d': 1,
+  '2d': 2,
+  '1w': 7,
+  '2w': 14,
+  '1m': 30,
+  '2m': 60,
+  '3m': 90,
+};
+
+const getStartOfDayMs = (timestampMs: number): number => {
+  const date = new Date(timestampMs);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+};
+
+const resolveRangeStartMs = (preset: PresetRangeValue, endMs: number): number => {
+  const daySpan = PRESET_RANGE_DAYS[preset];
+  if (daySpan && daySpan > 0) {
+    const startDay = new Date(endMs);
+    startDay.setHours(0, 0, 0, 0);
+    startDay.setDate(startDay.getDate() - (daySpan - 1));
+    return startDay.getTime();
+  }
+  return endMs - PRESET_RANGE_MS[preset];
+};
+
+const getRangeDays = (startMs: number, endMs: number): number => {
+  const startDayMs = getStartOfDayMs(startMs);
+  const endDayMs = getStartOfDayMs(endMs);
+  const diffMs = Math.max(endDayMs - startDayMs, 0);
+  return Math.max(1, Math.floor(diffMs / DAY_MS) + 1);
+};
+
+const getMinIntervalByDays = (days: number): number => {
+  return days >= 90 ? 20 : 5;
+};
+
+const formatIntervalLabel = (minutes: number): string => {
+  if (minutes % 60 === 0) {
+    return `${minutes / 60}h`;
+  }
+  return `${minutes}m`;
 };
 
 export const History: React.FC = () => {
@@ -92,20 +155,21 @@ export const History: React.FC = () => {
   const [seriesMeta, setSeriesMeta] = useState<Record<string, HistorySeriesMeta>>({});
   const [loading, setLoading] = useState(true);
   const [filterLoading, setFilterLoading] = useState(false);
-  const [selectedRange, setSelectedRange] = useState<TimeRange>(30);
+  const [selectedRange, setSelectedRange] = useState<PresetRangeValue>('1d');
   const [selectedSeries, setSelectedSeries] = useState<string>('');
-  const [selectedBucket, setSelectedBucket] = useState<BucketValue>(15);
+  const [selectedInterval, setSelectedInterval] = useState<IntervalValue>('auto');
+  const [resolvedUsageIntervalMinutes, setResolvedUsageIntervalMinutes] = useState<number | null>(null);
   const filterLoadingTimerRef = useRef<number | null>(null);
+  const rangeEndMs = useMemo(() => Date.now(), [selectedRange, loading]);
+  const rangeStartMs = useMemo(() => resolveRangeStartMs(selectedRange, rangeEndMs), [selectedRange, rangeEndMs]);
+  const rangeDays = useMemo(() => getRangeDays(rangeStartMs, rangeEndMs), [rangeStartMs, rangeEndMs]);
 
   useEffect(() => {
-    if (selectedRange === 90 && selectedBucket < 20) {
-      setSelectedBucket(20);
+    const minInterval = getMinIntervalByDays(rangeDays);
+    if (selectedInterval !== 'auto' && selectedInterval < minInterval) {
+      setSelectedInterval(minInterval as IntervalMinutes);
     }
-  }, [selectedRange, selectedBucket]);
-
-  useEffect(() => {
-    setSelectedBucket(getDefaultBucketByRange(selectedRange));
-  }, [selectedRange]);
+  }, [rangeDays, selectedInterval]);
 
   useEffect(() => {
     return () => {
@@ -117,15 +181,17 @@ export const History: React.FC = () => {
 
   useEffect(() => {
     loadHistory();
-  }, [selectedRange, selectedBucket]);
+  }, [selectedRange, selectedInterval]);
 
   const loadHistory = async () => {
     setLoading(true);
     try {
-      const minBucket = selectedRange === 90 ? 20 : 5;
-      const resolvedBucketMinutes = Math.max(selectedBucket, minBucket);
+      const minInterval = getMinIntervalByDays(rangeDays);
+      const resolvedIntervalMinutes = selectedInterval === 'auto'
+        ? undefined
+        : Math.max(selectedInterval, minInterval);
       const [history, providers] = await Promise.all([
-        apiService.getUsageHistory(undefined, selectedRange, resolvedBucketMinutes),
+        apiService.getUsageHistory(undefined, rangeDays, resolvedIntervalMinutes),
         apiService.getProviders(),
       ]);
 
@@ -156,14 +222,19 @@ export const History: React.FC = () => {
           defaultProgressItem: mapped?.defaultProgressItem || undefined,
         };
 
-        nextData[seriesKey] = records.map((record) => ({
-          ...record,
-          providerId: providerIdKey,
-          provider: mapped?.provider,
-          providerName: customName || undefined,
-          providerDbId: mapped?.id,
-          createdAt: new Date(record.createdAt),
-        }));
+        nextData[seriesKey] = records
+          .map((record) => ({
+            ...record,
+            providerId: providerIdKey,
+            provider: mapped?.provider,
+            providerName: customName || undefined,
+            providerDbId: mapped?.id,
+            createdAt: new Date(record.createdAt),
+          }))
+          .filter((record) => {
+            const timestamp = record.createdAt.getTime();
+            return timestamp >= rangeStartMs && timestamp <= rangeEndMs;
+          });
       });
 
       const colorMap = buildProviderSeriesColorMap(
@@ -238,37 +309,54 @@ export const History: React.FC = () => {
     return seriesMeta[seriesKey]?.displayName || seriesKey;
   };
 
+  const intervalOptions = useMemo(
+    () => {
+      const minInterval = getMinIntervalByDays(rangeDays);
+      return [
+        { value: 'auto' as const, label: 'Auto' },
+        ...(minInterval <= 5 ? [{ value: 5 as IntervalMinutes, label: '5m' }] : []),
+        ...(minInterval <= 10 ? [{ value: 10 as IntervalMinutes, label: '10m' }] : []),
+        ...(minInterval <= 15 ? [{ value: 15 as IntervalMinutes, label: '15m' }] : []),
+        { value: 20 as IntervalMinutes, label: '20m' },
+        { value: 30 as IntervalMinutes, label: '30m' },
+        { value: 60 as IntervalMinutes, label: '1h' },
+        { value: 180 as IntervalMinutes, label: '3h' },
+      ];
+    },
+    [rangeDays],
+  );
+
   const rangeOptions = useMemo(
-    () => [
-      { value: 7 as TimeRange, label: 'Last 7 days' },
-      { value: 14 as TimeRange, label: 'Last 14 days' },
-      { value: 30 as TimeRange, label: 'Last 30 days' },
-      { value: 60 as TimeRange, label: 'Last 60 days' },
-      { value: 90 as TimeRange, label: 'Last 90 days' },
-    ],
+    () => ([
+      { value: '5h' as PresetRangeValue, label: PRESET_RANGE_LABEL['5h'] },
+      { value: '12h' as PresetRangeValue, label: PRESET_RANGE_LABEL['12h'] },
+      { value: '1d' as PresetRangeValue, label: PRESET_RANGE_LABEL['1d'] },
+      { value: '2d' as PresetRangeValue, label: PRESET_RANGE_LABEL['2d'] },
+      { value: '1w' as PresetRangeValue, label: PRESET_RANGE_LABEL['1w'] },
+      { value: '2w' as PresetRangeValue, label: PRESET_RANGE_LABEL['2w'] },
+      { value: '1m' as PresetRangeValue, label: PRESET_RANGE_LABEL['1m'] },
+      { value: '2m' as PresetRangeValue, label: PRESET_RANGE_LABEL['2m'] },
+      { value: '3m' as PresetRangeValue, label: PRESET_RANGE_LABEL['3m'] },
+    ]),
     [],
   );
 
-  const bucketOptions = useMemo(
-    () => {
-      const minBucket = selectedRange === 90 ? 20 : 5;
-      return [
-        ...(minBucket <= 5 ? [{ value: 5 as BucketValue, label: '5 min' }] : []),
-        ...(minBucket <= 10 ? [{ value: 10 as BucketValue, label: '10 min' }] : []),
-        ...(minBucket <= 15 ? [{ value: 15 as BucketValue, label: '15 min' }] : []),
-        { value: 20 as BucketValue, label: '20 min' },
-        { value: 30 as BucketValue, label: '30 min' },
-        { value: 60 as BucketValue, label: '60 min' },
-        { value: 180 as BucketValue, label: '180 min' },
-      ];
-    },
-    [selectedRange],
-  );
+  const intervalSummaryLabel = useMemo(() => {
+    if (selectedInterval === 'auto') {
+      return resolvedUsageIntervalMinutes ? `Auto ${formatIntervalLabel(resolvedUsageIntervalMinutes)}` : 'Auto';
+    }
+    const minInterval = getMinIntervalByDays(rangeDays);
+    return formatIntervalLabel(Math.max(selectedInterval, minInterval));
+  }, [selectedInterval, rangeDays, resolvedUsageIntervalMinutes]);
 
   const providerOptions = useMemo(
     () => {
       return [
-        { value: '', label: 'All Providers' },
+        {
+          value: '',
+          label: 'All Providers',
+          icon: <img src="/img/logo-light.svg" alt="AIMeter" className="h-4 w-4" />,
+        },
         ...seriesList.map((seriesKey) => ({
           value: seriesKey,
           label: getSeriesLabel(seriesKey),
@@ -336,30 +424,6 @@ export const History: React.FC = () => {
 
         <div className="flex w-full flex-col items-stretch gap-1 md:flex-row md:flex-wrap md:items-center md:justify-end md:gap-1.5 lg:w-[56rem]">
           <div className="flex w-full items-center gap-1 md:w-auto md:justify-end">
-            <label className="w-12 shrink-0 whitespace-nowrap text-xs text-[var(--color-text-tertiary)] md:w-auto">Range:</label>
-            <div className="min-w-0 flex-1 md:w-36 md:shrink-0">
-              <SelectField
-                value={selectedRange}
-                onChange={setSelectedRange}
-                options={rangeOptions}
-                className="input-field select-field text-sm w-full md:w-36"
-              />
-            </div>
-          </div>
-
-          <div className="flex w-full items-center gap-1 md:w-auto md:justify-end">
-            <label className="w-12 shrink-0 whitespace-nowrap text-xs text-[var(--color-text-tertiary)] md:w-auto">Bucket:</label>
-            <div className="min-w-0 flex-1 md:w-32 md:shrink-0">
-              <SelectField
-                value={selectedBucket}
-                onChange={setSelectedBucket}
-                options={bucketOptions}
-                className="input-field select-field text-sm w-full md:w-32"
-              />
-            </div>
-          </div>
-
-          <div className="flex w-full items-center gap-1 md:w-auto md:justify-end">
             <label className="w-12 shrink-0 whitespace-nowrap text-xs text-[var(--color-text-tertiary)] md:w-auto">Provider:</label>
             <div className="min-w-0 flex-1 md:w-[14.5rem] md:shrink-0">
               <SelectField
@@ -368,6 +432,30 @@ export const History: React.FC = () => {
                 options={providerOptions}
                 className="input-field select-field text-sm w-full"
                 showTriggerIcon={false}
+              />
+            </div>
+          </div>
+
+          <div className="flex w-full items-center gap-1 md:w-auto md:justify-end">
+            <label className="w-12 shrink-0 whitespace-nowrap text-xs text-[var(--color-text-tertiary)] md:w-auto">Range:</label>
+            <div className="min-w-0 flex-1 md:w-[9.5rem] md:shrink-0">
+              <SelectField
+                value={selectedRange}
+                onChange={setSelectedRange}
+                options={rangeOptions}
+                className="input-field select-field text-sm w-full md:w-[9.5rem]"
+              />
+            </div>
+          </div>
+
+          <div className="flex w-full items-center gap-1 md:w-auto md:justify-end">
+            <label className="w-12 shrink-0 whitespace-nowrap text-xs text-[var(--color-text-tertiary)] md:w-auto">Interval:</label>
+            <div className="min-w-0 flex-1 md:w-24 md:shrink-0">
+              <SelectField
+                value={selectedInterval}
+                onChange={setSelectedInterval}
+                options={intervalOptions}
+                className="input-field select-field text-sm w-full md:w-24"
               />
             </div>
           </div>
@@ -437,7 +525,7 @@ export const History: React.FC = () => {
           <div className="bg-[var(--color-surface)] rounded-xl p-6 gradient-border animate-fade-in" style={{ boxShadow: 'var(--shadow-card)' }}>
             <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
               <span className="w-1 h-4 rounded-full bg-[var(--color-accent)]"></span>
-              Usage Trend (Last {selectedRange} Days)
+              Usage Trend ({PRESET_RANGE_LABEL[selectedRange]} · Interval {intervalSummaryLabel})
             </h3>
             {isPanelsLoading ? (
               <div className="h-64 space-y-4 animate-fade-in skeleton-panel rounded-lg p-2">
@@ -455,6 +543,11 @@ export const History: React.FC = () => {
                 selectedSeries={selectedSeriesKey || undefined}
                 seriesMeta={seriesMeta}
                 mode={selectedSeriesKey ? 'providerProgress' : 'providerSeries'}
+                rangeDays={rangeDays}
+                rangeStartMs={rangeStartMs}
+                rangeEndMs={rangeEndMs}
+                intervalMinutes={selectedInterval}
+                onResolvedIntervalChange={setResolvedUsageIntervalMinutes}
               />
             )}
           </div>
@@ -486,7 +579,13 @@ export const History: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <MultiCharts data={selectedSeriesKey ? filteredData : data} seriesMeta={seriesMeta} rangeDays={selectedRange} />
+                <MultiCharts
+                  data={selectedSeriesKey ? filteredData : data}
+                  seriesMeta={seriesMeta}
+                  rangeStartMs={rangeStartMs}
+                  rangeEndMs={rangeEndMs}
+                  selectedSeriesKey={selectedSeriesKey || undefined}
+                />
               )}
             </>
           )}

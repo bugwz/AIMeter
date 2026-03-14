@@ -15,9 +15,13 @@ type CompactHistorySeries = {
   d: CompactHistoryRecord[];
 };
 
-function resolveBucketMinutes(days: number, bucketMinutesParam?: string): number {
+function resolveIntervalMinutes(days: number, intervalMinutesParam?: string, bucketMinutesParam?: string): number {
+  const explicitInterval = Number(intervalMinutesParam);
   const explicitBucket = Number(bucketMinutesParam);
   const minBucket = days >= 90 ? 20 : 1;
+  if (Number.isFinite(explicitInterval) && explicitInterval >= 1) {
+    return Math.max(Math.floor(explicitInterval), minBucket);
+  }
   if (Number.isFinite(explicitBucket) && explicitBucket >= 1) {
     return Math.max(Math.floor(explicitBucket), minBucket);
   }
@@ -82,17 +86,21 @@ function compactHistory(records: UsageRecordRow[], bucketMinutes: number): Compa
 router.get('/', async (req: Request, res: Response) => {
   try {
     const days = parseInt(req.query.days as string) || 30;
-    const bucketMinutes = resolveBucketMinutes(days, req.query.bucketMinutes as string | undefined);
+    const intervalMinutes = resolveIntervalMinutes(
+      days,
+      req.query.intervalMinutes as string | undefined,
+      req.query.bucketMinutes as string | undefined
+    );
     const provider = req.query.provider as string;
     
     let data: Record<string, CompactHistorySeries>;
     if (provider) {
       const history = await storage.getUsageHistory(provider, days);
-      data = { [provider]: compactHistory(history, bucketMinutes) };
+      data = { [provider]: compactHistory(history, intervalMinutes) };
     } else {
       const allHistory = await storage.getAllUsageHistory(days);
       data = Object.fromEntries(
-        Object.entries(allHistory).map(([providerId, records]) => [providerId, compactHistory(records, bucketMinutes)])
+        Object.entries(allHistory).map(([providerId, records]) => [providerId, compactHistory(records, intervalMinutes)])
       );
     }
     

@@ -17,7 +17,8 @@ normal or admin session cookie.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `days` | number | `30` | Number of days to query |
-| `bucketMinutes` | number | auto | Bucket granularity in minutes; auto-selected based on `days` if omitted |
+| `intervalMinutes` | number | auto | Interval granularity in minutes; auto-selected based on `days` if omitted |
+| `bucketMinutes` | number | — | Backward-compatible alias of `intervalMinutes` (deprecated) |
 | `provider` | string | — | Filter to a single provider ID; returns all providers if omitted |
 
 **Auto bucket selection:**
@@ -31,7 +32,7 @@ normal or admin session cookie.
 | ≤ 90 | 30 minutes |
 | > 90 | 60 minutes |
 
-> When `days` ≥ 90, `bucketMinutes` has a minimum of 20 regardless of the explicit value.
+> When `days` ≥ 90, `intervalMinutes` has a minimum of 20 regardless of the explicit value.
 
 #### Request Examples
 
@@ -39,8 +40,8 @@ normal or admin session cookie.
 # All providers, last 7 days
 curl -b cookies.txt "http://localhost:3001/api/history?days=7"
 
-# Single provider, last 30 days, 30-minute buckets
-curl -b cookies.txt "http://localhost:3001/api/history?days=30&provider=prov_abc123&bucketMinutes=30"
+# Single provider, last 30 days, 30-minute interval
+curl -b cookies.txt "http://localhost:3001/api/history?days=30&provider=prov_abc123&intervalMinutes=30"
 ```
 
 #### Response Example
@@ -104,4 +105,3 @@ d[0].c = [12.50, 100.00]
 |--------|------|-------------|
 | 401 | `UNAUTHORIZED` | Not authenticated |
 | 500 | `INTERNAL_ERROR` | Server error |
-
