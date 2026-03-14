@@ -68,11 +68,11 @@ done
 # Auto-generate image tag from git history if not overridden
 if [ -z "${IMAGE_TAG}" ]; then
   if git describe --tags --long > /dev/null 2>&1; then
-    IMAGE_TAG="$(git describe --tags --long)"
+    IMAGE_TAG="v$(git describe --tags --long | sed 's/^v//')"
   else
     COMMIT_COUNT="$(git rev-list --count HEAD)"
     SHORT_ID="$(git rev-parse --short HEAD)"
-    IMAGE_TAG="0.0-${COMMIT_COUNT}-g${SHORT_ID}"
+    IMAGE_TAG="v0.0-${COMMIT_COUNT}-g${SHORT_ID}"
   fi
 fi
 
