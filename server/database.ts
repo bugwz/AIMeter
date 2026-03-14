@@ -87,7 +87,9 @@ async function isPostgresSchemaInitialized(connection: string): Promise<boolean>
 async function isMysqlSchemaInitialized(connection: string): Promise<boolean> {
   const tables = getCurrentRuntimeTableNames();
   const { default: mysqlModule } = await import('mysql2/promise');
-  const pool = mysqlModule.createPool(connection);
+  const { resolveMysqlPoolConfig } = await import('./db/mysql.js');
+  const resolved = await resolveMysqlPoolConfig(connection);
+  const pool = mysqlModule.createPool(resolved.poolConfig as any);
   try {
     const [rows] = await pool.query(
       `SELECT TABLE_NAME

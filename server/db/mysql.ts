@@ -234,7 +234,7 @@ function buildPoolConfigFromHyperdrive(
   };
 }
 
-async function resolveMysqlPoolConfig(connection: string): Promise<ResolvedMysqlPool> {
+export async function resolveMysqlPoolConfig(connection: string): Promise<ResolvedMysqlPool> {
   const bindings = await resolveCloudflareBindings();
   if (!bindings) {
     return {
