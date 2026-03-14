@@ -53,6 +53,34 @@ async function fetchToExpress(
   }
 
   return new Promise<Response>((resolve, reject) => {
+    const REQUEST_TIMEOUT_MS = 25_000;
+    let settled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const settle = (resolver: () => void): void => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      resolver();
+    };
+
+    timeoutId = setTimeout(() => {
+      const path = url.pathname + url.search;
+      console.error(`[worker] Request timed out before response end: ${request.method} ${path}`);
+      settle(() => resolve(new Response(
+        JSON.stringify({
+          success: false,
+          error: {
+            code: 'REQUEST_TIMEOUT',
+            message: 'Request timed out before response completed',
+          },
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      )));
+    }, REQUEST_TIMEOUT_MS);
+
     const clientIp =
       (reqHeaders['x-forwarded-for'] ?? '').split(',')[0].trim() ||
       reqHeaders['x-real-ip'] ||
@@ -185,7 +213,7 @@ async function fetchToExpress(
       }
 
       const body = chunks.length ? Buffer.concat(chunks) : null;
-      resolve(new Response(body, { status: res.statusCode || 200, headers: outHeaders }));
+      settle(() => resolve(new Response(body, { status: res.statusCode || 200, headers: outHeaders })));
       res.emit('finish');
       return res;
     };
@@ -195,9 +223,7 @@ async function fetchToExpress(
     try {
       app(req, res);
     } catch (err) {
-      if (!finished) {
-        reject(err instanceof Error ? err : new Error(String(err)));
-      }
+      settle(() => reject(err instanceof Error ? err : new Error(String(err))));
     }
   });
 }

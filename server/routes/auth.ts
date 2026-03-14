@@ -61,6 +61,21 @@ function safeEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(aBuffer, bBuffer);
 }
 
+async function withTimeout<T>(label: string, promise: Promise<T>, timeoutMs: number = 10_000): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 router.get('/:role/status', asyncHandler(async (req, res) => {
   const role = getRoleOr404(req.params.role, res);
   if (!role) return;
@@ -379,7 +394,7 @@ router.post('/:role/logout', (req, res) => {
 });
 
 router.post('/admin/change-password', asyncHandler(async (req, res) => {
-  const adminHash = await storage.getPasswordHash('admin');
+  const adminHash = await withTimeout('getAdminPasswordHash', storage.getPasswordHash('admin'));
   if (!adminHash || !isRequestAuthenticated(req, 'admin', adminHash)) {
     return res.status(401).json({
       success: false,
@@ -417,7 +432,11 @@ router.post('/admin/change-password', asyncHandler(async (req, res) => {
     });
   }
 
-  if (!await storage.verifyPassword(role, oldPassword)) {
+  const oldPasswordValid = await withTimeout(
+    'verifyOldPassword',
+    storage.verifyPassword(role, oldPassword),
+  );
+  if (!oldPasswordValid) {
     return res.status(400).json({
       success: false,
       error: {
@@ -428,7 +447,7 @@ router.post('/admin/change-password', asyncHandler(async (req, res) => {
   }
 
   try {
-    await storage.setPassword(role, newPassword);
+    await withTimeout('setPassword', storage.setPassword(role, newPassword));
   } catch (error) {
     const readonly = tryParseReadonlyError(error);
     if (readonly) {
