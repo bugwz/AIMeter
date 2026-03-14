@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Resolve script directory (deploy/docker/)
+# Resolve script directory (deploy/container/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Detect compose command: prefer 'docker compose' (v2), fall back to 'docker-compose' (v1)
@@ -14,6 +14,9 @@ else
   exit 1
 fi
 
+# Determine display protocol from compose env or default
+PROTOCOL="${AIMETER_SERVER_PROTOCOL:-http}"
+
 # Parse optional subcommand (default: up)
 SUBCMD="${1:-up}"
 
@@ -22,7 +25,7 @@ case "${SUBCMD}" in
     echo "Starting AIMeter service..."
     ${COMPOSE} -f "${SCRIPT_DIR}/docker-compose.yml" up -d
     echo "Service started."
-    echo "  HTTPS: https://localhost:3000"
+    echo "  URL: ${PROTOCOL}://localhost:3000"
     ;;
   down)
     echo "Stopping AIMeter service..."

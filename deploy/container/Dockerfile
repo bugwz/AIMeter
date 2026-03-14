@@ -23,16 +23,18 @@ COPY src/ ./src/
 COPY public/ ./public/
 COPY --from=builder /app/dist ./dist
 
-# Copy nginx config and startup entrypoint
-COPY deploy/container/nginx/nginx.conf /etc/nginx/nginx.conf
+# Copy nginx configs (http + https) and startup entrypoint
+COPY deploy/container/nginx/nginx-http.conf  /etc/nginx/nginx-http.conf
+COPY deploy/container/nginx/nginx-https.conf /etc/nginx/nginx-https.conf
 COPY deploy/container/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY deploy/container/healthcheck.sh /healthcheck.sh
+RUN chmod +x /entrypoint.sh /healthcheck.sh
 
 # Create runtime directories
 RUN mkdir -p /aimeter/conf /aimeter/db /aimeter/log
 
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD wget -qO- --no-check-certificate https://localhost:3000/api/health || exit 1
+  CMD ["/healthcheck.sh"]
 
 CMD ["/entrypoint.sh"]

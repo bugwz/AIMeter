@@ -3,22 +3,43 @@ services:
     image: bugwz/aimeter:latest
     ports:
       - "3000:3000"
-    # volumes:
-      # TLS certificates: auto-generated inside container by default.
-      # To use your own certificates, uncomment and set the host path:
+    volumes:
+      # SQLite database storage — persists data across container restarts
+      - /opt/aimeter/db:/aimeter/db
+      # Application and nginx logs
+      - /opt/aimeter/log:/aimeter/log
+      # TLS certificates — only needed when AIMETER_SERVER_PROTOCOL=https
+      # Place server.crt and server.key here to use your own certificates,
+      # or leave it mounted so generated certs survive restarts.
       # - /opt/aimeter/conf:/aimeter/conf
-      # SQLite database storage
-      # - /opt/aimeter/db:/aimeter/db
-      # Application logs
-      # - /opt/aimeter/log:/aimeter/log
     environment:
-      # Node.js internal port (nginx proxies :3000 → :3001)
+      # Protocol: "http" (default, no browser cert warnings) or "https" (TLS, self-signed or custom cert)
+      AIMETER_SERVER_PROTOCOL: http
+
+      # External port nginx listens on (must match the left side of ports above)
+      AIMETER_SERVER_PORT: 3000
+
+      # Node.js internal port (nginx proxies AIMETER_SERVER_PORT → AIMETER_BACKEND_PORT)
       AIMETER_BACKEND_PORT: 3001
-      # Public protocol used by this deployment
-      AIMETER_SERVER_PROTOCOL: https
-      # Database configuration (SQLite)
+
+      # Database configuration
+      # SQLite (default):
       AIMETER_DATABASE_ENGINE: sqlite
       AIMETER_DATABASE_CONNECTION: /aimeter/db/aimeter.db
-      # Runtime mode: node (built-in timer) or serverless (external trigger)
+      # MySQL example (comment out SQLite lines above and uncomment):
+      # AIMETER_DATABASE_ENGINE: mysql
+      # AIMETER_DATABASE_CONNECTION: mysql://user:pass@host:3306/aimeter
+      # Postgres example:
+      # AIMETER_DATABASE_ENGINE: postgres
+      # AIMETER_DATABASE_CONNECTION: postgres://user:pass@host:5432/aimeter
+
+      # Runtime mode: "node" (built-in scheduler) or "serverless" (external cron trigger)
       AIMETER_RUNTIME_MODE: node
+
+      # Optional secrets (auto-generated on first start if not set)
+      # AIMETER_CRON_SECRET: <32-char secret>
+      # AIMETER_ENDPOINT_SECRET: <32-char secret>
+
+      # Session TTL in seconds (default: 43200 = 12 hours)
+      # AIMETER_AUTH_SESSION_TTL_SECONDS: 43200
     restart: unless-stopped
