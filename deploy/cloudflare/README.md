@@ -34,6 +34,8 @@ This guide covers Cloudflare Workers deployment for AIMeter with:
    - Choose **Connect to a public database**
    - Set **Configuration name** to `hyperdriver-aimeter`
    - Fill in the upstream MySQL connection details
+   - Set Hyperdrive cache to **Disabled** during initial setup to avoid initialization anomalies
+   - After system initialization is complete, you can enable cache based on workload needs
 
 ### Step 3 — Bind services to Worker (optional, only when used)
 
@@ -85,6 +87,8 @@ When `AIMETER_DATABASE_ENGINE=mysql` runs in Cloudflare Workers, AIMeter enables
 connection reuse, bind Hyperdrive and let AIMeter read the connection from that binding.
 
 1. In Cloudflare dashboard, create a Hyperdrive config pointing to your MySQL database.
+   - During first-time initialization, set Hyperdrive cache to **Disabled**.
+   - After initialization finishes and system behavior is stable, enable cache as needed.
 2. In your Worker, add a Hyperdrive binding (default variable name: `HYPERDRIVE`).
 3. Set:
    - `AIMETER_DATABASE_ENGINE=mysql`
