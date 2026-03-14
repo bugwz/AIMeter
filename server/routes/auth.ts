@@ -6,6 +6,7 @@ import { initDatabase } from '../database.js';
 import { ensureMockRuntimeProvidersSeeded } from '../mock/init.js';
 import { runtimeConfig } from '../runtime.js';
 import { storage, tryParseReadonlyError } from '../storage.js';
+import { asyncHandler } from '../utils/async-handler.js';
 import {
   checkLoginRateLimit,
   checkEntryContextRateLimit,
@@ -60,7 +61,7 @@ function safeEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(aBuffer, bBuffer);
 }
 
-router.get('/:role/status', async (req, res) => {
+router.get('/:role/status', asyncHandler(async (req, res) => {
   const role = getRoleOr404(req.params.role, res);
   if (!role) return;
 
@@ -80,9 +81,9 @@ router.get('/:role/status', async (req, res) => {
       authMutable: authConfig.mutable,
     },
   });
-});
+}));
 
-router.post('/bootstrap', async (req, res) => {
+router.post('/bootstrap', asyncHandler(async (req, res) => {
   try {
     if (!await storage.isInitialSetupRequired()) {
       return res.status(410).json({
@@ -211,9 +212,9 @@ router.post('/bootstrap', async (req, res) => {
       },
     });
   }
-});
+}));
 
-router.post('/:role/setup', async (req, res) => {
+router.post('/:role/setup', asyncHandler(async (req, res) => {
   const role = getRoleOr404(req.params.role, res);
   if (!role) return;
 
@@ -292,9 +293,9 @@ router.post('/:role/setup', async (req, res) => {
     success: true,
     data: { message: 'Password set successfully' },
   });
-});
+}));
 
-router.post('/:role/verify', async (req, res) => {
+router.post('/:role/verify', asyncHandler(async (req, res) => {
   const role = getRoleOr404(req.params.role, res);
   if (!role) return;
 
@@ -364,7 +365,7 @@ router.post('/:role/verify', async (req, res) => {
     success: true,
     data: { valid: false },
   });
-});
+}));
 
 router.post('/:role/logout', (req, res) => {
   const role = getRoleOr404(req.params.role, res);
@@ -377,7 +378,7 @@ router.post('/:role/logout', (req, res) => {
   });
 });
 
-router.post('/admin/change-password', async (req, res) => {
+router.post('/admin/change-password', asyncHandler(async (req, res) => {
   const adminHash = await storage.getPasswordHash('admin');
   if (!adminHash || !isRequestAuthenticated(req, 'admin', adminHash)) {
     return res.status(401).json({
@@ -453,9 +454,9 @@ router.post('/admin/change-password', async (req, res) => {
     success: true,
     data: { message: 'Password changed successfully' },
   });
-});
+}));
 
-router.get('/admin/audit-logs', async (req, res) => {
+router.get('/admin/audit-logs', asyncHandler(async (req, res) => {
   const storedHash = await storage.getPasswordHash('admin');
   if (!storedHash || !isRequestAuthenticated(req, 'admin', storedHash)) {
     return res.status(401).json({
@@ -473,6 +474,6 @@ router.get('/admin/audit-logs', async (req, res) => {
     success: true,
     data,
   });
-});
+}));
 
 export default router;

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { storage } from '../storage.js';
 import { fetchUsageForProvider } from '../services/ProviderUsageService.js';
+import { asyncHandler } from '../utils/async-handler.js';
 
 const router = Router();
 
@@ -56,7 +57,7 @@ async function patchFetchStateSafe(providerId: string, patch: Record<string, unk
   }
 }
 
-router.post('/refresh', async (req: Request, res: Response) => {
+router.post('/refresh', asyncHandler(async (req: Request, res: Response) => {
   const configuredSecret = await storage.getCronSecret();
   if (!configuredSecret) {
     res.status(503).json({
@@ -161,6 +162,6 @@ router.post('/refresh', async (req: Request, res: Response) => {
       results,
     },
   });
-});
+}));
 
 export default router;

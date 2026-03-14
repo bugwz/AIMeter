@@ -8,6 +8,7 @@ import { storage } from './storage.js';
 import { getAppConfig } from './config.js';
 import { checkEntryContextRateLimit } from './security/loginRateLimit.js';
 import { initSessionSecret } from './auth.js';
+import { asyncHandler } from './utils/async-handler.js';
 
 function createJsonBodyParser(limitBytes: number = 1024 * 1024) {
   return (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -146,7 +147,7 @@ export async function createApp(): Promise<express.Application> {
     });
   });
 
-  app.get('/api/entry-context', async (req, res) => {
+  app.get('/api/entry-context', asyncHandler(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
@@ -177,7 +178,7 @@ export async function createApp(): Promise<express.Application> {
         invalidAdminPath: false,
       },
     });
-  });
+  }));
 
   app.use('/api', (error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error('Unhandled API error:', error);
