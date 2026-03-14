@@ -142,8 +142,12 @@ async function initSchema(
 
 export async function createPostgresEngine(): Promise<DatabaseEngine> {
   const appConfig = getAppConfig();
-  const pgModule = (await import('pg')) as { Pool: new (config: { connectionString: string }) => unknown };
-  const pool = new pgModule.Pool({ connectionString: appConfig.database.connection });
+  const pgModule = (await import('pg')) as { Pool: new (config: { connectionString: string; connectionTimeoutMillis?: number; max?: number }) => unknown };
+  const pool = new pgModule.Pool({
+    connectionString: appConfig.database.connection,
+    connectionTimeoutMillis: 8_000,
+    max: 1,
+  });
   const client = new PostgresClient(pool);
   const tables = getCurrentRuntimeTableNames();
 

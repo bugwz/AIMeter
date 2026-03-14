@@ -14,9 +14,11 @@ router.get('/capabilities', asyncHandler(async (_req, res) => {
 
 router.get('/secrets', asyncHandler(async (req: Request, res) => {
   if (!requireAdminRole(req, res)) return;
+  const withTimeout = <T>(label: string, p: Promise<T>, ms = 8_000) =>
+    Promise.race([p, new Promise<T>((_, r) => setTimeout(() => r(new Error(`${label} timed out after ${ms}ms`)), ms))]);
   const [cronSecret, endpointSecret] = await Promise.all([
-    storage.getCronSecret(),
-    storage.getEndpointSecret(),
+    withTimeout('getCronSecret', storage.getCronSecret()),
+    withTimeout('getEndpointSecret', storage.getEndpointSecret()),
   ]);
   res.json({ success: true, data: { cronSecret, endpointSecret } });
 }));

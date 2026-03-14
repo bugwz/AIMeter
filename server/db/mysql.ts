@@ -28,6 +28,8 @@ interface MysqlPoolConfigLike {
   password?: string;
   database?: string;
   disableEval: boolean;
+  connectTimeout?: number;
+  connectionLimit?: number;
 }
 
 interface ResolvedMysqlPool {
@@ -225,12 +227,15 @@ function buildPoolConfigFromHyperdrive(
       database,
       port,
       disableEval: true,
+      connectTimeout: 8_000,
+      connectionLimit: 1,
     };
   }
 
   return {
     uri: connectionString,
     disableEval: true,
+    connectTimeout: 8_000,
   };
 }
 
@@ -253,6 +258,7 @@ export async function resolveMysqlPoolConfig(connection: string): Promise<Resolv
       poolConfig: {
         uri: connection,
         disableEval: true,
+        connectTimeout: 8_000,
       },
       usesHyperdrive: false,
     };

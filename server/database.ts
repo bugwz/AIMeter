@@ -63,13 +63,13 @@ async function isPostgresSchemaInitialized(connection: string): Promise<boolean>
   const tables = getCurrentRuntimeTableNames();
   const { default: pgModule } = await import('pg') as {
     default: {
-      Pool: new (config: { connectionString: string }) => {
+      Pool: new (config: { connectionString: string; connectionTimeoutMillis?: number }) => {
         query: (sql: string) => Promise<{ rows: Array<Record<string, string | null>> }>;
         end: () => Promise<void>;
       };
     };
   };
-  const pool = new pgModule.Pool({ connectionString: connection });
+  const pool = new pgModule.Pool({ connectionString: connection, connectionTimeoutMillis: 8_000 });
   try {
     const result = await pool.query(
       `SELECT to_regclass('public.${tables.providers}') AS providers, ` +
