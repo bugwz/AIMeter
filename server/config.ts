@@ -23,6 +23,7 @@ export interface AppConfig {
     engine: DatabaseEngineType;
     connection: string;
     encryptionKey?: string;
+    cfHyperdriveBinding?: string;
   };
   auth: {
     sessionTtlSeconds: number;
@@ -429,6 +430,9 @@ export function getAppConfig(): AppConfig {
   const databaseEngine = parseDatabaseEngine(rawDatabaseEngine);
   const databaseConnection = (asString(database.connection) || process.env.AIMETER_DATABASE_CONNECTION || '').trim();
   const databaseEncryptionKey = asString(database.encryptionKey)?.trim() || process.env.AIMETER_ENCRYPTION_KEY?.trim() || undefined;
+  const databaseCfHyperdriveBinding = asString(database.cfHyperdriveBinding)?.trim()
+    || process.env.AIMETER_CF_HYPERDRIVE_BINDING?.trim()
+    || undefined;
 
   const runtimeMode = (asString(runtime.mode) || process.env.AIMETER_RUNTIME_MODE || 'node') as 'node' | 'serverless';
   const protocolRaw = (asString(server.protocol) || process.env.AIMETER_SERVER_PROTOCOL || '').trim().toLowerCase();
@@ -486,6 +490,7 @@ export function getAppConfig(): AppConfig {
       engine: databaseEngine as DatabaseEngineType,
       connection: databaseConnection,
       encryptionKey: databaseEncryptionKey,
+      cfHyperdriveBinding: databaseCfHyperdriveBinding,
     },
     auth: {
       sessionTtlSeconds: asNumber(auth.sessionTtlSeconds)

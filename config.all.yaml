@@ -32,6 +32,9 @@ database:
   # postgres + ssl: postgresql://postgres:password@127.0.0.1:5432/aimeter?sslmode=require
   # postgres + ssl (self-signed cert): postgresql://postgres:password@127.0.0.1:5432/aimeter?sslmode=no-verify
   connection: ./data/aimeter.db
+  # Optional. Cloudflare Workers + mysql mode only.
+  # Hyperdrive binding variable name. Default: HYPERDRIVE
+  # cfHyperdriveBinding: HYPERDRIVE
 
 auth:
   # Session cookie lifetime in seconds

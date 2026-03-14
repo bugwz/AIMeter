@@ -30,6 +30,7 @@ Current implementation priority:
 | `database.engine` | `AIMETER_DATABASE_ENGINE` | `sqlite`/`d1`/`mysql`/`postgres` | **Yes** | - | Database engine. Must be explicitly configured. |
 | `database.connection` | `AIMETER_DATABASE_CONNECTION` | `string` | **Yes** | - | DB connection string/path/binding name. Must be explicitly configured. |
 | `database.encryptionKey` | `AIMETER_ENCRYPTION_KEY` | `string` | No | unset | Optional encryption key input; in DB mode, key material is persisted and managed by system settings. |
+| `database.cfHyperdriveBinding` | `AIMETER_CF_HYPERDRIVE_BINDING` | `string` | No | `HYPERDRIVE` in Workers MySQL path | Optional Cloudflare Hyperdrive binding name for `database.engine=mysql`. |
 | `auth.sessionTtlSeconds` | `AIMETER_AUTH_SESSION_TTL_SECONDS` | `number` | No | `14400` | Auth session TTL in seconds. |
 | `auth.cronSecret` | `AIMETER_CRON_SECRET` | `string` | No | unset | Optional cron API secret. If set, should be 32 random chars. |
 | `auth.endpointSecret` | `AIMETER_ENDPOINT_SECRET` | `string` | No | unset | Optional endpoint API secret. If set, should be 32 random chars. |

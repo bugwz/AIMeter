@@ -3,6 +3,33 @@ import type { DbClient, DatabaseEngine, ExecuteResult } from './engine.js';
 import { SqlEngine, runCommonBootstrap } from './sql-engine.js';
 import { getCurrentRuntimeTableNames } from './table-names.js';
 
+const CLOUDFLARE_WORKERS_MODULE = 'cloudflare:workers';
+const DEFAULT_HYPERDRIVE_BINDING = 'HYPERDRIVE';
+
+type CloudflareBindings = Record<string, unknown>;
+
+interface HyperdriveBindingLike {
+  connectionString?: unknown;
+  host?: unknown;
+  hostname?: unknown;
+  port?: unknown;
+  user?: unknown;
+  username?: unknown;
+  password?: unknown;
+  database?: unknown;
+  db?: unknown;
+}
+
+interface MysqlPoolConfigLike {
+  uri?: string;
+  host?: string;
+  port?: number;
+  user?: string;
+  password?: string;
+  database?: string;
+  disableEval: boolean;
+}
+
 class MysqlClient implements DbClient {
   constructor(private readonly pool: any) {}
 
@@ -139,10 +166,88 @@ async function initSchema(
   await runCommonBootstrap(client, tables, initialSecrets, '`key`');
 }
 
+function asNonEmptyString(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function toInteger(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.floor(value);
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return Math.floor(parsed);
+    }
+  }
+  return undefined;
+}
+
+async function resolveCloudflareBindings(): Promise<CloudflareBindings | null> {
+  try {
+    const mod = await import(CLOUDFLARE_WORKERS_MODULE) as { env?: CloudflareBindings };
+    return mod.env && typeof mod.env === 'object' ? mod.env : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildPoolConfigFromHyperdrive(
+  binding: HyperdriveBindingLike,
+  fallbackConnection: string,
+): MysqlPoolConfigLike {
+  const connectionString = asNonEmptyString(binding.connectionString) || fallbackConnection;
+  const host = asNonEmptyString(binding.host) || asNonEmptyString(binding.hostname);
+  const user = asNonEmptyString(binding.user) || asNonEmptyString(binding.username);
+  const password = asNonEmptyString(binding.password);
+  const database = asNonEmptyString(binding.database) || asNonEmptyString(binding.db);
+  const port = toInteger(binding.port);
+
+  if (host && user && database) {
+    return {
+      host,
+      user,
+      password,
+      database,
+      port,
+      disableEval: true,
+    };
+  }
+
+  return {
+    uri: connectionString,
+    disableEval: true,
+  };
+}
+
+async function resolveMysqlPoolConfig(connection: string): Promise<string | MysqlPoolConfigLike> {
+  const bindings = await resolveCloudflareBindings();
+  if (!bindings) {
+    return connection;
+  }
+
+  const appConfig = getAppConfig();
+  const bindingName = (appConfig.database.cfHyperdriveBinding || DEFAULT_HYPERDRIVE_BINDING).trim();
+  const binding = bindings[bindingName] as HyperdriveBindingLike | undefined;
+
+  if (!binding || typeof binding !== 'object') {
+    // Workers runtime: force disableEval to avoid dynamic code generation.
+    return {
+      uri: connection,
+      disableEval: true,
+    };
+  }
+
+  return buildPoolConfigFromHyperdrive(binding, connection);
+}
+
 export async function createMysqlEngine(): Promise<DatabaseEngine> {
   const appConfig = getAppConfig();
   const { default: mysqlModule } = await import('mysql2/promise');
-  const pool = mysqlModule.createPool(appConfig.database.connection);
+  const poolConfig = await resolveMysqlPoolConfig(appConfig.database.connection);
+  const pool = mysqlModule.createPool(poolConfig as any);
   const client = new MysqlClient(pool);
   const tables = getCurrentRuntimeTableNames();
 
