@@ -41,7 +41,10 @@ export const Settings: React.FC = () => {
     admin: { oldPassword: false, newPassword: false, confirmPassword: false },
   });
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [changingPassword, setChangingPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState<Record<Role, boolean>>({
+    normal: false,
+    admin: false,
+  });
   const [capabilities, setCapabilities] = useState<RuntimeCapabilities | null>(null);
   const [secrets, setSecrets] = useState<{ cronSecret: string | null; endpointSecret: string | null } | null>(null);
   const [secretsLoaded, setSecretsLoaded] = useState(false);
@@ -96,7 +99,7 @@ export const Settings: React.FC = () => {
       return;
     }
 
-    setChangingPassword(true);
+    setChangingPassword((prev) => ({ ...prev, [targetRole]: true }));
     setPasswordMessage(null);
 
     try {
@@ -117,7 +120,7 @@ export const Settings: React.FC = () => {
         text: error instanceof Error ? error.message : 'Failed to change password',
       });
     } finally {
-      setChangingPassword(false);
+      setChangingPassword((prev) => ({ ...prev, [targetRole]: false }));
     }
   };
 
@@ -269,14 +272,14 @@ export const Settings: React.FC = () => {
                 <button
                   type="submit"
                   disabled={
-                    changingPassword ||
+                    changingPassword[targetRole] ||
                     !passwordForms[targetRole].oldPassword ||
                     !passwordForms[targetRole].newPassword ||
                     !passwordForms[targetRole].confirmPassword
                   }
                   className="btn-primary w-full"
                 >
-                  {changingPassword ? (
+                  {changingPassword[targetRole] ? (
                     <>
                       <LoadingSpinner size="sm" />
                       <span>Changing...</span>
