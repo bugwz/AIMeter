@@ -26,12 +26,15 @@ interface D1PreparedStatement {
 interface D1Database {
   prepare(query: string): D1PreparedStatement;
   exec(query: string): Promise<unknown>;
+  batch<T = Record<string, unknown>>(statements: D1PreparedStatement[]): Promise<D1QueryResult<T>[]>;
 }
 
 function isD1Database(value: unknown): value is D1Database {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Partial<D1Database>;
-  return typeof candidate.prepare === 'function' && typeof candidate.exec === 'function';
+  return typeof candidate.prepare === 'function'
+    && typeof candidate.exec === 'function'
+    && typeof candidate.batch === 'function';
 }
 
 function isValidBindingName(value: string): boolean {
@@ -110,12 +113,15 @@ class D1Client implements DbClient {
 }
 
 async function initSchema(
+  db: D1Database,
   client: DbClient,
   initialSecrets?: Partial<Record<'cron_secret' | 'endpoint_secret', string>>,
 ): Promise<void> {
   const tables = getCurrentRuntimeTableNames();
-  await client.execute(`
-    CREATE TABLE IF NOT EXISTS ${tables.providers} (
+
+  // 7 DDL statements batched into a single HTTP round-trip (atomic execution)
+  await db.batch([
+    db.prepare(`CREATE TABLE IF NOT EXISTS ${tables.providers} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       uid TEXT NOT NULL,
       provider TEXT NOT NULL,
@@ -127,30 +133,21 @@ async function initSchema(
       updated_at INTEGER DEFAULT (unixepoch()),
       UNIQUE(provider, name),
       UNIQUE(uid)
-    )
-  `);
-
-  await client.execute(`
-    CREATE TABLE IF NOT EXISTS ${tables.usageRecords} (
+    )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS ${tables.usageRecords} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       provider_id INTEGER NOT NULL,
       progress TEXT,
       identity_data TEXT,
       created_at INTEGER DEFAULT (unixepoch()),
       FOREIGN KEY (provider_id) REFERENCES ${tables.providers}(id) ON DELETE CASCADE
-    )
-  `);
-
-  await client.execute(`
-    CREATE TABLE IF NOT EXISTS ${tables.settings} (
+    )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS ${tables.settings} (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL,
       updated_at INTEGER DEFAULT (unixepoch())
-    )
-  `);
-
-  await client.execute(`
-    CREATE TABLE IF NOT EXISTS ${tables.auditLogs} (
+    )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS ${tables.auditLogs} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       timestamp INTEGER DEFAULT (unixepoch()),
       ip TEXT,
@@ -162,13 +159,13 @@ async function initSchema(
       authenticated INTEGER NOT NULL DEFAULT 0,
       event_type TEXT NOT NULL DEFAULT 'api_access',
       details TEXT
-    )
-  `);
+    )`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS ${tables.usageProviderCreatedIndex} ON ${tables.usageRecords}(provider_id, created_at)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS ${tables.auditLogsTimestampIndex} ON ${tables.auditLogs}(timestamp)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS ${tables.auditLogsPathIndex} ON ${tables.auditLogs}(path)`),
+  ]);
 
-  await client.execute(`CREATE INDEX IF NOT EXISTS ${tables.usageProviderCreatedIndex} ON ${tables.usageRecords}(provider_id, created_at)`);
-  await client.execute(`CREATE INDEX IF NOT EXISTS ${tables.auditLogsTimestampIndex} ON ${tables.auditLogs}(timestamp)`);
-  await client.execute(`CREATE INDEX IF NOT EXISTS ${tables.auditLogsPathIndex} ON ${tables.auditLogs}(path)`);
-
+  // Bootstrap runs separately: needs to read the settings table just created
   await runCommonBootstrap(client, tables, initialSecrets, '"key"');
 }
 
@@ -198,7 +195,7 @@ export async function createD1Engine(): Promise<DatabaseEngine> {
   const client = new D1Client(binding);
   const tables = getCurrentRuntimeTableNames();
 
-  await initSchema(client, {
+  await initSchema(binding, client, {
     cron_secret: appConfig.auth.cronSecret,
     endpoint_secret: appConfig.auth.endpointSecret,
   });

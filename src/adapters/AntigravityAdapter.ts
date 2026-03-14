@@ -8,7 +8,7 @@ import {
   UsageSnapshot,
   ProgressItem,
 } from '../types/index.js';
-import { roundPercentage } from './utils.js';
+import { fetchWithTimeout, roundPercentage } from './utils.js';
 
 const ANTIGRAVITY_META: ProviderMeta = {
   id: UsageProvider.ANTIGRAVITY,
@@ -364,7 +364,7 @@ class AntigravityAdapter implements IProviderAdapter {
 
     for (const baseURL of baseURLs) {
       try {
-        const response = await fetch(`${baseURL}${endpointPath}`, {
+        const response = await fetchWithTimeout(`${baseURL}${endpointPath}`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${context.accessToken}`,
@@ -450,7 +450,7 @@ class AntigravityAdapter implements IProviderAdapter {
       grant_type: 'refresh_token',
     });
 
-    const response = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
+    const response = await fetchWithTimeout(GOOGLE_OAUTH_TOKEN_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',

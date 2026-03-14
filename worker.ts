@@ -246,4 +246,30 @@ export default {
 
     return env.ASSETS.fetch(request);
   },
+
+  async scheduled(
+    _event: { cron: string; scheduledTime: number },
+    _env: WorkerEnv,
+    ctx: WorkerExecutionContext,
+  ): Promise<void> {
+    ctx.waitUntil((async () => {
+      try {
+        const app = await getApp();
+        const { storage } = await import('./server/storage.js');
+        const cronSecret = await storage.getCronSecret?.();
+        if (!cronSecret) return;
+        const req = new Request('https://internal/api/system/jobs/refresh', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-aimeter-cron-secret': cronSecret,
+          },
+          body: JSON.stringify({}),
+        });
+        await fetchToExpress(app, req);
+      } catch (err) {
+        console.error('[scheduled] Cron refresh error:', err);
+      }
+    })());
+  },
 };

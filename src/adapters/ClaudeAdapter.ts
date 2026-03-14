@@ -10,7 +10,7 @@ import {
   ProviderCostSnapshot,
   ProviderConfig,
 } from '../types/index.js';
-import { roundPercentage } from './utils.js';
+import { fetchWithTimeout, roundPercentage } from './utils.js';
 
 interface ClaudeOrganization {
   uuid: string;
@@ -143,7 +143,7 @@ export class ClaudeAdapter implements IProviderAdapter {
 
       if (credentials.type === AuthType.COOKIE) {
         const cookieHeader = this.buildClaudeCookieHeader(credentials.value);
-        const response = await fetch(`${this.baseURL}/organizations`, {
+        const response = await fetchWithTimeout(`${this.baseURL}/organizations`, {
           headers: this.buildClaudeWebHeaders(cookieHeader),
         });
         if (response.status === 401 || response.status === 403) {
@@ -274,7 +274,7 @@ export class ClaudeAdapter implements IProviderAdapter {
   }
 
   private async fetchOAuthUsage(accessToken: string): Promise<OAuthUsageResponse> {
-    const response = await fetch(this.oauthUsageURL, {
+    const response = await fetchWithTimeout(this.oauthUsageURL, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: 'application/json',
@@ -358,7 +358,7 @@ export class ClaudeAdapter implements IProviderAdapter {
   private async refreshOAuthAccessToken(
     credentials: Extract<Credential, { type: AuthType.OAUTH }>,
   ): Promise<{ accessToken: string; refreshToken?: string; expiresAt?: Date }> {
-    const response = await fetch(this.oauthTokenRefreshURL, {
+    const response = await fetchWithTimeout(this.oauthTokenRefreshURL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -410,7 +410,7 @@ export class ClaudeAdapter implements IProviderAdapter {
 
   private async fetchCookieUsage(cookie: string): Promise<UsageSnapshot> {
     const cookieHeader = this.buildClaudeCookieHeader(cookie);
-    const orgsResponse = await fetch(`${this.baseURL}/organizations`, {
+    const orgsResponse = await fetchWithTimeout(`${this.baseURL}/organizations`, {
       headers: this.buildClaudeWebHeaders(cookieHeader),
     });
 
@@ -458,7 +458,7 @@ export class ClaudeAdapter implements IProviderAdapter {
   }
 
   private async fetchWebAccountInfo(cookie: string): Promise<ClaudeAccountResponse> {
-    const response = await fetch(`${this.baseURL}/account`, {
+    const response = await fetchWithTimeout(`${this.baseURL}/account`, {
       headers: this.buildClaudeWebHeaders(cookie),
     });
     if (!response.ok) throw new Error('Failed to fetch account info');
@@ -466,7 +466,7 @@ export class ClaudeAdapter implements IProviderAdapter {
   }
 
   private async fetchWebUsageData(cookie: string, orgId: string): Promise<ClaudeUsageResponse> {
-    const response = await fetch(`${this.baseURL}/organizations/${orgId}/usage`, {
+    const response = await fetchWithTimeout(`${this.baseURL}/organizations/${orgId}/usage`, {
       headers: this.buildClaudeWebHeaders(cookie),
     });
     if (!response.ok) throw new Error('Failed to fetch usage data');
@@ -477,7 +477,7 @@ export class ClaudeAdapter implements IProviderAdapter {
   }
 
   private async fetchWebOverageData(cookie: string, orgId: string): Promise<ClaudeOverageResponse> {
-    const response = await fetch(`${this.baseURL}/organizations/${orgId}/overage_spend_limit`, {
+    const response = await fetchWithTimeout(`${this.baseURL}/organizations/${orgId}/overage_spend_limit`, {
       headers: this.buildClaudeWebHeaders(cookie),
     });
     if (!response.ok) throw new Error('Failed to fetch overage data');
@@ -607,7 +607,7 @@ export class ClaudeAdapter implements IProviderAdapter {
   }
 
   private async fetchOAuthProfile(accessToken: string): Promise<{ accountType?: string }> {
-    const response = await fetch(this.oauthProfileURL, {
+    const response = await fetchWithTimeout(this.oauthProfileURL, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: 'application/json',

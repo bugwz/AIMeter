@@ -9,7 +9,7 @@ import {
   ProgressItem,
   Identity,
 } from '../types/index.js';
-import { formatWindowDurationFromMinutes, roundPercentage } from './utils.js';
+import { fetchWithTimeout, formatWindowDurationFromMinutes, roundPercentage } from './utils.js';
 
 interface KimiJWTPayload {
   device_id?: string;
@@ -121,7 +121,7 @@ export class KimiAdapter implements IProviderAdapter {
 
     const [usageData, subscriptionResponse] = await Promise.all([
       this.fetchUsageData(headers),
-      fetch(this.subscriptionURL, {
+      fetchWithTimeout(this.subscriptionURL, {
         method: 'POST',
         headers,
         body: JSON.stringify({}),
@@ -285,7 +285,7 @@ export class KimiAdapter implements IProviderAdapter {
     let lastData: KimiUsageResponse = {};
 
     for (const payload of payloads) {
-      const response = await fetch(this.usageURL, {
+      const response = await fetchWithTimeout(this.usageURL, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),

@@ -8,7 +8,7 @@ import {
   ProgressItem,
   ProviderConfig,
 } from '../types/index.js';
-import { roundPercentage } from './utils.js';
+import { fetchWithTimeout, roundPercentage } from './utils.js';
 
 type ZaiLimitType = 'TOKENS_LIMIT' | 'TIME_LIMIT';
 
@@ -78,7 +78,7 @@ export class ZaiAdapter implements IProviderAdapter {
         return { valid: false, reason: 'No API key provided' };
       }
 
-      const response = await fetch(this.resolveQuotaURL(config), {
+      const response = await fetchWithTimeout(this.resolveQuotaURL(config), {
         method: 'GET',
         headers: this.buildHeaders(apiKey),
       });
@@ -112,7 +112,7 @@ export class ZaiAdapter implements IProviderAdapter {
     }
 
     const quotaURL = this.resolveQuotaURL(config);
-    const response = await fetch(quotaURL, {
+    const response = await fetchWithTimeout(quotaURL, {
       method: 'GET',
       headers: this.buildHeaders(apiKey),
     });

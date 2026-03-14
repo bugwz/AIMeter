@@ -8,7 +8,7 @@ import {
   ProviderMeta,
   ProgressItem,
 } from '../types/index.js';
-import { roundPercentage } from './utils.js';
+import { fetchWithTimeout, roundPercentage } from './utils.js';
 
 const OLLAMA_META: ProviderMeta = {
   id: UsageProvider.OLLAMA,
@@ -33,7 +33,7 @@ export class OllamaAdapter implements IProviderAdapter {
         return { valid: false, reason: 'No cookie provided' };
       }
       
-      const response = await fetch(this.settingsURL, {
+      const response = await fetchWithTimeout(this.settingsURL, {
         headers: this.buildHeaders(cookie),
       });
       
@@ -67,7 +67,7 @@ export class OllamaAdapter implements IProviderAdapter {
       throw new Error('No cookie provided');
     }
     
-    const response = await fetch(this.settingsURL, {
+    const response = await fetchWithTimeout(this.settingsURL, {
       headers: this.buildHeaders(cookie),
     });
     

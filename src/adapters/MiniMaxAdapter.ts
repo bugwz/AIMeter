@@ -9,7 +9,7 @@ import {
   ProgressItem,
   ProviderConfig,
 } from '../types/index.js';
-import { formatWindowDurationFromMinutes, roundPercentage } from './utils.js';
+import { fetchWithTimeout, formatWindowDurationFromMinutes, roundPercentage } from './utils.js';
 
 interface MiniMaxUsageResponse {
   model_remains?: {
@@ -116,7 +116,7 @@ export class MiniMaxAdapter implements IProviderAdapter {
       headers['accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
       headers['x-requested-with'] = 'XMLHttpRequest';
       
-      const response = await fetch(htmlURL, {
+      const response = await fetchWithTimeout(htmlURL, {
         method: 'GET',
         headers,
       });
@@ -239,7 +239,7 @@ export class MiniMaxAdapter implements IProviderAdapter {
       const userInfoURL = this.getUserInfoURL(region);
       const { headers } = this.buildRequest(credentials, region);
       
-      const response = await fetch(userInfoURL, {
+      const response = await fetchWithTimeout(userInfoURL, {
         method: 'GET',
         headers,
       });
@@ -272,7 +272,7 @@ export class MiniMaxAdapter implements IProviderAdapter {
   private async fetchWithCredentials(credentials: Credential, region?: string): Promise<Response> {
     const { headers, url } = this.buildRequest(credentials, region);
     
-    return fetch(url, {
+    return fetchWithTimeout(url, {
       method: 'GET',
       headers,
     });

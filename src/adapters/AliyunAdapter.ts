@@ -8,7 +8,7 @@ import {
   UsageProvider,
   UsageSnapshot,
 } from '../types/index.js';
-import { roundPercentage } from './utils.js';
+import { fetchWithTimeout, roundPercentage } from './utils.js';
 
 const ALIYUN_GATEWAY_URL = 'https://bailian-cs.console.aliyun.com/data/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2&_v=undefined';
 const ALIYUN_API = 'zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2';
@@ -166,7 +166,7 @@ export class AliyunAdapter implements IProviderAdapter {
     const direct = this.readCookieValue(cookie, ['sec_token', 'secToken']);
     if (direct) return direct;
 
-    const response = await fetch(referer, {
+    const response = await fetchWithTimeout(referer, {
       method: 'GET',
       headers: {
         accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -255,7 +255,7 @@ export class AliyunAdapter implements IProviderAdapter {
       sec_token: request.secToken,
     });
 
-    const response = await fetch(ALIYUN_GATEWAY_URL, {
+    const response = await fetchWithTimeout(ALIYUN_GATEWAY_URL, {
       method: 'POST',
       headers: {
         accept: '*/*',

@@ -59,6 +59,7 @@ AIMeter is a self-hosted dashboard for tracking AI provider usage, quota, and hi
 - Endpoint/proxy related API pages
 - Bootstrap + admin route initialization flow
 - Multiple database engines: `sqlite`, `d1`, `postgres`, `mysql`
+- Cloudflare Cron Triggers support via `scheduled` handler
 
 ## Supported Providers
 
@@ -193,7 +194,7 @@ Important:
 
 - `database.engine` / `AIMETER_DATABASE_ENGINE` is required.
 - `database.connection` / `AIMETER_DATABASE_CONNECTION` is required.
-- In `serverless` mode, scheduler is disabled.
+- In `serverless` mode, in-process scheduler is disabled; use CF Cron Triggers or an external scheduler.
 - In `node` mode, in-process scheduler starts automatically.
 
 Detailed field mapping and explanations:

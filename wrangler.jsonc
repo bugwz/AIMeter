@@ -13,7 +13,7 @@
     "run_worker_first": ["/api/*"]
   },
   "observability": {
-    "enabled": false,
+    "enabled": true,
     "head_sampling_rate": 1,
     "logs": {
       "enabled": true,
@@ -26,6 +26,9 @@
       "persist": true,
       "head_sampling_rate": 1
     }
+  },
+  "triggers": {
+    "crons": ["*/5 * * * *"]
   },
   "vars": {
     "AIMETER_RUNTIME_MODE": "serverless",

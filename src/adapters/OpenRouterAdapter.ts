@@ -9,7 +9,7 @@ import {
   ProgressItem,
   ProviderSpecificData,
 } from '../types/index.js';
-import { roundPercentage } from './utils.js';
+import { fetchWithTimeout, roundPercentage } from './utils.js';
 
 interface OpenRouterCreditsResponse {
   data: {
@@ -55,7 +55,7 @@ export class OpenRouterAdapter implements IProviderAdapter {
         return { valid: false, reason: 'No API key provided' };
       }
       
-      const response = await fetch(`${this.baseURL}/credits`, {
+      const response = await fetchWithTimeout(`${this.baseURL}/credits`, {
         headers: { 'Authorization': `Bearer ${apiKey}` },
       });
       
@@ -80,14 +80,14 @@ export class OpenRouterAdapter implements IProviderAdapter {
     }
     
     const [creditsRes, keyRes] = await Promise.all([
-      fetch(`${this.baseURL}/credits`, {
-        headers: { 
+      fetchWithTimeout(`${this.baseURL}/credits`, {
+        headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Accept': 'application/json',
         },
       }),
-      fetch(`${this.baseURL}/key`, {
-        headers: { 
+      fetchWithTimeout(`${this.baseURL}/key`, {
+        headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Accept': 'application/json',
         },

@@ -8,7 +8,7 @@ import {
   ProviderMeta,
   ProgressItem,
 } from '../types/index.js';
-import { roundPercentage } from './utils.js';
+import { fetchWithTimeout, roundPercentage } from './utils.js';
 
 interface CursorUsageResponse {
   usage_summary?: {
@@ -96,7 +96,7 @@ export class CursorAdapter implements IProviderAdapter {
         return { valid: false, reason: 'No cookie provided' };
       }
       
-      const response = await fetch(this.userURL, {
+      const response = await fetchWithTimeout(this.userURL, {
         headers: this.buildHeaders(cookie),
       });
       
@@ -121,10 +121,10 @@ export class CursorAdapter implements IProviderAdapter {
     }
     
     const [usageRes, userRes] = await Promise.all([
-      fetch(this.usageURL, {
+      fetchWithTimeout(this.usageURL, {
         headers: this.buildHeaders(cookie),
       }),
-      fetch(this.userURL, {
+      fetchWithTimeout(this.userURL, {
         headers: this.buildHeaders(cookie),
       }),
     ]);
@@ -199,7 +199,7 @@ export class CursorAdapter implements IProviderAdapter {
     try {
       const url = new URL(this.legacyUsageURL);
       url.searchParams.set('user', userId);
-      const response = await fetch(url.toString(), {
+      const response = await fetchWithTimeout(url.toString(), {
         headers: this.buildHeaders(cookie),
       });
 

@@ -10,10 +10,7 @@ import {
   ProviderCostSnapshot,
   Identity
 } from '../types/index.js';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import { formatWindowDurationFromSeconds, roundPercentage } from './utils.js';
+import { fetchWithTimeout, formatWindowDurationFromSeconds, roundPercentage } from './utils.js';
 
 interface CodexAuthJson {
   tokens?: {
@@ -248,7 +245,7 @@ export class CodexAdapter implements IProviderAdapter {
   }
 
   private async validateOAuthCredentials(accessToken: string): Promise<ValidationResult> {
-    const response = await fetch(this.oauthUsageURL, {
+    const response = await fetchWithTimeout(this.oauthUsageURL, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'User-Agent': 'AIMeter',
@@ -265,7 +262,7 @@ export class CodexAdapter implements IProviderAdapter {
 
   private async validateCookieCredentials(cookie: string): Promise<ValidationResult> {
     const cookieHeader = this.buildCodexCookieHeader(cookie);
-    const response = await fetch(this.webAPIURL, {
+    const response = await fetchWithTimeout(this.webAPIURL, {
       headers: {
         'Cookie': cookieHeader,
         'Accept': 'application/json'
@@ -297,7 +294,7 @@ export class CodexAdapter implements IProviderAdapter {
 
   private async fetchOAuthAccount(accessToken: string): Promise<{ email?: string; plan?: string }> {
     try {
-      const response = await fetch(this.oauthUsageURL, {
+      const response = await fetchWithTimeout(this.oauthUsageURL, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'User-Agent': 'AIMeter',
@@ -319,7 +316,7 @@ export class CodexAdapter implements IProviderAdapter {
   private async fetchCookieAccount(cookie: string): Promise<{ email?: string; plan?: string }> {
     try {
       const cookieHeader = this.buildCodexCookieHeader(cookie);
-      const response = await fetch(this.webAPIURL, {
+      const response = await fetchWithTimeout(this.webAPIURL, {
         headers: {
           'Cookie': cookieHeader,
           'Accept': 'application/json'
@@ -347,7 +344,7 @@ export class CodexAdapter implements IProviderAdapter {
   }
 
   private async fetchOAuthUsage(accessToken: string): Promise<UsageSnapshot> {
-    const response = await fetch(this.oauthUsageURL, {
+    const response = await fetchWithTimeout(this.oauthUsageURL, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'User-Agent': 'AIMeter',
@@ -434,11 +431,11 @@ export class CodexAdapter implements IProviderAdapter {
   private async fetchCookieUsage(cookie: string): Promise<UsageSnapshot> {
     const cookieHeader = this.buildCodexCookieHeader(cookie);
     // Fetch organization information first
-    const orgsResponse = await fetch(this.webAPIURL, {
+    const orgsResponse = await fetchWithTimeout(this.webAPIURL, {
       headers: {
         'Cookie': cookieHeader,
-        'Accept': 'application/json'
-      }
+        'Accept': 'application/json',
+      },
     });
     
     if (!orgsResponse.ok) {
@@ -454,7 +451,7 @@ export class CodexAdapter implements IProviderAdapter {
 
     // Fetch usage data
     const usageURL = `${this.webUsageURL}?organization_id=${orgId}`;
-    const usageResponse = await fetch(usageURL, {
+    const usageResponse = await fetchWithTimeout(usageURL, {
       headers: {
         'Cookie': cookieHeader,
         'Accept': 'application/json'
@@ -536,7 +533,7 @@ export class CodexAdapter implements IProviderAdapter {
     expiresAt?: Date;
   }> {
     const resolvedClientId = clientId || 'app_EMoamEEZ73f0CkXaXp7hrann';
-    const response = await fetch(this.tokenRefreshURL, {
+    const response = await fetchWithTimeout(this.tokenRefreshURL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

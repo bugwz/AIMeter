@@ -8,7 +8,7 @@ import {
   ProgressItem,
   ProviderConfig,
 } from '../types/index.js';
-import { roundPercentage } from './utils.js';
+import { fetchWithTimeout, roundPercentage } from './utils.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -297,7 +297,7 @@ export class OpenCodeAdapter implements IProviderAdapter {
       init.body = JSON.stringify(input.body ?? input.args ?? []);
     }
 
-    const response = await fetch(url, init);
+    const response = await fetchWithTimeout(url, init);
     const text = await response.text();
     this.log(
       'OpenCode response:',

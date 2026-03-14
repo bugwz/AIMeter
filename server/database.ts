@@ -1,7 +1,6 @@
 import type { Database as BetterSqlite3Database } from 'better-sqlite3';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { getAppConfig } from './config.js';
 import type { Credential, ProviderConfig, UsageProvider, UsageSnapshot } from '../src/types/index.js';
 import type { AuditLogRow, DatabaseEngine, UsageRecordRow } from './db/engine.js';
@@ -62,11 +61,12 @@ async function isSqliteSchemaInitialized(connection: string): Promise<boolean> {
 
 async function isPostgresSchemaInitialized(connection: string): Promise<boolean> {
   const tables = getCurrentRuntimeTableNames();
-  const require = createRequire(import.meta.url);
-  const pgModule = require('pg') as {
-    Pool: new (config: { connectionString: string }) => {
-      query: (sql: string) => Promise<{ rows: Array<Record<string, string | null>> }>;
-      end: () => Promise<void>;
+  const { default: pgModule } = await import('pg') as {
+    default: {
+      Pool: new (config: { connectionString: string }) => {
+        query: (sql: string) => Promise<{ rows: Array<Record<string, string | null>> }>;
+        end: () => Promise<void>;
+      };
     };
   };
   const pool = new pgModule.Pool({ connectionString: connection });

@@ -76,7 +76,40 @@ This guide covers Cloudflare Workers deployment for AIMeter with:
 | D1 database mode | Supported (Cloudflare Workers runtime only) |
 | MySQL/PostgreSQL mode | Supported (external DB required; MySQL on Workers should use Hyperdrive) |
 | In-process scheduler (`runtime=node`) | Not recommended on Workers |
-| Serverless refresh flow | Supported via API-triggered refresh / external scheduler |
+| Serverless refresh flow | Supported via API-triggered refresh or CF Cron Triggers |
+| Cron Triggers (scheduled refresh) | Supported via `scheduled` handler in `worker.ts` |
+
+---
+
+## Cron Triggers (Scheduled Refresh)
+
+AIMeter's `worker.ts` includes a `scheduled` handler that fires on Cloudflare Cron Triggers.
+It calls `/api/system/jobs/refresh` internally using the stored `cron_secret`.
+
+`wrangler.jsonc` ships with a default cron schedule:
+
+```jsonc
+"triggers": {
+  "crons": ["*/5 * * * *"]
+}
+```
+
+This triggers a full provider refresh every 5 minutes. Adjust the expression as needed.
+
+To enable Cron Triggers on an existing Worker:
+1. Go to **Compute** → **Workers & Pages** → your Worker → **Triggers** → **Cron Triggers** → **Add Cron Trigger**.
+2. Enter a cron expression (e.g. `*/5 * * * *`).
+3. Ensure `AIMETER_CRON_SECRET` is set so the handler can authenticate against the refresh endpoint.
+
+---
+
+## Fetch Timeout
+
+All provider adapters enforce a **12-second per-request timeout** via `AbortSignal.timeout()`.
+When an upstream API hangs, the fetch aborts at 12s and the refresh endpoint returns a stale
+fallback response instead of waiting for the Worker's 25s CPU limit.
+
+This applies to all deployment targets (CF Workers, Vercel, Node.js container).
 
 ---
 
@@ -103,8 +136,39 @@ in Workers while keeping `disableEval` enabled.
 ## Local Development Notes
 
 - Workers local development requires Wrangler
-- `engine=d1` local testing should use a local D1 binding setup via Wrangler
 - For non-Cloudflare local backend runs, use `sqlite`, `mysql`, or `postgres` instead of `d1`
+
+### Local D1 testing with `wrangler dev`
+
+`wrangler.jsonc` does not include a `d1_databases` block (to avoid forcing D1 on all deployment paths). For local D1 testing, add it temporarily before running `wrangler dev`:
+
+```jsonc
+// add to wrangler.jsonc for local dev only, do not commit with a real database_id
+"d1_databases": [
+  {
+    "binding": "DB",
+    "database_name": "aimeter",
+    "database_id": "00000000-0000-0000-0000-000000000000"
+  }
+]
+```
+
+Wrangler ignores `database_id` in local mode and creates a local SQLite file automatically. Any placeholder UUID works.
+
+```bash
+wrangler dev
+# first request triggers schema init (single D1 batch round-trip instead of 7 serial calls)
+
+npx wrangler d1 execute aimeter --local \
+  --command "SELECT name FROM sqlite_master WHERE type='table'"
+# should list: providers, usage_records, settings, audit_logs
+```
+
+### Observability
+
+`wrangler.jsonc` has `observability.enabled = true` (logs enabled, traces disabled).
+After deploying, visit **Cloudflare Dashboard → Workers → your Worker → Logs** to view invocation logs.
+Traces can be enabled separately by setting `traces.enabled = true` when needed.
 
 ---
 

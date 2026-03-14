@@ -8,7 +8,7 @@ import {
   ProviderMeta,
   ProgressItem,
 } from '../types/index.js';
-import { roundPercentage } from './utils.js';
+import { fetchWithTimeout, roundPercentage } from './utils.js';
 
 interface CopilotUsageResponse {
   login?: string;
@@ -54,7 +54,7 @@ export class CopilotAdapter implements IProviderAdapter {
         return { valid: false, reason: 'No token provided' };
       }
       
-      const response = await fetch(`${this.baseURL}/copilot_internal/user`, {
+      const response = await fetchWithTimeout(`${this.baseURL}/copilot_internal/user`, {
         headers: this.buildHeaders(token),
       });
       
@@ -78,7 +78,7 @@ export class CopilotAdapter implements IProviderAdapter {
       throw new Error('No token provided');
     }
     
-    const response = await fetch(`${this.baseURL}/copilot_internal/user`, {
+    const response = await fetchWithTimeout(`${this.baseURL}/copilot_internal/user`, {
       headers: this.buildHeaders(token),
     });
     

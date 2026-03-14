@@ -40,3 +40,15 @@ export function formatWindowDurationFromSeconds(windowSeconds?: number | null): 
   }
   return formatWindowDurationFromMinutes(windowSeconds / 60);
 }
+
+const ADAPTER_FETCH_TIMEOUT_MS = 12_000;
+
+export function fetchWithTimeout(
+  input: string | URL | Request,
+  init?: RequestInit,
+): Promise<Response> {
+  return fetch(input, {
+    ...init,
+    signal: AbortSignal.timeout(ADAPTER_FETCH_TIMEOUT_MS),
+  });
+}
