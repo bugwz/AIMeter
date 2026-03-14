@@ -140,9 +140,16 @@ async function initSchema(
   await runCommonBootstrap(client, tables, initialSecrets, '"key"');
 }
 
+// Cached across requests within the same CF Workers isolate.
+// Schema DDL and encryption key are only fetched on first init.
+let postgresInitDone = false;
+let postgresEncryptionKey: string | undefined;
+
 export async function createPostgresEngine(): Promise<DatabaseEngine> {
   const appConfig = getAppConfig();
   const pgModule = (await import('pg')) as { Pool: new (config: { connectionString: string; connectionTimeoutMillis?: number; max?: number }) => unknown };
+  // Always create a fresh Pool so the TCP socket belongs to the current
+  // request's I/O context (CF Workers forbids cross-request socket reuse).
   const pool = new pgModule.Pool({
     connectionString: appConfig.database.connection,
     connectionTimeoutMillis: 8_000,
@@ -151,13 +158,17 @@ export async function createPostgresEngine(): Promise<DatabaseEngine> {
   const client = new PostgresClient(pool);
   const tables = getCurrentRuntimeTableNames();
 
-  await initSchema(client, {
-    cron_secret: appConfig.auth.cronSecret,
-    endpoint_secret: appConfig.auth.endpointSecret,
-  });
+  if (!postgresInitDone) {
+    await initSchema(client, {
+      cron_secret: appConfig.auth.cronSecret,
+      endpoint_secret: appConfig.auth.endpointSecret,
+    });
 
-  const encryptionKey = appConfig.database.encryptionKey
-    || (await client.queryOne<{ value: string }>(`SELECT value FROM ${tables.settings} WHERE "key" = ?`, ['encryption_key']))?.value;
+    postgresEncryptionKey = appConfig.database.encryptionKey
+      || (await client.queryOne<{ value: string }>(`SELECT value FROM ${tables.settings} WHERE "key" = ?`, ['encryption_key']))?.value;
 
-  return new SqlEngine(client, 'postgres', tables, encryptionKey);
+    postgresInitDone = true;
+  }
+
+  return new SqlEngine(client, 'postgres', tables, postgresEncryptionKey);
 }

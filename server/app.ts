@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import { initDatabase, getSetting, isDatabaseInitialized } from './database.js';
+import { initDatabase, getSetting, isDatabaseInitialized, clearEngineCache } from './database.js';
 import { requireApiAuth, requireEndpointAuth } from './middleware/auth.js';
 import { createApiAuditMiddleware } from './middleware/audit.js';
 import { runtimeConfig } from './runtime.js';
@@ -89,6 +89,10 @@ export async function createApp(): Promise<express.Application> {
   const appConfig = getAppConfig();
   const isMockMode = runtimeConfig.mockEnabled;
   const app = express();
+
+  // For postgres/mysql on CF Workers: reset the engine instance so each request
+  // gets a fresh TCP connection bound to its own I/O context.
+  app.use((_req, _res, next) => { clearEngineCache(); next(); });
 
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');

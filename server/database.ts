@@ -358,3 +358,18 @@ export async function patchProviderAttrs(uid: string, patch: Record<string, unkn
 export async function patchFetchState(uid: string, patch: Record<string, unknown>): Promise<void> {
   return (await getEngine()).patchFetchState(uid, patch);
 }
+
+/**
+ * Reset the cached engine instance for the current request.
+ * Must be called at the start of each request for postgres/mysql so that
+ * a fresh TCP connection (bound to the current CF Workers request context)
+ * is created instead of reusing a socket from a previous request.
+ */
+export function clearEngineCache(): void {
+  const appConfig = getAppConfig();
+  const engine = appConfig.database.engine;
+  if (engine === 'postgres' || engine === 'mysql') {
+    engineInstance = null;
+    initPromise = null;
+  }
+}
