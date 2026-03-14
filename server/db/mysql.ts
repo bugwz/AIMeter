@@ -30,8 +30,16 @@ interface MysqlPoolConfigLike {
   disableEval: boolean;
 }
 
+interface ResolvedMysqlPool {
+  poolConfig: string | MysqlPoolConfigLike;
+  usesHyperdrive: boolean;
+}
+
 class MysqlClient implements DbClient {
-  constructor(private readonly pool: any) {}
+  constructor(
+    private readonly pool: any,
+    private readonly forceTextProtocolForExecute: boolean = false,
+  ) {}
 
   async query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
     const [rows] = await this.pool.query(sql, params);
@@ -44,7 +52,9 @@ class MysqlClient implements DbClient {
   }
 
   async execute(sql: string, params: unknown[] = []): Promise<ExecuteResult> {
-    const [result] = await this.pool.execute(sql, params);
+    const [result] = this.forceTextProtocolForExecute
+      ? await this.pool.query(sql, params)
+      : await this.pool.execute(sql, params);
     const packet = result as any;
     return {
       insertId: packet.insertId || undefined,
@@ -64,7 +74,9 @@ class MysqlClient implements DbClient {
         return (rows as R[])[0];
       },
       execute: async (sql: string, params: unknown[] = []) => {
-        const [result] = await connection.execute(sql, params);
+        const [result] = this.forceTextProtocolForExecute
+          ? await connection.query(sql, params)
+          : await connection.execute(sql, params);
         const packet = result as any;
         return {
           insertId: packet.insertId || undefined,
@@ -222,10 +234,13 @@ function buildPoolConfigFromHyperdrive(
   };
 }
 
-async function resolveMysqlPoolConfig(connection: string): Promise<string | MysqlPoolConfigLike> {
+async function resolveMysqlPoolConfig(connection: string): Promise<ResolvedMysqlPool> {
   const bindings = await resolveCloudflareBindings();
   if (!bindings) {
-    return connection;
+    return {
+      poolConfig: connection,
+      usesHyperdrive: false,
+    };
   }
 
   const appConfig = getAppConfig();
@@ -235,20 +250,26 @@ async function resolveMysqlPoolConfig(connection: string): Promise<string | Mysq
   if (!binding || typeof binding !== 'object') {
     // Workers runtime: force disableEval to avoid dynamic code generation.
     return {
-      uri: connection,
-      disableEval: true,
+      poolConfig: {
+        uri: connection,
+        disableEval: true,
+      },
+      usesHyperdrive: false,
     };
   }
 
-  return buildPoolConfigFromHyperdrive(binding, connection);
+  return {
+    poolConfig: buildPoolConfigFromHyperdrive(binding, connection),
+    usesHyperdrive: true,
+  };
 }
 
 export async function createMysqlEngine(): Promise<DatabaseEngine> {
   const appConfig = getAppConfig();
   const { default: mysqlModule } = await import('mysql2/promise');
-  const poolConfig = await resolveMysqlPoolConfig(appConfig.database.connection);
-  const pool = mysqlModule.createPool(poolConfig as any);
-  const client = new MysqlClient(pool);
+  const resolved = await resolveMysqlPoolConfig(appConfig.database.connection);
+  const pool = mysqlModule.createPool(resolved.poolConfig as any);
+  const client = new MysqlClient(pool, resolved.usesHyperdrive);
   const tables = getCurrentRuntimeTableNames();
 
   await initSchema(client, {
