@@ -17,7 +17,7 @@ type RefreshResult = {
   updatedAt?: number;
   error?: string;
   reason?: string;
-  nextDueAt?: string;
+  nextDueAt?: number;
 };
 
 function safeEqual(a: string, b: string): boolean {
@@ -96,16 +96,17 @@ router.post('/refresh', async (req: Request, res: Response) => {
   for (const provider of providers) {
     const intervalMinutes = resolveIntervalMinutes(provider.refreshInterval);
     const intervalMs = intervalMinutes * 60 * 1000;
+    const skipThresholdMs = Math.max(0, intervalMs - 20 * 1000);
     const fetchState = (provider.fetchState || {}) as Record<string, unknown>;
     const lastAttemptAtMs = parseIsoTime(fetchState.lastAttemptAt);
 
-    if (lastAttemptAtMs && (Date.now() - lastAttemptAtMs) < intervalMs) {
+    if (lastAttemptAtMs && (Date.now() - lastAttemptAtMs) < skipThresholdMs) {
       results.push({
         id: provider.id,
         provider: provider.provider,
         status: 'skipped',
         reason: 'NOT_DUE',
-        nextDueAt: new Date(lastAttemptAtMs + intervalMs).toISOString(),
+        nextDueAt: Math.floor((lastAttemptAtMs + intervalMs) / 1000),
       });
       continue;
     }
