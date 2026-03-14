@@ -555,29 +555,26 @@ export const History: React.FC = () => {
           {(hasData || showLoadingLayout) && (
             <>
               {showLoadingLayout ? (
-                <>
-                  <div className="space-y-6 mt-6">
-                    <div className="bg-[var(--color-surface)] rounded-xl p-5 gradient-border animate-fade-in skeleton-panel" style={{ boxShadow: 'var(--shadow-card)' }}>
-                      <SkeletonLine className="h-4 w-52 mb-4" />
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {Array.from({ length: 6 }).map((_, index) => (
-                          <div key={`multi-skeleton-card-${index}`} className="p-4 rounded-xl bg-[var(--color-bg-subtle)] border border-[var(--color-border-subtle)]">
-                            <SkeletonLine className="h-4 w-36 mb-3" />
-                            <SkeletonLine className="h-20 w-full" />
-                          </div>
-                        ))}
+                <div className="space-y-6 mt-6">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    {Array.from({ length: 2 }).map((_, index) => (
+                      <div key={`multi-skeleton-top-${index}`} className="bg-[var(--color-surface)] rounded-xl p-5 gradient-border animate-fade-in skeleton-panel" style={{ boxShadow: 'var(--shadow-card)' }}>
+                        <SkeletonLine className="h-4 w-48 mb-4" />
+                        <SkeletonLine className="h-64 w-full" />
+                        <SkeletonLine className="h-3 w-40 mt-3" />
                       </div>
-                    </div>
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                      {Array.from({ length: 4 }).map((_, index) => (
-                        <div key={`multi-skeleton-chart-${index}`} className="bg-[var(--color-surface)] rounded-xl p-5 gradient-border animate-fade-in skeleton-panel" style={{ boxShadow: 'var(--shadow-card)' }}>
-                          <SkeletonLine className="h-4 w-48 mb-4" />
-                          <SkeletonLine className="h-64 w-full" />
-                        </div>
-                      ))}
-                    </div>
+                    ))}
                   </div>
-                </>
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    {Array.from({ length: 2 }).map((_, index) => (
+                      <div key={`multi-skeleton-bottom-${index}`} className="bg-[var(--color-surface)] rounded-xl p-5 gradient-border animate-fade-in skeleton-panel" style={{ boxShadow: 'var(--shadow-card)' }}>
+                        <SkeletonLine className="h-4 w-48 mb-4" />
+                        <SkeletonLine className="h-64 w-full" />
+                        <SkeletonLine className="h-3 w-36 mt-3" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <MultiCharts
                   data={selectedSeriesKey ? filteredData : data}
