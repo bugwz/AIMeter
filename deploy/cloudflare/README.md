@@ -3,7 +3,7 @@
 This guide covers Cloudflare Workers deployment for AIMeter with:
 
 - `database.engine=d1` mode
-- External `mysql` / `postgres` modes (MySQL recommends Hyperdrive binding)
+- External `mysql` / `postgres` modes (Hyperdrive binding is optional for both)
 
 ---
 
@@ -22,18 +22,18 @@ This guide covers Cloudflare Workers deployment for AIMeter with:
    |---|---|
    | D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
    | MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://user:pass@host:3306/aimeter?ssl={"rejectUnauthorized":true}`<br>`AIMETER_CF_HYPERDRIVE_BINDING=HYPERDRIVE` (optional, default `HYPERDRIVE`) |
-   | PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://user:pass@host:5432/aimeter?sslmode=require` |
+   | PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://user:pass@host:5432/aimeter?sslmode=require`<br>`AIMETER_CF_HYPERDRIVE_BINDING=HYPERDRIVE` (optional, default `HYPERDRIVE`) |
 
 ### Step 2 — Create data services (optional, based on your database mode)
 
 1. If using `d1`, create a D1 database (optional for non-`d1` modes):
    - Go to **Storage & databases** -> **D1 SQL database** -> **Create Database**
    - Recommended name: `aimeter-db`
-2. If using MySQL on Workers, create Hyperdrive (optional but recommended):
+2. If using MySQL or PostgreSQL on Workers, you can create Hyperdrive (optional):
    - Go to **Storage & databases** -> **Hyperdrive** -> **Create**
    - Choose **Connect to a public database**
    - Set **Configuration name** to `hyperdriver-aimeter`
-   - Fill in the upstream MySQL connection details
+   - Fill in the upstream MySQL or PostgreSQL connection details
    - Set Hyperdrive cache to **Disabled** during initial setup to avoid initialization anomalies
    - After system initialization is complete, you can enable cache based on workload needs
 
@@ -48,7 +48,7 @@ This guide covers Cloudflare Workers deployment for AIMeter with:
    | **Variable name** | `DB` (must match `AIMETER_DATABASE_CONNECTION`) |
    | **Database** | Select `aimeter-db` |
 
-3. Bind Hyperdrive only when using MySQL on Workers and you created a Hyperdrive service in Step 2:
+3. Bind Hyperdrive as an optional reference when using MySQL or PostgreSQL on Workers and you created a Hyperdrive service in Step 2:
 
    | Field | Value |
    |---|---|
@@ -74,7 +74,7 @@ This guide covers Cloudflare Workers deployment for AIMeter with:
 |---|---|
 | SQLite local file persistence in Workers | Not supported |
 | D1 database mode | Supported (Cloudflare Workers runtime only) |
-| MySQL/PostgreSQL mode | Supported (external DB required; MySQL on Workers should use Hyperdrive) |
+| MySQL/PostgreSQL mode | Supported (external DB required; Hyperdrive is optional on Workers) |
 | In-process scheduler (`runtime=node`) | Not recommended on Workers |
 | Serverless refresh flow | Supported via API-triggered refresh or CF Cron Triggers |
 | Cron Triggers (scheduled refresh) | Supported via `scheduled` handler in `worker.ts` |
@@ -96,10 +96,10 @@ It calls `/api/system/jobs/refresh` internally using the stored `cron_secret`.
 
 This triggers a full provider refresh every 5 minutes. Adjust the expression as needed.
 
-To enable Cron Triggers on an existing Worker:
-1. Go to **Compute** → **Workers & Pages** → your Worker → **Triggers** → **Cron Triggers** → **Add Cron Trigger**.
-2. Enter a cron expression (e.g. `*/5 * * * *`).
-3. Ensure `AIMETER_CRON_SECRET` is set so the handler can authenticate against the refresh endpoint.
+To view existing Cron Triggers on an existing Worker:
+1. Go to **Compute** → **Workers & Pages** → your Worker → **Settings** → **Trigger Events**.
+2. Review the current Cron Trigger configuration there.
+3. This trigger reads `AIMETER_CRON_SECRET` to execute cron jobs. Ensure this value is set (or the corresponding field exists in your database) so the handler can authenticate against the refresh endpoint.
 
 ---
 
@@ -113,23 +113,23 @@ This applies to all deployment targets (CF Workers, Vercel, Node.js container).
 
 ---
 
-## MySQL + Hyperdrive (Recommended on Workers)
+## MySQL/PostgreSQL + Hyperdrive (Optional Example)
 
-When `AIMETER_DATABASE_ENGINE=mysql` runs in Cloudflare Workers, AIMeter enables
-`mysql2`'s `disableEval` compatibility mode automatically. To improve reliability and
-connection reuse, bind Hyperdrive and let AIMeter read the connection from that binding.
+This is an optional example for using Hyperdrive with MySQL or PostgreSQL on Cloudflare Workers.
+When `AIMETER_DATABASE_ENGINE=mysql`, AIMeter enables `mysql2`'s `disableEval` compatibility mode automatically.
+You can bind Hyperdrive for connection reuse and route DB traffic through that binding.
 
-1. In Cloudflare dashboard, create a Hyperdrive config pointing to your MySQL database.
+1. In Cloudflare dashboard, create a Hyperdrive config pointing to your MySQL or PostgreSQL database.
    - During first-time initialization, set Hyperdrive cache to **Disabled**.
    - After initialization finishes and system behavior is stable, enable cache as needed.
 2. In your Worker, add a Hyperdrive binding (default variable name: `HYPERDRIVE`).
 3. Set:
-   - `AIMETER_DATABASE_ENGINE=mysql`
-   - `AIMETER_DATABASE_CONNECTION=<your mysql dsn>` (fallback and non-Workers use)
+   - `AIMETER_DATABASE_ENGINE=mysql` or `AIMETER_DATABASE_ENGINE=postgres`
+   - `AIMETER_DATABASE_CONNECTION=<your mysql/postgres dsn>` (fallback and non-Workers use)
    - Optional `AIMETER_CF_HYPERDRIVE_BINDING=HYPERDRIVE` if your binding name is custom.
 
-If the Hyperdrive binding is absent, AIMeter falls back to `AIMETER_DATABASE_CONNECTION`
-in Workers while keeping `disableEval` enabled.
+If the Hyperdrive binding is absent, AIMeter falls back to `AIMETER_DATABASE_CONNECTION` in Workers.
+(`mysql` mode still keeps `disableEval` enabled.)
 
 ---
 
@@ -169,16 +169,6 @@ npx wrangler d1 execute aimeter --local \
 `wrangler.jsonc` has `observability.enabled = true` (logs enabled, traces disabled).
 After deploying, visit **Cloudflare Dashboard → Workers → your Worker → Logs** to view invocation logs.
 Traces can be enabled separately by setting `traces.enabled = true` when needed.
-
----
-
-## Required Env Variables (Reference)
-
-| Mode | Required envs |
-|---|---|
-| D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
-| MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://user:pass@host:3306/aimeter?ssl={"rejectUnauthorized":true}`<br>`AIMETER_CF_HYPERDRIVE_BINDING=HYPERDRIVE` (optional) |
-| PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://user:pass@host:5432/aimeter?sslmode=require` |
 
 ### Database Connection Notes (MySQL/PostgreSQL)
 
