@@ -1004,7 +1004,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     await storage.deleteProvider(id);
-    
+
     res.json({
       success: true,
     });

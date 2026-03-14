@@ -3,71 +3,87 @@ import { storage } from '../storage.js';
 import { fetchUsageForProvider } from './ProviderUsageService.js';
 import { runtimeConfig } from '../runtime.js';
 
+function parseIsoTime(value: unknown): number | null {
+  if (typeof value !== 'string') return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function resolveIntervalMinutes(value: unknown): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 5;
+  return Math.max(1, Math.floor(numeric));
+}
+
+async function patchFetchStateSafe(providerId: string, patch: Record<string, unknown>): Promise<void> {
+  try {
+    await storage.patchFetchState(providerId, patch);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.warn(`[scheduler] Failed to patch fetch_state for ${providerId}: ${message}`);
+  }
+}
+
 class SchedulerService {
-  private jobs: Map<string, cron.ScheduledTask> = new Map();
+  private heartbeat: cron.ScheduledTask | null = null;
   private isRunning: boolean = false;
 
   start(): void {
     if (this.isRunning || runtimeConfig.runtimeMode === 'serverless') return;
     this.isRunning = true;
-    void this.scheduleAllProviders();
+
+    // Tick every minute; each provider is refreshed according to its own refreshInterval
+    this.heartbeat = cron.schedule('*/5 * * * *', () => {
+      void this.tick();
+    });
+
+    console.log('[scheduler] Heartbeat started (tick every 5 minutes)');
   }
 
   stop(): void {
-    this.jobs.forEach((job) => job.stop());
-    this.jobs.clear();
+    this.heartbeat?.stop();
+    this.heartbeat = null;
     this.isRunning = false;
   }
 
-  async scheduleAllProviders(): Promise<void> {
+  private async tick(): Promise<void> {
     const providers = await storage.listProviders();
-    providers.forEach((config) => {
-      if (config.refreshInterval > 0) {
-        this.scheduleProvider(config.id, config.refreshInterval);
+
+    for (const provider of providers) {
+      const intervalMinutes = resolveIntervalMinutes(provider.refreshInterval);
+      const intervalMs = intervalMinutes * 60 * 1000;
+      const skipThresholdMs = Math.max(0, intervalMs - 20 * 1000);
+      const fetchState = (provider.fetchState || {}) as Record<string, unknown>;
+      const lastAttemptAtMs = parseIsoTime(fetchState.lastAttemptAt);
+
+      if (lastAttemptAtMs && (Date.now() - lastAttemptAtMs) < skipThresholdMs) {
+        continue;
       }
-    });
-  }
 
-  scheduleProvider(providerId: string, intervalMinutes: number): void {
-    const jobKey = providerId;
-    
-    if (this.jobs.has(jobKey)) {
-      this.jobs.get(jobKey)?.stop();
-    }
+      await patchFetchStateSafe(provider.id, { lastAttemptAt: new Date().toISOString() });
 
-    const cronExpression = `*/${intervalMinutes} * * * *`;
-    
-    const job = cron.schedule(cronExpression, async () => {
-      await this.refreshProvider(providerId);
-    });
-
-    this.jobs.set(jobKey, job);
-  }
-
-  stopProvider(providerId: string): void {
-    const job = this.jobs.get(providerId);
-    if (job) {
-      job.stop();
-      this.jobs.delete(providerId);
-    }
-  }
-
-  async updateProviderInterval(providerId: string, intervalMinutes: number): Promise<void> {
-    const config = await storage.getProvider(providerId);
-    if (config && config.refreshInterval > 0) {
-      this.scheduleProvider(providerId, intervalMinutes);
+      try {
+        const snapshot = await fetchUsageForProvider(provider);
+        await storage.recordUsage(provider.id, snapshot);
+        await patchFetchStateSafe(provider.id, {
+          lastSuccessAt: snapshot.updatedAt.toISOString(),
+          lastFailedAt: null,
+          lastFailureReason: null,
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        await patchFetchStateSafe(provider.id, {
+          lastFailedAt: new Date().toISOString(),
+          lastFailureReason: errorMessage.substring(0, 200),
+        });
+        console.error(`[scheduler] Failed to refresh provider ${provider.id}: ${errorMessage}`);
+      }
     }
   }
 
   async refreshProvider(providerId: string): Promise<void> {
     const config = await storage.getProvider(providerId);
-    if (!config) {
-      return;
-    }
-    if (config.refreshInterval <= 0) {
-      this.stopProvider(providerId);
-      return;
-    }
+    if (!config || config.refreshInterval <= 0) return;
 
     try {
       const snapshot = await fetchUsageForProvider(config);
@@ -80,10 +96,8 @@ class SchedulerService {
 
   async refreshAllProviders(): Promise<void> {
     const providers = await storage.listProviders();
-    const promises = providers
-      .map((p) => this.refreshProvider(p.id));
-    
-    await Promise.all(promises);
+    const active = providers.filter((p) => p.refreshInterval > 0);
+    await Promise.all(active.map((p) => this.refreshProvider(p.id)));
   }
 }
 
