@@ -87,7 +87,7 @@ export class OpenCodeAdapter implements IProviderAdapter {
         return { valid: false, reason: 'No OpenCode workspace found' };
       }
 
-      await this.fetchSubscriptionText(cookie, workspaceId);
+      await this.fetchGoPageText(cookie, workspaceId);
       return { valid: true };
     } catch (error) {
       return { valid: false, reason: this.getErrorMessage(error) };
@@ -105,31 +105,45 @@ export class OpenCodeAdapter implements IProviderAdapter {
       throw new Error('No OpenCode workspace found');
     }
 
-    const subscriptionText = await this.fetchSubscriptionText(cookie, workspaceId);
-    this.log('OpenCode usage response:', this.previewText(subscriptionText));
-    const parsed = this.parseUsagePayload(subscriptionText);
+    let usageText: string;
+    try {
+      usageText = await this.fetchGoPageText(cookie, workspaceId);
+    } catch (error) {
+      usageText = await this.fetchSubscriptionText(cookie, workspaceId);
+    }
+    const parsed = this.parseUsagePayload(usageText);
 
     const now = new Date();
     const progress: ProgressItem[] = [
       {
-        name: 'Primary',
+        name: 'Session',
         usedPercent: roundPercentage(parsed.rolling.usedPercent),
         remainingPercent: this.toRemainingPercent(parsed.rolling.usedPercent),
         windowMinutes: 5 * 60,
         resetsAt: new Date(now.getTime() + parsed.rolling.resetInSec * 1000),
       },
       {
-        name: 'Secondary',
+        name: 'Weekly',
         usedPercent: roundPercentage(parsed.weekly.usedPercent),
         remainingPercent: this.toRemainingPercent(parsed.weekly.usedPercent),
         windowMinutes: 7 * 24 * 60,
         resetsAt: new Date(now.getTime() + parsed.weekly.resetInSec * 1000),
       },
     ];
+    if (parsed.monthly) {
+      progress.push({
+        name: 'Monthly',
+        usedPercent: roundPercentage(parsed.monthly.usedPercent),
+        remainingPercent: this.toRemainingPercent(parsed.monthly.usedPercent),
+        windowMinutes: 30 * 24 * 60,
+        resetsAt: new Date(now.getTime() + parsed.monthly.resetInSec * 1000),
+      });
+    }
 
     return {
       provider: UsageProvider.OPENCODE,
       progress,
+      identity: { plan: 'Go' },
       updatedAt: now,
     };
   }
@@ -183,7 +197,6 @@ export class OpenCodeAdapter implements IProviderAdapter {
   private async resolveWorkspaceId(cookie: string, workspaceOverride?: string): Promise<string> {
     const normalizedOverride = this.normalizeWorkspaceId(workspaceOverride);
     if (normalizedOverride) {
-      this.log('OpenCode using configured workspace ID:', normalizedOverride);
       return normalizedOverride;
     }
 
@@ -196,7 +209,6 @@ export class OpenCodeAdapter implements IProviderAdapter {
 
     let workspaceId = this.extractWorkspaceId(initialText);
     if (workspaceId) {
-      this.log('OpenCode workspace resolved via GET:', workspaceId);
       return workspaceId;
     }
 
@@ -213,7 +225,6 @@ export class OpenCodeAdapter implements IProviderAdapter {
       throw new Error('No OpenCode workspace found');
     }
 
-    this.log('OpenCode workspace resolved via POST fallback:', workspaceId);
     return workspaceId;
   }
 
@@ -229,7 +240,6 @@ export class OpenCodeAdapter implements IProviderAdapter {
       });
 
       if (this.hasUsagePayload(initialText)) {
-        this.log('OpenCode subscription GET payload accepted for workspace:', workspaceId);
         return initialText;
       }
 
@@ -240,18 +250,51 @@ export class OpenCodeAdapter implements IProviderAdapter {
         referer,
         cookie,
       });
-      this.log('OpenCode subscription POST payload accepted:', String(this.hasUsagePayload(postText)));
       return postText;
     } catch (error) {
-      this.log('OpenCode subscription request failed, trying fallback endpoint:', error instanceof Error ? error.message : String(error));
       const fallbackText = await this.fetchFallbackUsageText(cookie, workspaceId, referer);
       if (this.hasUsagePayload(fallbackText)) {
-        this.log('OpenCode fallback usage payload accepted for workspace:', workspaceId);
         return fallbackText;
       }
-      this.log('OpenCode fallback usage payload rejected:', this.previewText(fallbackText));
       throw error;
     }
+  }
+
+  private async fetchGoPageText(cookie: string, workspaceId: string): Promise<string> {
+    const url = `${this.baseURL}/workspace/${workspaceId}/go`;
+    const response = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers: {
+        Cookie: cookie,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'User-Agent': this.userAgent,
+        Referer: `${this.baseURL}/go`,
+        Origin: this.baseURL,
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1',
+      },
+    });
+
+    const text = await response.text();
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403 || this.looksSignedOut(text)) {
+        throw new Error('Invalid or expired OpenCode session');
+      }
+      throw new Error(`OpenCode go page error: HTTP ${response.status}`);
+    }
+
+    if (this.looksSignedOut(text)) {
+      throw new Error('Invalid or expired OpenCode session');
+    }
+
+    if (!this.hasUsagePayload(text)) {
+      throw new Error('OpenCode go page does not contain usage payload');
+    }
+
+    return text;
   }
 
   private async fetchServerText(input: {
@@ -265,18 +308,6 @@ export class OpenCodeAdapter implements IProviderAdapter {
     cookie: string;
   }): Promise<string> {
     const url = this.buildServerUrl(input.serverId, input.method, input.args);
-    this.log(
-      'OpenCode request:',
-      JSON.stringify({
-        serverId: input.serverId,
-        method: input.method,
-        url,
-        referer: input.referer,
-        hasArgs: Array.isArray(input.args) ? input.args.length : 0,
-        hasBody: input.body !== undefined,
-        serverInstance: input.serverInstance ?? 'generated',
-      })
-    );
     const headers: Record<string, string> = {
       Cookie: input.cookie,
       'X-Server-Id': input.serverId,
@@ -299,17 +330,6 @@ export class OpenCodeAdapter implements IProviderAdapter {
 
     const response = await fetchWithTimeout(url, init);
     const text = await response.text();
-    this.log(
-      'OpenCode response:',
-      JSON.stringify({
-        serverId: input.serverId,
-        method: input.method,
-        status: response.status,
-        ok: response.ok,
-        contentType: response.headers.get('content-type'),
-        bodyPreview: this.previewText(text),
-      })
-    );
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403 || this.looksSignedOut(text)) {
@@ -359,8 +379,6 @@ export class OpenCodeAdapter implements IProviderAdapter {
       f: 31,
       m: [],
     };
-
-    this.log('OpenCode fallback request body:', JSON.stringify(body));
 
     return this.fetchServerText({
       serverId: this.fallbackUsageServerId,
@@ -434,7 +452,7 @@ export class OpenCodeAdapter implements IProviderAdapter {
     return /rollingUsage[^}]*usagePercent/i.test(text) || /weeklyUsage[^}]*usagePercent/i.test(text);
   }
 
-  private parseUsagePayload(text: string): { rolling: WindowData; weekly: WindowData } {
+  private parseUsagePayload(text: string): { rolling: WindowData; weekly: WindowData; monthly?: WindowData } {
     const parsed = this.tryParseJson(text);
     if (parsed) {
       const jsonWindows = this.extractWindowsFromJson(parsed);
@@ -447,6 +465,8 @@ export class OpenCodeAdapter implements IProviderAdapter {
     const rollingReset = this.extractNumber(text, /rollingUsage[^}]*?resetInSec\s*:\s*([0-9]+)/i);
     const weeklyPercent = this.extractNumber(text, /weeklyUsage[^}]*?usagePercent\s*:\s*([0-9]+(?:\.[0-9]+)?)/i);
     const weeklyReset = this.extractNumber(text, /weeklyUsage[^}]*?resetInSec\s*:\s*([0-9]+)/i);
+    const monthlyPercent = this.extractNumber(text, /monthlyUsage[^}]*?usagePercent\s*:\s*([0-9]+(?:\.[0-9]+)?)/i);
+    const monthlyReset = this.extractNumber(text, /monthlyUsage[^}]*?resetInSec\s*:\s*([0-9]+)/i);
 
     if (
       rollingPercent === undefined ||
@@ -457,13 +477,20 @@ export class OpenCodeAdapter implements IProviderAdapter {
       throw new Error('OpenCode usage payload changed');
     }
 
-    return {
+    const result: { rolling: WindowData; weekly: WindowData; monthly?: WindowData } = {
       rolling: { usedPercent: this.normalizePercent(rollingPercent), resetInSec: Math.max(0, Math.round(rollingReset)) },
       weekly: { usedPercent: this.normalizePercent(weeklyPercent), resetInSec: Math.max(0, Math.round(weeklyReset)) },
     };
+    if (monthlyPercent !== undefined && monthlyReset !== undefined) {
+      result.monthly = {
+        usedPercent: this.normalizePercent(monthlyPercent),
+        resetInSec: Math.max(0, Math.round(monthlyReset)),
+      };
+    }
+    return result;
   }
 
-  private extractWindowsFromJson(value: unknown, nowMs: number = Date.now()): { rolling: WindowData; weekly: WindowData } | undefined {
+  private extractWindowsFromJson(value: unknown, nowMs: number = Date.now()): { rolling: WindowData; weekly: WindowData; monthly?: WindowData } | undefined {
     const direct = this.parseUsageNode(value, nowMs);
     if (direct) {
       return direct;
@@ -485,15 +512,21 @@ export class OpenCodeAdapter implements IProviderAdapter {
       false,
       rolling?.id
     );
+    const monthly = this.pickWindowCandidate(
+      candidates.filter(candidate => /monthly|month/.test(candidate.path)),
+      candidates,
+      false,
+      weekly?.id
+    );
 
     if (!rolling || !weekly) {
       return undefined;
     }
 
-    return { rolling, weekly };
+    return { rolling, weekly, ...(monthly ? { monthly } : {}) };
   }
 
-  private parseUsageNode(value: unknown, nowMs: number): { rolling: WindowData; weekly: WindowData } | undefined {
+  private parseUsageNode(value: unknown, nowMs: number): { rolling: WindowData; weekly: WindowData; monthly?: WindowData } | undefined {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       return undefined;
     }
@@ -514,7 +547,13 @@ export class OpenCodeAdapter implements IProviderAdapter {
       const rollingWindow = this.parseWindow(rolling, nowMs);
       const weeklyWindow = this.parseWindow(weekly, nowMs);
       if (rollingWindow && weeklyWindow) {
-        return { rolling: rollingWindow, weekly: weeklyWindow };
+        const monthly = this.pickFirstObject(dict, ['monthlyUsage', 'monthly', 'monthly_usage', 'monthlyWindow', 'monthly_window']);
+        const monthlyWindow = monthly ? this.parseWindow(monthly, nowMs) : undefined;
+        return {
+          rolling: rollingWindow,
+          weekly: weeklyWindow,
+          ...(monthlyWindow ? { monthly: monthlyWindow } : {}),
+        };
       }
     }
 
@@ -742,22 +781,6 @@ export class OpenCodeAdapter implements IProviderAdapter {
     return value as JsonObject;
   }
 
-  private log(message: string, detail?: string): void {
-    // Debug only: keep log statements commented to avoid noisy/sensitive output by default.
-    if (detail === undefined) {
-      // console.log(message);
-      return;
-    }
-    // console.log(message, detail);
-  }
-
-  private previewText(text: string, limit: number = 400): string {
-    const compact = text.replace(/\s+/g, ' ').trim();
-    if (compact.length <= limit) {
-      return compact;
-    }
-    return `${compact.slice(0, limit)}...`;
-  }
 }
 
 export const openCodeAdapter = new OpenCodeAdapter();
