@@ -142,31 +142,58 @@ Exemples spécifiques aux fournisseurs et notes d'intégration : [doc/providers]
 
 ## Démarrage rapide
 
-### 1. Installer
+### Option 1 : Conteneur (Docker)
+
+Déploiement mono-conteneur nginx + Node.js. Les données sont persistées via un volume monté.
 
 ```bash
-npm install
+mkdir -p ~/aimeter/db ~/aimeter/log
+docker run -d --name aimeter \
+  -p 3000:3000 \
+  -e AIMETER_DATABASE_ENGINE=sqlite \
+  -e AIMETER_DATABASE_CONNECTION=/aimeter/db/aimeter.db \
+  -e AIMETER_SERVER_PORT=3000 \
+  -e AIMETER_BACKEND_PORT=3001 \
+  -e AIMETER_RUNTIME_MODE=node \
+  -v ~/aimeter/db:/aimeter/db \
+  -v ~/aimeter/log:/aimeter/log \
+  bugwz/aimeter:latest
 ```
 
-### 2. Configurer
+Accéder à : `http://localhost:3000`
 
-```bash
-cp .env.all .env
-cp config.all.yaml config.yaml
-```
+Docker Compose, HTTPS, MySQL/PostgreSQL et builds multi-arch : [deploy/container/README.md](../../deploy/container/README.md)
 
-Ensuite, modifiez `.env` et/ou `config.yaml` selon votre cible de déploiement.
+### Option 2 : Vercel
 
-### 3. Lancer
+Déploiement serverless. Nécessite une base de données MySQL ou PostgreSQL externe.
 
-```bash
-npm run dev:all
-```
+| Base de données | Déployer |
+|---|---|
+| MySQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22mysql%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22mysql%3A%2F%2FUSER%3APASSWORD%40HOST%3A3306%2FDATABASE%22%7D&envDescription=AIMeter+Vercel+%2B+MySQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
+| PostgreSQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22postgres%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22postgresql%3A%2F%2FUSER%3APASSWORD%40HOST%3A5432%2FDATABASE%3Fsslmode%3Drequire%22%7D&envDescription=AIMeter+Vercel+%2B+PostgreSQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
 
-Endpoints locaux par défaut :
+Définissez les variables d'environnement, terminez le bootstrap, puis configurez un service cron externe pour appeler `/api/system/jobs/refresh` toutes les 5 minutes.
 
-- Frontend : `http://localhost:3000`
-- Backend : `http://localhost:3001`
+Configuration cron et guide complet : [deploy/vercel/README.md](../../deploy/vercel/README.md)
+
+### Option 3 : Cloudflare Workers
+
+Déploiement serverless. Supporte Cloudflare D1, MySQL ou PostgreSQL.
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bugwz/AIMeter)
+
+Après déploiement, définissez les variables d'environnement selon le mode de base de données :
+
+| Mode | Variables requises |
+|---|---|
+| D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
+| MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://USER:PASSWORD@HOST:3306/DATABASE` |
+| PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require` |
+
+Les Cron Triggers sont intégrés — `wrangler.jsonc` planifie automatiquement un rafraîchissement toutes les 5 minutes.
+
+Liaison D1, Hyperdrive et étapes de configuration complètes : [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
 
 ## Scripts
 

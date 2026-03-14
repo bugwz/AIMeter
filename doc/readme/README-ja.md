@@ -106,31 +106,58 @@ AIMeter は、AI プロバイダーの利用量・クォータ・履歴トレン
 
 ## クイックスタート
 
-### 1. インストール
+### オプション 1: コンテナ（Docker）
+
+nginx + Node.js のシングルコンテナ構成。データはボリュームマウントで永続化されます。
 
 ```bash
-npm install
+mkdir -p ~/aimeter/db ~/aimeter/log
+docker run -d --name aimeter \
+  -p 3000:3000 \
+  -e AIMETER_DATABASE_ENGINE=sqlite \
+  -e AIMETER_DATABASE_CONNECTION=/aimeter/db/aimeter.db \
+  -e AIMETER_SERVER_PORT=3000 \
+  -e AIMETER_BACKEND_PORT=3001 \
+  -e AIMETER_RUNTIME_MODE=node \
+  -v ~/aimeter/db:/aimeter/db \
+  -v ~/aimeter/log:/aimeter/log \
+  bugwz/aimeter:latest
 ```
 
-### 2. 設定
+アクセス: `http://localhost:3000`
 
-```bash
-cp .env.all .env
-cp config.all.yaml config.yaml
-```
+Docker Compose、HTTPS、MySQL/PostgreSQL、マルチアーキテクチャビルドの詳細: [deploy/container/README.md](../../deploy/container/README.md)
 
-次に、デプロイ先に合わせて `.env` と `config.yaml` を編集します。
+### オプション 2: Vercel
 
-### 3. 実行
+Serverless デプロイ。外部の MySQL または PostgreSQL データベースが必要です。
 
-```bash
-npm run dev:all
-```
+| DB | デプロイ |
+|---|---|
+| MySQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22mysql%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22mysql%3A%2F%2FUSER%3APASSWORD%40HOST%3A3306%2FDATABASE%22%7D&envDescription=AIMeter+Vercel+%2B+MySQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
+| PostgreSQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22postgres%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22postgresql%3A%2F%2FUSER%3APASSWORD%40HOST%3A5432%2FDATABASE%3Fsslmode%3Drequire%22%7D&envDescription=AIMeter+Vercel+%2B+PostgreSQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
 
-ローカル既定エンドポイント:
+環境変数を設定して bootstrap を完了後、外部 cron サービスで `/api/system/jobs/refresh` を 5 分ごとに呼び出します。
 
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:3001`
+Cron 設定と完全な手順: [deploy/vercel/README.md](../../deploy/vercel/README.md)
+
+### オプション 3: Cloudflare Workers
+
+Serverless デプロイ。Cloudflare D1、MySQL、PostgreSQL に対応。
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bugwz/AIMeter)
+
+デプロイ後、DB モードに応じて環境変数を設定してください:
+
+| モード | 必須環境変数 |
+|---|---|
+| D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
+| MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://USER:PASSWORD@HOST:3306/DATABASE` |
+| PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require` |
+
+Cron Triggers は組み込み済みで、`wrangler.jsonc` がデフォルトで 5 分ごとに自動リフレッシュをスケジュールします。
+
+D1 バインディング、Hyperdrive、完全な設定手順: [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
 
 ## スクリプト
 

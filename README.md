@@ -143,31 +143,58 @@ Provider-specific examples and integration notes: [doc/providers](doc/providers)
 
 ## Quick Start
 
-### 1. Install
+### Option 1: Container (Docker)
+
+Single-container deployment with nginx + Node.js. Data is persisted via a volume mount.
 
 ```bash
-npm install
+mkdir -p ~/aimeter/db ~/aimeter/log
+docker run -d --name aimeter \
+  -p 3000:3000 \
+  -e AIMETER_DATABASE_ENGINE=sqlite \
+  -e AIMETER_DATABASE_CONNECTION=/aimeter/db/aimeter.db \
+  -e AIMETER_SERVER_PORT=3000 \
+  -e AIMETER_BACKEND_PORT=3001 \
+  -e AIMETER_RUNTIME_MODE=node \
+  -v ~/aimeter/db:/aimeter/db \
+  -v ~/aimeter/log:/aimeter/log \
+  bugwz/aimeter:latest
 ```
 
-### 2. Configure
+Then open: `http://localhost:3000`
 
-```bash
-cp .env.all .env
-cp config.all.yaml config.yaml
-```
+For Docker Compose, HTTPS, MySQL/PostgreSQL, or multi-arch builds: [deploy/container/README.md](deploy/container/README.md)
 
-Then edit `.env` and/or `config.yaml` based on your target deployment.
+### Option 2: Vercel
 
-### 3. Run
+Serverless deployment on Vercel. Requires an external MySQL or PostgreSQL database.
 
-```bash
-npm run dev:all
-```
+| Mode | Deploy |
+|---|---|
+| MySQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22mysql%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22mysql%3A%2F%2FUSER%3APASSWORD%40HOST%3A3306%2FDATABASE%22%7D&envDescription=AIMeter+Vercel+%2B+MySQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
+| PostgreSQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22postgres%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22postgresql%3A%2F%2FUSER%3APASSWORD%40HOST%3A5432%2FDATABASE%3Fsslmode%3Drequire%22%7D&envDescription=AIMeter+Vercel+%2B+PostgreSQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
 
-Default local endpoints:
+Set env vars, complete bootstrap, then configure an external cron service to call `/api/system/jobs/refresh` every 5 minutes.
 
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:3001`
+For cron setup and full configuration: [deploy/vercel/README.md](deploy/vercel/README.md)
+
+### Option 3: Cloudflare Workers
+
+Serverless deployment on Cloudflare Workers. Supports Cloudflare D1, MySQL, or PostgreSQL.
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bugwz/AIMeter)
+
+After deploying, set runtime env vars by database mode:
+
+| Mode | Required env vars |
+|---|---|
+| D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
+| MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://USER:PASSWORD@HOST:3306/DATABASE` |
+| PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require` |
+
+Cron Triggers are built-in — `wrangler.jsonc` schedules a refresh every 5 minutes automatically.
+
+For D1 binding, Hyperdrive, and full setup steps: [deploy/cloudflare/README.md](deploy/cloudflare/README.md)
 
 ## Scripts
 

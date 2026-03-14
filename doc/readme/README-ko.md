@@ -141,31 +141,58 @@ provider별 예제 및 통합 노트: [doc/providers](../providers)
 
 ## 빠른 시작
 
-### 1. 설치
+### 옵션 1: 컨테이너 (Docker)
+
+nginx + Node.js 단일 컨테이너 배포. 데이터는 볼륨 마운트로 영속화됩니다.
 
 ```bash
-npm install
+mkdir -p ~/aimeter/db ~/aimeter/log
+docker run -d --name aimeter \
+  -p 3000:3000 \
+  -e AIMETER_DATABASE_ENGINE=sqlite \
+  -e AIMETER_DATABASE_CONNECTION=/aimeter/db/aimeter.db \
+  -e AIMETER_SERVER_PORT=3000 \
+  -e AIMETER_BACKEND_PORT=3001 \
+  -e AIMETER_RUNTIME_MODE=node \
+  -v ~/aimeter/db:/aimeter/db \
+  -v ~/aimeter/log:/aimeter/log \
+  bugwz/aimeter:latest
 ```
 
-### 2. 구성
+접속: `http://localhost:3000`
 
-```bash
-cp .env.all .env
-cp config.all.yaml config.yaml
-```
+Docker Compose, HTTPS, MySQL/PostgreSQL, 멀티아키텍처 빌드: [deploy/container/README.md](../../deploy/container/README.md)
 
-이후 배포 대상에 맞게 `.env` 및/또는 `config.yaml`을 수정하세요.
+### 옵션 2: Vercel
 
-### 3. 실행
+Serverless 배포. 외부 MySQL 또는 PostgreSQL 데이터베이스가 필요합니다.
 
-```bash
-npm run dev:all
-```
+| DB | 배포 |
+|---|---|
+| MySQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22mysql%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22mysql%3A%2F%2FUSER%3APASSWORD%40HOST%3A3306%2FDATABASE%22%7D&envDescription=AIMeter+Vercel+%2B+MySQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
+| PostgreSQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22postgres%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22postgresql%3A%2F%2FUSER%3APASSWORD%40HOST%3A5432%2FDATABASE%3Fsslmode%3Drequire%22%7D&envDescription=AIMeter+Vercel+%2B+PostgreSQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
 
-기본 로컬 엔드포인트:
+환경 변수 설정 및 bootstrap 완료 후, 외부 cron 서비스를 구성하여 `/api/system/jobs/refresh`를 5분마다 호출하세요.
 
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:3001`
+Cron 설정 및 전체 가이드: [deploy/vercel/README.md](../../deploy/vercel/README.md)
+
+### 옵션 3: Cloudflare Workers
+
+Serverless 배포. Cloudflare D1, MySQL, PostgreSQL을 지원합니다.
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bugwz/AIMeter)
+
+배포 후 데이터베이스 모드에 따라 환경 변수를 설정하세요:
+
+| 모드 | 필수 환경 변수 |
+|---|---|
+| D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
+| MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://USER:PASSWORD@HOST:3306/DATABASE` |
+| PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require` |
+
+Cron Triggers가 내장되어 있으며, `wrangler.jsonc`가 기본으로 5분마다 자동 갱신을 예약합니다.
+
+D1 바인딩, Hyperdrive, 전체 설정 단계: [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
 
 ## 스크립트
 
