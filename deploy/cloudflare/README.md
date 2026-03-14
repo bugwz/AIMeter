@@ -24,9 +24,9 @@ This guide covers Cloudflare Workers deployment for AIMeter with:
    | MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://user:pass@host:3306/aimeter?ssl={"rejectUnauthorized":true}`<br>`AIMETER_CF_HYPERDRIVE_BINDING=HYPERDRIVE` (optional, default `HYPERDRIVE`) |
    | PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://user:pass@host:5432/aimeter?sslmode=require` |
 
-### Step 2 — Create data services (D1 and optional Hyperdrive)
+### Step 2 — Create data services (optional, based on your database mode)
 
-1. If using `d1`, create a D1 database:
+1. If using `d1`, create a D1 database (optional for non-`d1` modes):
    - Go to **Storage & databases** -> **D1 SQL database** -> **Create Database**
    - Recommended name: `aimeter-db`
 2. If using MySQL on Workers, create Hyperdrive (optional but recommended):
@@ -35,10 +35,10 @@ This guide covers Cloudflare Workers deployment for AIMeter with:
    - Set **Configuration name** to `hyperdriver-aimeter`
    - Fill in the upstream MySQL connection details
 
-### Step 3 — Bind services to Worker
+### Step 3 — Bind services to Worker (optional, only when used)
 
 1. Open **Compute** -> **Workers & Pages** -> your Worker -> **Bindings** -> **Add binding**.
-2. Bind D1 when `AIMETER_DATABASE_ENGINE=d1`:
+2. Bind D1 only when `AIMETER_DATABASE_ENGINE=d1` and you created a D1 service in Step 2:
 
    | Field | Value |
    |---|---|
@@ -46,7 +46,7 @@ This guide covers Cloudflare Workers deployment for AIMeter with:
    | **Variable name** | `DB` (must match `AIMETER_DATABASE_CONNECTION`) |
    | **Database** | Select `aimeter-db` |
 
-3. Bind Hyperdrive when using MySQL on Workers:
+3. Bind Hyperdrive only when using MySQL on Workers and you created a Hyperdrive service in Step 2:
 
    | Field | Value |
    |---|---|
