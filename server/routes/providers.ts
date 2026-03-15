@@ -80,11 +80,12 @@ function summarizeCredentialForLog(credential: Credential): Record<string, unkno
   }
 
   if (credential.type === AuthType.OAUTH) {
+    const expiresAt = toUnixSeconds(credential.expiresAt) ?? null;
     return {
       type: credential.type,
       hasAccessToken: Boolean(credential.accessToken),
       hasRefreshToken: Boolean(credential.refreshToken),
-      expiresAt: credential.expiresAt || null,
+      expiresAt,
     };
   }
 
@@ -127,8 +128,7 @@ function toUnixSeconds(value: Date | number | string | null | undefined): number
   if (Number.isFinite(numeric)) {
     return numeric > 1_000_000_000_000 ? Math.floor(numeric / 1000) : Math.floor(numeric);
   }
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null;
+  return null;
 }
 
 function resolveSnapshotIdentityWithPlan(
@@ -409,7 +409,7 @@ router.post('/copilot/auth/complete', async (req: Request, res: Response) => {
         logValidationEvent('warn', 'failed', validationContext, {
           durationMs: Date.now() - validationStartedAt,
           reason: validation.reason || null,
-          expiresAt: validation.expiresAt || null,
+          expiresAt: toUnixSeconds(validation.expiresAt) ?? null,
         });
         res.status(400).json({
           success: false,
@@ -422,7 +422,7 @@ router.post('/copilot/auth/complete', async (req: Request, res: Response) => {
       }
       logValidationEvent('info', 'success', validationContext, {
         durationMs: Date.now() - validationStartedAt,
-        expiresAt: validation.expiresAt || null,
+        expiresAt: toUnixSeconds(validation.expiresAt) ?? null,
       });
     }
 
@@ -686,7 +686,7 @@ router.post('/', async (req: Request, res: Response) => {
         logValidationEvent('warn', 'failed', validationContext, {
           durationMs: Date.now() - validationStartedAt,
           reason: validation.reason || null,
-          expiresAt: validation.expiresAt || null,
+          expiresAt: toUnixSeconds(validation.expiresAt) ?? null,
         });
         res.status(400).json({
           success: false,
@@ -699,7 +699,7 @@ router.post('/', async (req: Request, res: Response) => {
       }
       logValidationEvent('info', 'success', validationContext, {
         durationMs: Date.now() - validationStartedAt,
-        expiresAt: validation.expiresAt || null,
+        expiresAt: toUnixSeconds(validation.expiresAt) ?? null,
       });
     }
 
@@ -934,7 +934,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         logValidationEvent('warn', 'failed', validationContext, {
           durationMs: Date.now() - validationStartedAt,
           reason: validation.reason || null,
-          expiresAt: validation.expiresAt || null,
+          expiresAt: toUnixSeconds(validation.expiresAt) ?? null,
         });
         res.status(400).json({
           success: false,
@@ -947,7 +947,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       }
       logValidationEvent('info', 'success', validationContext, {
         durationMs: Date.now() - validationStartedAt,
-        expiresAt: validation.expiresAt || null,
+        expiresAt: toUnixSeconds(validation.expiresAt) ?? null,
       });
     }
     
@@ -1198,25 +1198,13 @@ function getString(data: Record<string, unknown>, keys: string[]): string | unde
   return undefined;
 }
 
-function parseCredentialDate(value: unknown): Date | undefined {
+function parseCredentialDate(value: unknown): number | undefined {
   if (value === undefined || value === null || value === '') {
     return undefined;
   }
 
   if (typeof value === 'number' && Number.isFinite(value)) {
-    const timestamp = value > 1e12 ? value : value * 1000;
-    const date = new Date(timestamp);
-    return Number.isNaN(date.getTime()) ? undefined : date;
-  }
-
-  if (typeof value === 'string') {
-    const numeric = Number(value);
-    if (!Number.isNaN(numeric)) {
-      return parseCredentialDate(numeric);
-    }
-
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? undefined : date;
+    return value > 1e12 ? Math.floor(value / 1000) : Math.floor(value);
   }
 
   return undefined;
@@ -1263,6 +1251,7 @@ function sanitizeCredential(credential: Credential): Credential {
       refreshToken: credential.refreshToken ? '[TOKEN]' : undefined,
       idToken: credential.idToken ? '[TOKEN]' : undefined,
       clientSecret: credential.clientSecret ? '[SECRET]' : undefined,
+      expiresAt: toUnixSeconds(credential.expiresAt) ?? undefined,
     };
   }
   if (credential.type === AuthType.JWT) {

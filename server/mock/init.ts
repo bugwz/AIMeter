@@ -62,7 +62,7 @@ export async function ensureMockRuntimeProvidersSeeded(): Promise<void> {
 
   // Step 1/3: write settings before provider/usage seed.
   const now = new Date();
-  await storage.setSetting('mock_seed_initialized_at', now.toISOString());
+  await storage.setSetting('mock_seed_initialized_at', String(Math.floor(now.getTime() / 1000)));
 
   // Step 2/3: ensure mock runtime providers exist.
   const existingProviders = await storage.listProviders();
@@ -113,5 +113,6 @@ export async function ensureMockRuntimeProvidersSeeded(): Promise<void> {
   }
 
   await storage.setSetting('mock_seed_usage_points', '100');
-  await storage.setSetting('mock_seed_latest_point_at', points[points.length - 1]?.toISOString() || '');
+  const latestPoint = points[points.length - 1];
+  await storage.setSetting('mock_seed_latest_point_at', latestPoint ? String(Math.floor(latestPoint.getTime() / 1000)) : '');
 }

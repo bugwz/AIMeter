@@ -84,9 +84,18 @@ const CLAUDE_PLAN_OPTIONS = [
   { value: 'Claude Enterprise', label: 'Claude Enterprise' },
 ];
 
-function toInputValue(value?: string | Date): string {
+function toInputValue(value?: number | Date): string {
   if (!value) return '';
-  return value instanceof Date ? value.toISOString() : value;
+  if (value instanceof Date) return String(Math.floor(value.getTime() / 1000));
+  return String(value);
+}
+
+function parseTimestampInput(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const numeric = Number(trimmed);
+  if (!Number.isFinite(numeric)) return undefined;
+  return numeric > 1_000_000_000_000 ? Math.floor(numeric / 1000) : Math.floor(numeric);
 }
 
 function toClaudeOAuthFormState(credential: Extract<Credential, { type: AuthType.OAUTH }>): ClaudeOAuthFormState {
@@ -250,7 +259,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
           status: status.status,
           userCode: status.userCode || prev.userCode,
           verificationUri: status.verificationUri || prev.verificationUri,
-          expiresAt: status.expiresAt ? new Date(status.expiresAt) : prev.expiresAt,
+          expiresAt: status.expiresAt ? new Date(status.expiresAt * 1000) : prev.expiresAt,
           tempCredentialId: status.tempCredentialId,
           error: status.error,
           loading: false,
@@ -320,7 +329,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
         type: AuthType.OAUTH,
         accessToken: claudeOAuth.accessToken.trim(),
         refreshToken: claudeOAuth.refreshToken.trim() || undefined,
-        expiresAt: claudeOAuth.expiresAt.trim() || undefined,
+        expiresAt: parseTimestampInput(claudeOAuth.expiresAt),
         clientId: claudeOAuth.clientId.trim() || undefined,
         projectId: claudeOAuth.projectId.trim() || undefined,
       };
@@ -330,7 +339,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
         type: AuthType.OAUTH,
         accessToken: codexOAuth.accessToken.trim(),
         refreshToken: codexOAuth.refreshToken.trim() || undefined,
-        expiresAt: codexOAuth.expiresAt.trim() || undefined,
+        expiresAt: parseTimestampInput(codexOAuth.expiresAt),
         clientId: codexOAuth.clientId.trim() || undefined,
         projectId: codexOAuth.projectId.trim() || undefined,
       };
@@ -340,7 +349,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
         type: AuthType.OAUTH,
         accessToken: antigravityOAuth.accessToken.trim(),
         refreshToken: antigravityOAuth.refreshToken.trim() || undefined,
-        expiresAt: antigravityOAuth.expiresAt.trim() || undefined,
+        expiresAt: parseTimestampInput(antigravityOAuth.expiresAt),
         clientId: antigravityOAuth.clientId.trim() || undefined,
         projectId: antigravityOAuth.projectId.trim() || undefined,
       };
@@ -854,7 +863,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                                   accessToken: tokenInfo.accessToken || prev.accessToken,
                                   refreshToken: tokenInfo.refreshToken || prev.refreshToken,
                                   clientId: tokenInfo.clientId || prev.clientId,
-                                  expiresAt: tokenInfo.expiresAt || prev.expiresAt,
+                                  expiresAt: tokenInfo.expiresAt ? String(tokenInfo.expiresAt) : prev.expiresAt,
                                 }));
                                 setClaudeLinkOAuth((prev) => ({ ...prev, loading: false, step: 'exchanged' }));
                               } catch (err) {
@@ -911,7 +920,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                           value={claudeOAuth.expiresAt}
                           onChange={(value) => setClaudeOAuth((prev) => ({ ...prev, expiresAt: value }))}
                           placeholder="1735689600000 or 2026-02-28T12:00:00Z"
-                          help="Optional. Supports unix milliseconds or ISO time."
+                          help="Optional. Use unix timestamp (seconds)."
                         />
 
                         <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-text-secondary)] space-y-1">
@@ -994,7 +1003,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                                   accessToken: tokenInfo.accessToken || prev.accessToken,
                                   refreshToken: tokenInfo.refreshToken || prev.refreshToken,
                                   clientId: tokenInfo.clientId || prev.clientId,
-                                  expiresAt: tokenInfo.expiresAt || prev.expiresAt,
+                                  expiresAt: tokenInfo.expiresAt ? String(tokenInfo.expiresAt) : prev.expiresAt,
                                 }));
                                 setCodexLinkOAuth((prev) => ({ ...prev, loading: false, step: 'exchanged' }));
                               } catch (err) {
@@ -1051,7 +1060,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                           value={codexOAuth.expiresAt}
                           onChange={(value) => setCodexOAuth((prev) => ({ ...prev, expiresAt: value }))}
                           placeholder="1735689600000 or 2026-02-28T12:00:00Z"
-                          help="Optional. Supports unix milliseconds or ISO time."
+                          help="Optional. Use unix timestamp (seconds)."
                         />
 
                         <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-text-secondary)] space-y-1">
@@ -1133,7 +1142,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                                   refreshToken: tokenInfo.refreshToken || prev.refreshToken,
                                   clientId: tokenInfo.clientId || prev.clientId,
                                   projectId: tokenInfo.projectId || prev.projectId,
-                                  expiresAt: tokenInfo.expiresAt || prev.expiresAt,
+                                  expiresAt: tokenInfo.expiresAt ? String(tokenInfo.expiresAt) : prev.expiresAt,
                                 }));
                                 setAntigravityLinkOAuth((prev) => ({ ...prev, loading: false, step: 'exchanged' }));
                               } catch (err) {
@@ -1197,7 +1206,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
                           value={antigravityOAuth.expiresAt}
                           onChange={(value) => setAntigravityOAuth((prev) => ({ ...prev, expiresAt: value }))}
                           placeholder="1735689600000 or 2026-02-28T12:00:00Z"
-                          help="Optional. Supports unix milliseconds or ISO time."
+                          help="Optional. Use unix timestamp (seconds)."
                         />
                       </div>
                     ) : (

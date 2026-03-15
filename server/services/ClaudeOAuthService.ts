@@ -16,7 +16,7 @@ interface OAuthSession {
 export interface ClaudeOAuthTokenResult {
   accessToken: string;
   refreshToken?: string;
-  expiresAt?: string;
+  expiresAt?: number;
   clientId: string;
 }
 
@@ -105,11 +105,14 @@ class ClaudeOAuthService {
 
     this.sessions.delete(sessionId);
 
-    let expiresAt: string | undefined;
+    let expiresAt: number | undefined;
     if (data.expires_in) {
-      expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString();
+      expiresAt = Math.floor((Date.now() + data.expires_in * 1000) / 1000);
     } else if (data.expires_at) {
-      expiresAt = data.expires_at;
+      const parsed = Date.parse(data.expires_at);
+      if (Number.isFinite(parsed)) {
+        expiresAt = Math.floor(parsed / 1000);
+      }
     }
 
     return {

@@ -147,7 +147,7 @@ export async function createApp(): Promise<express.Application> {
   app.get('/api/health', (_req, res) => {
     res.json({
       status: 'ok',
-      timestamp: new Date().toISOString(),
+      timestamp: Math.floor(Date.now() / 1000),
     });
   });
 

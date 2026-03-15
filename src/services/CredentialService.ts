@@ -58,7 +58,7 @@ export class CredentialService {
             refreshToken: credential.refreshToken,
             idToken: credential.idToken,
             expiresAt: credential.expiresAt instanceof Date
-              ? credential.expiresAt.toISOString()
+              ? Math.floor(credential.expiresAt.getTime() / 1000)
               : credential.expiresAt,
             clientId: credential.clientId,
             clientSecret: credential.clientSecret,

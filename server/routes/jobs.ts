@@ -28,10 +28,9 @@ function safeEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(aBuffer, bBuffer);
 }
 
-function parseIsoTime(value: unknown): number | null {
-  if (typeof value !== 'string') return null;
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? timestamp : null;
+function parseAttemptTimeMs(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  return value > 1_000_000_000_000 ? Math.floor(value) : Math.floor(value * 1000);
 }
 
 function resolveIntervalMinutes(value: unknown): number {
@@ -99,7 +98,7 @@ router.post('/refresh', asyncHandler(async (req: Request, res: Response) => {
     const intervalMs = intervalMinutes * 60 * 1000;
     const skipThresholdMs = Math.max(0, intervalMs - 20 * 1000);
     const fetchState = (provider.fetchState || {}) as Record<string, unknown>;
-    const lastAttemptAtMs = parseIsoTime(fetchState.lastAttemptAt);
+    const lastAttemptAtMs = parseAttemptTimeMs(fetchState.lastAttemptAt);
 
     if (lastAttemptAtMs && (Date.now() - lastAttemptAtMs) < skipThresholdMs) {
       results.push({
@@ -112,14 +111,14 @@ router.post('/refresh', asyncHandler(async (req: Request, res: Response) => {
       continue;
     }
 
-    const attemptAt = new Date().toISOString();
+    const attemptAt = Math.floor(Date.now() / 1000);
     await patchFetchStateSafe(provider.id, { lastAttemptAt: attemptAt });
 
     try {
       const snapshot = await fetchUsageForProvider(provider);
       await storage.recordUsage(provider.id, snapshot);
       await patchFetchStateSafe(provider.id, {
-        lastSuccessAt: snapshot.updatedAt.toISOString(),
+        lastSuccessAt: Math.floor(snapshot.updatedAt.getTime() / 1000),
         lastFailedAt: null,
         lastFailureReason: null,
       });
@@ -133,7 +132,7 @@ router.post('/refresh', asyncHandler(async (req: Request, res: Response) => {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await patchFetchStateSafe(provider.id, {
-        lastFailedAt: new Date().toISOString(),
+        lastFailedAt: Math.floor(Date.now() / 1000),
         lastFailureReason: errorMessage.substring(0, 200),
       });
       results.push({

@@ -45,9 +45,8 @@ function toSafeErrorMessage(error: unknown): string {
 }
 
 function parseFailedAtMs(value: unknown): number | null {
-  if (typeof value !== 'string') return null;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  return value > 1_000_000_000_000 ? Math.floor(value) : Math.floor(value * 1000);
 }
 
 function isOAuthAuthError(error: unknown): boolean {
@@ -87,7 +86,7 @@ async function patchFetchStateSafe(providerId: string, patch: Record<string, unk
 
 export async function refreshProviderWithProtection(provider: ProviderInstance): Promise<ProviderRefreshResult> {
   const now = Date.now();
-  const attemptAt = new Date(now).toISOString();
+  const attemptAt = Math.floor(now / 1000);
 
   // Keep attempt timestamp consistent across single and global refreshes.
   await storage.patchFetchState(provider.id, { lastAttemptAt: attemptAt });
@@ -136,7 +135,7 @@ export async function refreshProviderWithProtection(provider: ProviderInstance):
     const message = toSafeErrorMessage(error);
     const authRequired = isProviderAuthError(provider.provider, error);
     await patchFetchStateSafe(provider.id, {
-      lastFailedAt: new Date(now).toISOString(),
+      lastFailedAt: Math.floor(now / 1000),
       lastFailureReason: message.substring(0, 200),
       ...(authRequired ? { authRequired: true } : {}),
     });

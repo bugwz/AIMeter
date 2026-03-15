@@ -16,7 +16,7 @@ interface OAuthSession {
 export interface CodexOAuthTokenResult {
   accessToken: string;
   refreshToken?: string;
-  expiresAt?: string;
+  expiresAt?: number;
   clientId: string;
 }
 
@@ -110,11 +110,14 @@ class CodexOAuthService {
 
     this.sessions.delete(sessionId);
 
-    let expiresAt: string | undefined;
+    let expiresAt: number | undefined;
     if (typeof data.expires_in === 'number' && Number.isFinite(data.expires_in)) {
-      expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString();
+      expiresAt = Math.floor((Date.now() + data.expires_in * 1000) / 1000);
     } else if (typeof data.expires_at === 'string' && data.expires_at.trim()) {
-      expiresAt = data.expires_at;
+      const parsed = Date.parse(data.expires_at);
+      if (Number.isFinite(parsed)) {
+        expiresAt = Math.floor(parsed / 1000);
+      }
     }
 
     return {

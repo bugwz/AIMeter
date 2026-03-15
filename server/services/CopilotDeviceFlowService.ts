@@ -40,7 +40,7 @@ export interface CopilotAuthStatusResult {
   status: FlowStatus;
   userCode?: string;
   verificationUri?: string;
-  expiresAt?: string;
+  expiresAt?: number;
   tempCredentialId?: string;
   error?: string;
 }
@@ -106,7 +106,7 @@ class CopilotDeviceFlowService {
         status: 'expired',
         userCode: flow?.userCode,
         verificationUri: flow?.verificationUri,
-        expiresAt: flow ? new Date(flow.expiresAt).toISOString() : undefined,
+        expiresAt: flow ? Math.floor(flow.expiresAt / 1000) : undefined,
       };
     }
 
@@ -119,7 +119,7 @@ class CopilotDeviceFlowService {
       status: polled.status,
       userCode: flow.userCode,
       verificationUri: flow.verificationUri,
-      expiresAt: new Date(flow.expiresAt).toISOString(),
+      expiresAt: Math.floor(flow.expiresAt / 1000),
     };
     if (polled.tempCredentialId) result.tempCredentialId = polled.tempCredentialId;
     if (polled.error) result.error = polled.error;

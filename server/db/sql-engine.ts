@@ -281,7 +281,7 @@ export class SqlEngine implements DatabaseEngine {
   }
 
   async init(): Promise<void> {
-    return;
+    await this.migrateLegacyTimeFields();
   }
 
   private encrypt(text: string): string {
@@ -312,6 +312,81 @@ export class SqlEngine implements DatabaseEngine {
 
   private parseStoredCredentials(raw: string): Credential {
     return JSON.parse(this.decrypt(raw)) as Credential;
+  }
+
+  private normalizeUnixSeconds(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value > 1_000_000_000_000 ? Math.floor(value / 1000) : Math.floor(value);
+    }
+    if (typeof value === 'string') {
+      const numeric = Number(value);
+      if (Number.isFinite(numeric)) {
+        return numeric > 1_000_000_000_000 ? Math.floor(numeric / 1000) : Math.floor(numeric);
+      }
+    }
+    return null;
+  }
+
+  private parseLegacyUnixSeconds(value: unknown): number | null {
+    const normalized = this.normalizeUnixSeconds(value);
+    if (normalized !== null) return normalized;
+    if (typeof value === 'string') {
+      const parsed = Date.parse(value);
+      if (Number.isFinite(parsed)) {
+        return Math.floor(parsed / 1000);
+      }
+    }
+    return null;
+  }
+
+  private async migrateLegacyTimeFields(): Promise<void> {
+    const rows = await this.client.query<{
+      uid: string;
+      credential_key: string;
+      fetch_state: unknown;
+    }>(
+      `SELECT uid, ${this.providerKeyColumn()} AS credential_key, fetch_state FROM ${this.providersTable()}`
+    );
+
+    for (const row of rows) {
+      let changed = false;
+      const fetchState = parseProviderAttrs(row.fetch_state);
+      for (const key of ['lastAttemptAt', 'lastSuccessAt', 'lastFailedAt']) {
+        if (!(key in fetchState)) continue;
+        const next = this.parseLegacyUnixSeconds(fetchState[key]);
+        if (next === null) {
+          delete fetchState[key];
+        } else {
+          fetchState[key] = next;
+        }
+        changed = true;
+      }
+
+      let nextCredentialRaw = row.credential_key;
+      try {
+        const credentials = this.parseStoredCredentials(row.credential_key);
+        if (credentials.type === AuthType.OAUTH && Object.prototype.hasOwnProperty.call(credentials, 'expiresAt')) {
+          const current = credentials.expiresAt as unknown;
+          const normalized = this.parseLegacyUnixSeconds(current);
+          if (normalized === null) {
+            delete credentials.expiresAt;
+          } else {
+            credentials.expiresAt = normalized;
+          }
+          nextCredentialRaw = this.encrypt(JSON.stringify(credentials));
+          changed = true;
+        }
+      } catch {
+        // Leave credentials untouched if decrypt/parse fails.
+      }
+
+      if (!changed) continue;
+
+      await this.client.execute(
+        `UPDATE ${this.providersTable()} SET fetch_state = ?, ${this.providerKeyColumn()} = ?, updated_at = ? WHERE uid = ?`,
+        [JSON.stringify(fetchState), nextCredentialRaw, toUnixSeconds(), row.uid]
+      );
+    }
   }
 
   private mapProviderRow(row: DbProviderRow): StoredProviderConfig {
@@ -743,7 +818,7 @@ export class SqlEngine implements DatabaseEngine {
     const rows = await this.client.query<DbAuditRow>(`SELECT * FROM ${this.auditLogsTable()} ORDER BY id DESC LIMIT ?`, [safeLimit]);
     return rows.map((row) => ({
       id: Number(row.id),
-      timestamp: fromUnixSeconds(row.timestamp).toISOString(),
+      timestamp: toUnixSeconds(row.timestamp),
       ip: row.ip,
       method: row.method,
       path: row.path,

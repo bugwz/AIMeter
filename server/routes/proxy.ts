@@ -104,8 +104,7 @@ function toUnixSeconds(value: Date | string | number | null | undefined): number
   if (Number.isFinite(numeric)) {
     return numeric > 1_000_000_000_000 ? Math.floor(numeric / 1000) : Math.floor(numeric);
   }
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null;
+  return null;
 }
 
 function extractSnapshotItems(snapshot: UsageSnapshot): ProgressLike[] {

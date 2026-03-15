@@ -122,7 +122,7 @@ export interface MockProviderState {
 
 export interface MockAuditLogRow {
   id: number;
-  timestamp: string;
+  timestamp: number;
   ip: string | null;
   method: string;
   path: string;
@@ -778,7 +778,7 @@ export function getMockAuditLogs(limit: number = 200): MockAuditLogRow[] {
 
   return rows.map((row) => ({
     id: row.id,
-    timestamp: fromUnixSeconds(row.timestamp).toISOString(),
+    timestamp: row.timestamp,
     ip: row.ip,
     method: row.method,
     path: row.path,

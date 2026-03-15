@@ -36,11 +36,11 @@ export enum AuthType {
 export type Credential =
   | { type: AuthType.COOKIE; value: string; source?: 'browser' | 'manual' }
   | { type: AuthType.API_KEY; value: string; keyPrefix?: string }
-  | {
+    | {
       type: AuthType.OAUTH;
       accessToken: string;
       refreshToken?: string;
-      expiresAt?: Date | string;
+      expiresAt?: Date | number;
       scope?: string;
       idToken?: string;
       clientId?: string;

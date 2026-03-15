@@ -40,7 +40,7 @@ function fingerprintOAuthCredential(credential: Credential): string | undefined 
   }
 
   const expiresAt = credential.expiresAt instanceof Date
-    ? credential.expiresAt.toISOString()
+    ? Math.floor(credential.expiresAt.getTime() / 1000)
     : credential.expiresAt;
 
   return JSON.stringify({

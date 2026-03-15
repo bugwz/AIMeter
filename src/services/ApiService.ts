@@ -59,7 +59,7 @@ interface UsageRecord {
 }
 
 interface CompactHistoryRecord {
-  t: string;
+  t: number;
   p?: Array<{ n: string; u: number }>;
   c?: { u: number; l: number };
 }
@@ -87,21 +87,21 @@ interface AuthStatus {
 export interface ClaudeOAuthTokenResult {
   accessToken: string;
   refreshToken?: string;
-  expiresAt?: string;
+  expiresAt?: number;
   clientId?: string;
 }
 
 export interface CodexOAuthTokenResult {
   accessToken: string;
   refreshToken?: string;
-  expiresAt?: string;
+  expiresAt?: number;
   clientId?: string;
 }
 
 export interface AntigravityOAuthTokenResult {
   accessToken: string;
   refreshToken?: string;
-  expiresAt?: string;
+  expiresAt?: number;
   clientId?: string;
   projectId?: string;
 }
@@ -118,14 +118,14 @@ export interface CopilotAuthStatusResponse {
   status: 'pending' | 'authorized' | 'expired' | 'error';
   userCode?: string;
   verificationUri?: string;
-  expiresAt?: string;
+  expiresAt?: number;
   tempCredentialId?: string;
   error?: string;
 }
 
 export interface AuditLogItem {
   id: number;
-  timestamp: string;
+  timestamp: number;
   ip: string | null;
   method: string;
   path: string;

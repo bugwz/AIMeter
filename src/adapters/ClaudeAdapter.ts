@@ -268,7 +268,9 @@ export class ClaudeAdapter implements IProviderAdapter {
     const thresholdMs = Math.max(refreshIntervalMinutes, 5) * 60 * 1000;
     const expiresAtMs = credentials.expiresAt instanceof Date
       ? credentials.expiresAt.getTime()
-      : new Date(credentials.expiresAt as string).getTime();
+      : (credentials.expiresAt > 1_000_000_000_000
+        ? credentials.expiresAt
+        : credentials.expiresAt * 1000);
     if (Number.isNaN(expiresAtMs)) return false;
     return (expiresAtMs - Date.now()) < thresholdMs;
   }

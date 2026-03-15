@@ -12,7 +12,7 @@ export interface UsageRecordRow {
 
 export interface AuditLogRow {
   id: number;
-  timestamp: string;
+  timestamp: number;
   ip: string | null;
   method: string;
   path: string;

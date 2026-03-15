@@ -23,7 +23,7 @@ interface OAuthSession {
 export interface AntigravityOAuthTokenResult {
   accessToken: string;
   refreshToken?: string;
-  expiresAt?: string;
+  expiresAt?: number;
   clientId: string;
   projectId?: string;
 }
@@ -147,7 +147,7 @@ class AntigravityOAuthService {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresAt: typeof data.expires_in === 'number'
-        ? new Date(Date.now() + data.expires_in * 1000).toISOString()
+        ? Math.floor((Date.now() + data.expires_in * 1000) / 1000)
         : undefined,
       clientId: CLIENT_ID,
       projectId,
