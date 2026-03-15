@@ -293,15 +293,15 @@ export const History: React.FC = () => {
     }, 220);
   };
 
-  const getPrimaryUsedPercent = (record: UsageRecord, seriesKey?: string): number => {
+  const getPrimaryUsedPercent = (record: UsageRecord, seriesKey?: string): number | null => {
     const items = record.progress?.items || [];
     const defItem = seriesKey ? seriesMeta[seriesKey]?.defaultProgressItem : undefined;
-    let primary: typeof items[0] | undefined;
-    if (defItem) {
-      primary = items.find((i) => String(i.name).toLowerCase() === defItem.toLowerCase());
+    if (defItem && defItem.trim()) {
+      const normalized = defItem.trim().toLowerCase();
+      const configured = items.find((i) => String(i.name).trim().toLowerCase() === normalized);
+      return typeof configured?.usedPercent === 'number' ? configured.usedPercent : null;
     }
-    primary ??= items.find((i) => String(i.name).toLowerCase() === 'primary') ?? items[0];
-    return primary?.usedPercent || 0;
+    return typeof items[0]?.usedPercent === 'number' ? items[0].usedPercent : null;
   };
 
   const getSeriesLabel = (seriesKey?: string): string => {
@@ -369,13 +369,20 @@ export const History: React.FC = () => {
 
   const overviewStats = useMemo(() => {
     const activeSeries = Object.entries(filteredData).filter(([, records]) => records && records.length > 0);
-    const snapshots = activeSeries.flatMap(([seriesKey, records]) => (records || []).map((r) => ({ record: r, seriesKey })));
+    const snapshots = activeSeries.flatMap(([seriesKey, records]) =>
+      (records || []).map((record) => ({
+        seriesKey,
+        value: getPrimaryUsedPercent(record, seriesKey),
+      })).filter((item) => item.value !== null) as Array<{ seriesKey: string; value: number }>
+    );
     const avgUsage = snapshots.length > 0
-      ? snapshots.reduce((sum, { record, seriesKey }) => sum + getPrimaryUsedPercent(record, seriesKey), 0) / snapshots.length
+      ? snapshots.reduce((sum, item) => sum + item.value, 0) / snapshots.length
       : 0;
 
     const volatilityBySeries = activeSeries.map(([seriesKey, records]) => {
-      const values = records.map((r) => getPrimaryUsedPercent(r, seriesKey));
+      const values = records
+        .map((r) => getPrimaryUsedPercent(r, seriesKey))
+        .filter((value) => value !== null) as number[];
       if (values.length <= 1) return { seriesKey, value: 0 };
       const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
       const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
@@ -383,17 +390,24 @@ export const History: React.FC = () => {
     });
 
     const highestPeak = activeSeries
-      .map(([seriesKey, records]) => ({
-        seriesKey,
-        value: Math.max(...records.map((r) => getPrimaryUsedPercent(r, seriesKey)), 0),
-      }))
+      .map(([seriesKey, records]) => {
+        const values = records
+          .map((r) => getPrimaryUsedPercent(r, seriesKey))
+          .filter((value) => value !== null) as number[];
+        return values.length > 0
+          ? { seriesKey, value: Math.max(...values) }
+          : null;
+      })
+      .filter((item): item is { seriesKey: string; value: number } => item !== null)
       .sort((a, b) => b.value - a.value)[0];
 
     const hottest = activeSeries
-      .map(([seriesKey, records]) => ({
-        seriesKey,
-        value: getPrimaryUsedPercent(records[records.length - 1], seriesKey),
-      }))
+      .map(([seriesKey, records]) => {
+        const latest = records[records.length - 1];
+        const value = latest ? getPrimaryUsedPercent(latest, seriesKey) : null;
+        return value !== null ? { seriesKey, value } : null;
+      })
+      .filter((item): item is { seriesKey: string; value: number } => item !== null)
       .sort((a, b) => b.value - a.value)[0];
 
     const avgVolatility = volatilityBySeries.length > 0
