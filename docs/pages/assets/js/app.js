@@ -283,12 +283,6 @@ async function phGenerate(role) {
   if (errorEl) errorEl.textContent = '';
   pwEl?.classList.remove('phash-pw-error');
 
-  if (!encryptKey) {
-    if (errorEl) errorEl.textContent = 'AIMETER_ENCRYPTION_KEY is required';
-    phSetHashActions(role, false);
-    return;
-  }
-
   // Validate
   if (!pw) {
     if (errorEl) errorEl.textContent = 'Password is required';
