@@ -83,7 +83,7 @@ AIMeter は、AI プロバイダーの利用量・クォータ・履歴トレン
 </table>
 </div>
 
-プロバイダー別のサンプルと統合ノート: [doc/providers](../providers)
+プロバイダー別のサンプルと統合ノート: [docs/providers](../providers)
 
 ## 技術スタック
 
@@ -98,7 +98,7 @@ AIMeter は、AI プロバイダーの利用量・クォータ・履歴トレン
 ├─ src/                  # フロントエンドアプリ
 ├─ server/               # バックエンド API, 認証, ジョブ, ストレージ
 ├─ deploy/               # プラットフォーム別デプロイガイド
-├─ doc/                  # API ドキュメント, プロバイダー例, 翻訳, 設定ドキュメント
+├─ docs/                  # API ドキュメント, プロバイダー例, 翻訳, 設定ドキュメント
 ├─ config.all.yaml       # 設定テンプレート（全項目）
 ├─ config.yaml           # ローカル有効設定（コピーして作成）
 └─ .env.all              # 環境変数テンプレート（全項目）
@@ -189,7 +189,7 @@ npm run cf:deploy      # Cloudflare Workers へデプロイ
 
 詳細な項目マッピングと説明:
 
-- [doc/conf/README.md](../conf/README.md)
+- [docs/conf/README.md](../conf/README.md)
 
 ## デプロイ
 
@@ -202,7 +202,7 @@ npm run cf:deploy      # Cloudflare Workers へデプロイ
 
 ## API ドキュメント
 
-- [doc/api/README.md](../api/README.md)
+- [docs/api/README.md](../api/README.md)
 
 ## セキュリティノート
 

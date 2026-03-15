@@ -25,7 +25,7 @@ AIMeter is a self-hosted dashboard for tracking AI provider usage, quota, and hi
 
 Aliyun · Antigravity · Claude · Codex · Kimi · MiniMax · z.ai · Copilot · OpenRouter · Ollama · OpenCode · Cursor
 
-Provider-specific examples and integration notes: [github.com/bugwz/AIMeter — doc/providers](https://github.com/bugwz/AIMeter/tree/main/doc/providers)
+Provider-specific examples and integration notes: [github.com/bugwz/AIMeter — docs/providers](https://github.com/bugwz/AIMeter/tree/main/docs/providers)
 
 ## Tech Stack
 
@@ -76,7 +76,7 @@ Config sources and priority:
 - In `node` mode, the in-process scheduler starts automatically.
 - In `serverless` mode, use an external cron to call `/api/system/jobs/refresh` every 5 minutes.
 
-Detailed field mapping and explanations: [doc/conf/README.md](https://github.com/bugwz/AIMeter/blob/main/doc/conf/README.md)
+Detailed field mapping and explanations: [docs/conf/README.md](https://github.com/bugwz/AIMeter/blob/main/docs/conf/README.md)
 
 ## Deployment
 
@@ -87,7 +87,7 @@ Detailed field mapping and explanations: [doc/conf/README.md](https://github.com
 
 ## API Documentation
 
-[doc/api/README.md](https://github.com/bugwz/AIMeter/blob/main/doc/api/README.md)
+[docs/api/README.md](https://github.com/bugwz/AIMeter/blob/main/docs/api/README.md)
 
 ## Security Notes
 

@@ -2,7 +2,7 @@
 .wrangler
 data
 dist
-doc/reference
+docs/reference
 node_modules
 .env
 config.yaml

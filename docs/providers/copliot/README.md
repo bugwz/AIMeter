@@ -229,5 +229,5 @@ User provides OAuth token or API key
 |------|----------------|
 | `src/adapters/CopilotAdapter.ts` | Core adapter: token extraction, request, quota parsing |
 | `src/adapters/utils.ts` | `fetchWithTimeout`, `roundPercentage` utilities |
-| `doc/providers/copliot/demo.individual.json` | Sample response with `quota_snapshots` format |
-| `doc/providers/copliot/demo.free.json` | Sample response with `limited_user_quotas` format |
+| `docs/providers/copliot/demo.individual.json` | Sample response with `quota_snapshots` format |
+| `docs/providers/copliot/demo.free.json` | Sample response with `limited_user_quotas` format |

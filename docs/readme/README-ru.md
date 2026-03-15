@@ -4,17 +4,17 @@
 
 # AIMeter
 
-AIMeter ist ein self-hosted Dashboard zur Verfolgung von Nutzung, Kontingent und Verlaufstrends von AI-Providern.
+AIMeter - это self-hosted панель для отслеживания использования, квот и исторических трендов AI-провайдеров.
 
 </div>
 
 <div align="center">
 
-[![React](https://img.shields.io/badge/React-Frontend-61dafb?logo=react&logoColor=white)](#tech-stack)
-[![Express](https://img.shields.io/badge/Express-API-000000?logo=express)](#tech-stack)
-[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?logo=typescript&logoColor=white)](#tech-stack)
-[![Runtime](https://img.shields.io/badge/Runtime-Node%20%7C%20Serverless-22c55e)](#runtime-modi)
-[![Providers](https://img.shields.io/badge/Providers-Multi-0ea5e9)](#unterstützte-provider)
+[![React](https://img.shields.io/badge/React-Frontend-61dafb?logo=react&logoColor=white)](#технологический-стек)
+[![Express](https://img.shields.io/badge/Express-API-000000?logo=express)](#технологический-стек)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?logo=typescript&logoColor=white)](#технологический-стек)
+[![Runtime](https://img.shields.io/badge/Runtime-Node%20%7C%20Serverless-22c55e)](#режимы-выполнения)
+[![Providers](https://img.shields.io/badge/Providers-Multi-0ea5e9)](#поддерживаемые-provider)
 [![Deploy](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel)](../../deploy/vercel/README.md)
 [![Deploy](https://img.shields.io/badge/Deploy-Cloudflare-f38020?logo=cloudflare&logoColor=white)](../../deploy/cloudflare/README.md)
 
@@ -22,7 +22,7 @@ AIMeter ist ein self-hosted Dashboard zur Verfolgung von Nutzung, Kontingent und
 
 <div align="center">
 
-[English](../../README.md) | [简体中文](README-zh-CN.md) | [繁體中文](README-zh-TW.md) | [日本語](README-ja.md) | [Français](README-fr.md) | [**Deutsch**](README-de.md) | [Español](README-es.md) | [Português](README-pt.md) | [Русский](README-ru.md) | [한국어](README-ko.md)
+[English](../../README.md) | [简体中文](README-zh-CN.md) | [繁體中文](README-zh-TW.md) | [日本語](README-ja.md) | [Français](README-fr.md) | [Deutsch](README-de.md) | [Español](README-es.md) | [Português](README-pt.md) | [**Русский**](README-ru.md) | [한국어](README-ko.md)
 
 </div>
 
@@ -46,21 +46,21 @@ AIMeter ist ein self-hosted Dashboard zur Verfolgung von Nutzung, Kontingent und
   </table>
 </div>
 
-## Features
+## Возможности
 
-- React-Frontend-Dashboard
-- Express-Backend-API
-- Adapter-Architektur für mehrere Provider
-- Runtime-Modi: `node` und `serverless`
-- Datenbankgestützte Speicherung und Bootstrap-Flow
-- Einheitliches Dashboard über mehrere AI-Provider
-- Provider-Credential-Management und Quota-Anzeige
-- Nutzungsverlauf und Chart-Seiten
-- Endpoint-/Proxy-bezogene API-Seiten
-- Bootstrap- und Admin-Initialisierungsflow
-- Datenbank-Engines: `sqlite`, `d1`, `postgres`, `mysql`
+- Frontend-дашборд на React
+- Backend API на Express
+- Архитектура адаптеров для нескольких провайдеров
+- Режимы runtime: `node` и `serverless`
+- Хранилище на базе БД и поток bootstrap
+- Единая панель для нескольких AI-провайдеров
+- Управление учетными данными провайдеров и отображение квот
+- История использования и страницы графиков
+- API-страницы для endpoint/proxy
+- Инициализация bootstrap + admin route
+- Поддержка DB-движков: `sqlite`, `d1`, `postgres`, `mysql`
 
-## Unterstützte Provider
+## Поддерживаемые Provider
 
 <div align="center">
 <table>
@@ -118,32 +118,32 @@ AIMeter ist ein self-hosted Dashboard zur Verfolgung von Nutzung, Kontingent und
   </tr>
 </table>
 </div>
-Provider-spezifische Beispiele und Integrationshinweise: [doc/providers](../providers)
+Примеры по провайдерам и заметки по интеграции: [docs/providers](../providers)
 
-## Tech Stack
+## Технологический стек
 
 - Frontend: React 18, TypeScript, Vite, Tailwind CSS
 - Backend: Node.js, Express, TypeScript
 - Storage: SQLite / Cloudflare D1 / PostgreSQL / MySQL
 
-## Projektstruktur
+## Структура проекта
 
 ```text
 .
-├─ src/                  # Frontend-App
-├─ server/               # Backend API, Auth, Jobs, Storage
-├─ deploy/               # Deployment-Guides nach Plattform
-├─ doc/                  # API-Doku, Provider-Beispiele, Übersetzungen, Konfig-Doku
-├─ config.all.yaml       # Vollständige Konfigurationsvorlage
-├─ config.yaml           # Aktive lokale Konfiguration (durch Kopie erzeugen)
-└─ .env.all              # Vollständige Env-Vorlage
+├─ src/                  # Frontend-приложение
+├─ server/               # Backend API, auth, jobs, storage
+├─ deploy/               # Гайды по деплою для платформ
+├─ docs/                  # API-доки, примеры провайдеров, переводы, доки конфигурации
+├─ config.all.yaml       # Полный шаблон конфигурации
+├─ config.yaml           # Активная локальная конфигурация (создается копированием)
+└─ .env.all              # Полный шаблон переменных окружения
 ```
 
-## Quick Start
+## Быстрый старт
 
-### Option 1: Container (Docker)
+### Вариант 1: Контейнер (Docker)
 
-Single-Container-Deployment mit nginx + Node.js. Daten werden über ein Volume-Mount persistiert.
+Развёртывание в одном контейнере с nginx + Node.js. Данные сохраняются через монтирование тома.
 
 ```bash
 mkdir -p ~/aimeter/db ~/aimeter/log
@@ -159,88 +159,88 @@ docker run -d --name aimeter \
   bugwz/aimeter:latest
 ```
 
-Öffnen: `http://localhost:3000`
+Открыть: `http://localhost:3000`
 
-Docker Compose, HTTPS, MySQL/PostgreSQL und Multi-Arch-Builds: [deploy/container/README.md](../../deploy/container/README.md)
+Docker Compose, HTTPS, MySQL/PostgreSQL и multi-arch сборки: [deploy/container/README.md](../../deploy/container/README.md)
 
-### Option 2: Vercel
+### Вариант 2: Vercel
 
-Serverless-Deployment. Erfordert eine externe MySQL- oder PostgreSQL-Datenbank.
+Serverless-развёртывание. Требуется внешняя база данных MySQL или PostgreSQL.
 
-| Datenbank | Deployen |
+| БД | Деплой |
 |---|---|
 | MySQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22mysql%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22mysql%3A%2F%2FUSER%3APASSWORD%40HOST%3A3306%2FDATABASE%22%7D&envDescription=AIMeter+Vercel+%2B+MySQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
 | PostgreSQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22postgres%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22postgresql%3A%2F%2FUSER%3APASSWORD%40HOST%3A5432%2FDATABASE%3Fsslmode%3Drequire%22%7D&envDescription=AIMeter+Vercel+%2B+PostgreSQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
 
-Umgebungsvariablen setzen, Bootstrap abschließen, dann einen externen Cron-Dienst konfigurieren, der `/api/system/jobs/refresh` alle 5 Minuten aufruft.
+Задайте переменные окружения, завершите bootstrap, затем настройте внешний cron-сервис для вызова `/api/system/jobs/refresh` каждые 5 минут.
 
-Cron-Einrichtung und vollständige Konfiguration: [deploy/vercel/README.md](../../deploy/vercel/README.md)
+Настройка cron и полное руководство: [deploy/vercel/README.md](../../deploy/vercel/README.md)
 
-### Option 3: Cloudflare Workers
+### Вариант 3: Cloudflare Workers
 
-Serverless-Deployment. Unterstützt Cloudflare D1, MySQL oder PostgreSQL.
+Serverless-развёртывание. Поддерживает Cloudflare D1, MySQL или PostgreSQL.
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bugwz/AIMeter)
 
-Nach dem Deployment Umgebungsvariablen je nach Datenbanktyp setzen:
+После деплоя задайте переменные окружения в зависимости от режима БД:
 
-| Modus | Erforderliche Umgebungsvariablen |
+| Режим | Обязательные переменные |
 |---|---|
 | D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
 | MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://USER:PASSWORD@HOST:3306/DATABASE` |
 | PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require` |
 
-Cron Triggers sind eingebaut — `wrangler.jsonc` plant automatisch alle 5 Minuten einen Refresh.
+Cron Triggers встроены — `wrangler.jsonc` автоматически планирует обновление каждые 5 минут.
 
-D1-Binding, Hyperdrive und vollständige Setup-Schritte: [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
+Привязка D1, Hyperdrive и полные шаги настройки: [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
 
-## Skripte
+## Скрипты
 
 ```bash
-npm run dev            # nur Frontend
-npm run start:server   # nur Backend
-npm run dev:all        # Frontend + Backend
-npm run dev:mock:all   # Frontend + Backend (Mock-Modus)
-npm run build          # Type-Check und Frontend-Build
-npm run preview        # Frontend-Build lokal prüfen
-npm run cf:dev         # lokale Cloudflare Workers-Entwicklung
-npm run cf:deploy      # zu Cloudflare Workers deployen
+npm run dev            # только frontend
+npm run start:server   # только backend
+npm run dev:all        # frontend + backend
+npm run dev:mock:all   # frontend + backend (mock-режим)
+npm run build          # проверка типов и сборка frontend
+npm run preview        # предпросмотр frontend-сборки
+npm run cf:dev         # локальная разработка Cloudflare Workers
+npm run cf:deploy      # деплой в Cloudflare Workers
 ```
 
-## Konfiguration
+## Конфигурация
 
-Quellen und Priorität in der aktuellen Implementierung:
+Источники конфигурации и приоритет в текущей реализации:
 
-1. `config.yaml` (oder Pfad aus `AIMETER_CONFIG_FILE`)
-2. Umgebungsvariablen
-3. Eingebaute Defaults
+1. `config.yaml` (или путь из `AIMETER_CONFIG_FILE`)
+2. Переменные окружения
+3. Встроенные значения по умолчанию
 
-Wichtig:
+Важно:
 
-- `database.engine` / `AIMETER_DATABASE_ENGINE` ist erforderlich.
-- `database.connection` / `AIMETER_DATABASE_CONNECTION` ist erforderlich.
-- Im `serverless`-Modus ist der Scheduler deaktiviert.
-- Im `node`-Modus startet der In-Process-Scheduler automatisch.
+- `database.engine` / `AIMETER_DATABASE_ENGINE` обязательно.
+- `database.connection` / `AIMETER_DATABASE_CONNECTION` обязательно.
+- В режиме `serverless` планировщик отключен.
+- В режиме `node` in-process планировщик запускается автоматически.
 
-Detaillierte Feldzuordnung und Erklärungen:
+Подробное соответствие полей и объяснения:
 
-- [doc/conf/README.md](../conf/README.md)
+- [docs/conf/README.md](../conf/README.md)
 
-## Deployment
+## Деплой
 
-Unterstützte Deployment-Modi und Links:
+Поддерживаемые режимы деплоя:
 
 - [deploy/README.md](../../deploy/README.md)
 - [deploy/container/README.md](../../deploy/container/README.md)
 - [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
 - [deploy/vercel/README.md](../../deploy/vercel/README.md)
 
-## API-Dokumentation
+## API документация
 
-- [doc/api/README.md](../api/README.md)
+- [docs/api/README.md](../api/README.md)
 
-## Sicherheitshinweise
+## Заметки по безопасности
 
-- Session-Secret und verschlüsselungsrelevante Einstellungen werden im DB-Modus beim Bootstrap initialisiert und persistiert.
-- `AIMETER_CRON_SECRET` und `AIMETER_ENDPOINT_SECRET` sind optionale Integrations-Secrets; falls gesetzt, starke 32-Zeichen-Zufallswerte verwenden.
-- In Produktion `AIMETER_SERVER_PROTOCOL=https` setzen, um strengere Transport-Sicherheitsheader zu aktivieren.
+- Session secret и настройки, связанные с шифрованием, инициализируются и сохраняются системным storage во время bootstrap в режиме БД.
+- `AIMETER_CRON_SECRET` и `AIMETER_ENDPOINT_SECRET` - опциональные интеграционные секреты; используйте надежные случайные значения длиной 32 символа.
+- В production установите `AIMETER_SERVER_PROTOCOL=https`, чтобы включить более строгие transport-security заголовки.

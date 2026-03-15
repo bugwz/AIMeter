@@ -4,17 +4,17 @@
 
 # AIMeter
 
-AIMeter는 AI provider 사용량, quota, 이력 추세를 추적하는 self-hosted 대시보드입니다.
+AIMeter ist ein self-hosted Dashboard zur Verfolgung von Nutzung, Kontingent und Verlaufstrends von AI-Providern.
 
 </div>
 
 <div align="center">
 
-[![React](https://img.shields.io/badge/React-Frontend-61dafb?logo=react&logoColor=white)](#기술-스택)
-[![Express](https://img.shields.io/badge/Express-API-000000?logo=express)](#기술-스택)
-[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?logo=typescript&logoColor=white)](#기술-스택)
-[![Runtime](https://img.shields.io/badge/Runtime-Node%20%7C%20Serverless-22c55e)](#런타임-모드)
-[![Providers](https://img.shields.io/badge/Providers-Multi-0ea5e9)](#지원-provider)
+[![React](https://img.shields.io/badge/React-Frontend-61dafb?logo=react&logoColor=white)](#tech-stack)
+[![Express](https://img.shields.io/badge/Express-API-000000?logo=express)](#tech-stack)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?logo=typescript&logoColor=white)](#tech-stack)
+[![Runtime](https://img.shields.io/badge/Runtime-Node%20%7C%20Serverless-22c55e)](#runtime-modi)
+[![Providers](https://img.shields.io/badge/Providers-Multi-0ea5e9)](#unterstützte-provider)
 [![Deploy](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel)](../../deploy/vercel/README.md)
 [![Deploy](https://img.shields.io/badge/Deploy-Cloudflare-f38020?logo=cloudflare&logoColor=white)](../../deploy/cloudflare/README.md)
 
@@ -22,7 +22,7 @@ AIMeter는 AI provider 사용량, quota, 이력 추세를 추적하는 self-host
 
 <div align="center">
 
-[English](../../README.md) | [简体中文](README-zh-CN.md) | [繁體中文](README-zh-TW.md) | [日本語](README-ja.md) | [Français](README-fr.md) | [Deutsch](README-de.md) | [Español](README-es.md) | [Português](README-pt.md) | [Русский](README-ru.md) | [**한국어**](README-ko.md)
+[English](../../README.md) | [简体中文](README-zh-CN.md) | [繁體中文](README-zh-TW.md) | [日本語](README-ja.md) | [Français](README-fr.md) | [**Deutsch**](README-de.md) | [Español](README-es.md) | [Português](README-pt.md) | [Русский](README-ru.md) | [한국어](README-ko.md)
 
 </div>
 
@@ -46,21 +46,21 @@ AIMeter는 AI provider 사용량, quota, 이력 추세를 추적하는 self-host
   </table>
 </div>
 
-## 주요 기능
+## Features
 
-- React 프론트엔드 대시보드
-- Express 백엔드 API
-- 다중 provider 어댑터 아키텍처
-- 런타임 모드: `node`, `serverless`
-- 데이터베이스 기반 저장소 및 bootstrap 흐름
-- 여러 AI provider를 위한 통합 대시보드
-- provider 자격 증명 관리 및 quota 표시
-- 사용량 이력 및 차트 페이지
-- endpoint/proxy 관련 API 페이지
-- bootstrap + admin 라우트 초기화 플로우
-- DB 엔진 지원: `sqlite`, `d1`, `postgres`, `mysql`
+- React-Frontend-Dashboard
+- Express-Backend-API
+- Adapter-Architektur für mehrere Provider
+- Runtime-Modi: `node` und `serverless`
+- Datenbankgestützte Speicherung und Bootstrap-Flow
+- Einheitliches Dashboard über mehrere AI-Provider
+- Provider-Credential-Management und Quota-Anzeige
+- Nutzungsverlauf und Chart-Seiten
+- Endpoint-/Proxy-bezogene API-Seiten
+- Bootstrap- und Admin-Initialisierungsflow
+- Datenbank-Engines: `sqlite`, `d1`, `postgres`, `mysql`
 
-## 지원 Provider
+## Unterstützte Provider
 
 <div align="center">
 <table>
@@ -118,32 +118,32 @@ AIMeter는 AI provider 사용량, quota, 이력 추세를 추적하는 self-host
   </tr>
 </table>
 </div>
-provider별 예제 및 통합 노트: [doc/providers](../providers)
+Provider-spezifische Beispiele und Integrationshinweise: [docs/providers](../providers)
 
-## 기술 스택
+## Tech Stack
 
 - Frontend: React 18, TypeScript, Vite, Tailwind CSS
 - Backend: Node.js, Express, TypeScript
 - Storage: SQLite / Cloudflare D1 / PostgreSQL / MySQL
 
-## 프로젝트 구조
+## Projektstruktur
 
 ```text
 .
-├─ src/                  # 프론트엔드 앱
-├─ server/               # 백엔드 API, 인증, 작업, 저장소
-├─ deploy/               # 플랫폼별 배포 가이드
-├─ doc/                  # API 문서, provider 예제, 번역, 설정 문서
-├─ config.all.yaml       # 전체 구성 템플릿
-├─ config.yaml           # 활성 로컬 구성(복사해서 생성)
-└─ .env.all              # 전체 환경 변수 템플릿
+├─ src/                  # Frontend-App
+├─ server/               # Backend API, Auth, Jobs, Storage
+├─ deploy/               # Deployment-Guides nach Plattform
+├─ docs/                  # API-Doku, Provider-Beispiele, Übersetzungen, Konfig-Doku
+├─ config.all.yaml       # Vollständige Konfigurationsvorlage
+├─ config.yaml           # Aktive lokale Konfiguration (durch Kopie erzeugen)
+└─ .env.all              # Vollständige Env-Vorlage
 ```
 
-## 빠른 시작
+## Quick Start
 
-### 옵션 1: 컨테이너 (Docker)
+### Option 1: Container (Docker)
 
-nginx + Node.js 단일 컨테이너 배포. 데이터는 볼륨 마운트로 영속화됩니다.
+Single-Container-Deployment mit nginx + Node.js. Daten werden über ein Volume-Mount persistiert.
 
 ```bash
 mkdir -p ~/aimeter/db ~/aimeter/log
@@ -159,88 +159,88 @@ docker run -d --name aimeter \
   bugwz/aimeter:latest
 ```
 
-접속: `http://localhost:3000`
+Öffnen: `http://localhost:3000`
 
-Docker Compose, HTTPS, MySQL/PostgreSQL, 멀티아키텍처 빌드: [deploy/container/README.md](../../deploy/container/README.md)
+Docker Compose, HTTPS, MySQL/PostgreSQL und Multi-Arch-Builds: [deploy/container/README.md](../../deploy/container/README.md)
 
-### 옵션 2: Vercel
+### Option 2: Vercel
 
-Serverless 배포. 외부 MySQL 또는 PostgreSQL 데이터베이스가 필요합니다.
+Serverless-Deployment. Erfordert eine externe MySQL- oder PostgreSQL-Datenbank.
 
-| DB | 배포 |
+| Datenbank | Deployen |
 |---|---|
 | MySQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22mysql%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22mysql%3A%2F%2FUSER%3APASSWORD%40HOST%3A3306%2FDATABASE%22%7D&envDescription=AIMeter+Vercel+%2B+MySQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
 | PostgreSQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22postgres%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22postgresql%3A%2F%2FUSER%3APASSWORD%40HOST%3A5432%2FDATABASE%3Fsslmode%3Drequire%22%7D&envDescription=AIMeter+Vercel+%2B+PostgreSQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
 
-환경 변수 설정 및 bootstrap 완료 후, 외부 cron 서비스를 구성하여 `/api/system/jobs/refresh`를 5분마다 호출하세요.
+Umgebungsvariablen setzen, Bootstrap abschließen, dann einen externen Cron-Dienst konfigurieren, der `/api/system/jobs/refresh` alle 5 Minuten aufruft.
 
-Cron 설정 및 전체 가이드: [deploy/vercel/README.md](../../deploy/vercel/README.md)
+Cron-Einrichtung und vollständige Konfiguration: [deploy/vercel/README.md](../../deploy/vercel/README.md)
 
-### 옵션 3: Cloudflare Workers
+### Option 3: Cloudflare Workers
 
-Serverless 배포. Cloudflare D1, MySQL, PostgreSQL을 지원합니다.
+Serverless-Deployment. Unterstützt Cloudflare D1, MySQL oder PostgreSQL.
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bugwz/AIMeter)
 
-배포 후 데이터베이스 모드에 따라 환경 변수를 설정하세요:
+Nach dem Deployment Umgebungsvariablen je nach Datenbanktyp setzen:
 
-| 모드 | 필수 환경 변수 |
+| Modus | Erforderliche Umgebungsvariablen |
 |---|---|
 | D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
 | MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://USER:PASSWORD@HOST:3306/DATABASE` |
 | PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require` |
 
-Cron Triggers가 내장되어 있으며, `wrangler.jsonc`가 기본으로 5분마다 자동 갱신을 예약합니다.
+Cron Triggers sind eingebaut — `wrangler.jsonc` plant automatisch alle 5 Minuten einen Refresh.
 
-D1 바인딩, Hyperdrive, 전체 설정 단계: [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
+D1-Binding, Hyperdrive und vollständige Setup-Schritte: [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
 
-## 스크립트
+## Skripte
 
 ```bash
-npm run dev            # 프론트엔드만
-npm run start:server   # 백엔드만
-npm run dev:all        # 프론트엔드 + 백엔드
-npm run dev:mock:all   # 프론트엔드 + 백엔드 (mock 모드)
-npm run build          # 타입 검사 및 프론트엔드 빌드
-npm run preview        # 프론트엔드 빌드 미리보기
-npm run cf:dev         # Cloudflare Workers 로컬 개발
-npm run cf:deploy      # Cloudflare Workers 배포
+npm run dev            # nur Frontend
+npm run start:server   # nur Backend
+npm run dev:all        # Frontend + Backend
+npm run dev:mock:all   # Frontend + Backend (Mock-Modus)
+npm run build          # Type-Check und Frontend-Build
+npm run preview        # Frontend-Build lokal prüfen
+npm run cf:dev         # lokale Cloudflare Workers-Entwicklung
+npm run cf:deploy      # zu Cloudflare Workers deployen
 ```
 
-## 구성
+## Konfiguration
 
-현재 구현의 구성 소스 및 우선순위:
+Quellen und Priorität in der aktuellen Implementierung:
 
-1. `config.yaml` (`AIMETER_CONFIG_FILE` 경로 지정 가능)
-2. 환경 변수
-3. 내장 기본값
+1. `config.yaml` (oder Pfad aus `AIMETER_CONFIG_FILE`)
+2. Umgebungsvariablen
+3. Eingebaute Defaults
 
-중요 사항:
+Wichtig:
 
-- `database.engine` / `AIMETER_DATABASE_ENGINE` 필수
-- `database.connection` / `AIMETER_DATABASE_CONNECTION` 필수
-- `serverless` 모드에서는 스케줄러 비활성화
-- `node` 모드에서는 프로세스 내 스케줄러 자동 시작
+- `database.engine` / `AIMETER_DATABASE_ENGINE` ist erforderlich.
+- `database.connection` / `AIMETER_DATABASE_CONNECTION` ist erforderlich.
+- Im `serverless`-Modus ist der Scheduler deaktiviert.
+- Im `node`-Modus startet der In-Process-Scheduler automatisch.
 
-필드 매핑 및 상세 설명:
+Detaillierte Feldzuordnung und Erklärungen:
 
-- [doc/conf/README.md](../conf/README.md)
+- [docs/conf/README.md](../conf/README.md)
 
-## 배포
+## Deployment
 
-지원 배포 모드 및 링크:
+Unterstützte Deployment-Modi und Links:
 
 - [deploy/README.md](../../deploy/README.md)
 - [deploy/container/README.md](../../deploy/container/README.md)
 - [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
 - [deploy/vercel/README.md](../../deploy/vercel/README.md)
 
-## API 문서
+## API-Dokumentation
 
-- [doc/api/README.md](../api/README.md)
+- [docs/api/README.md](../api/README.md)
 
-## 보안 노트
+## Sicherheitshinweise
 
-- 데이터베이스 모드에서 세션 시크릿 및 암호화 관련 설정은 bootstrap 과정에서 시스템 저장소에 초기화되어 영속화됩니다.
-- `AIMETER_CRON_SECRET` 및 `AIMETER_ENDPOINT_SECRET`는 선택적 통합 시크릿이며, 설정 시 32자 강랜덤 값을 사용하세요.
-- 운영 환경에서는 `AIMETER_SERVER_PROTOCOL=https`를 설정해 더 엄격한 전송 보안 헤더를 활성화하세요.
+- Session-Secret und verschlüsselungsrelevante Einstellungen werden im DB-Modus beim Bootstrap initialisiert und persistiert.
+- `AIMETER_CRON_SECRET` und `AIMETER_ENDPOINT_SECRET` sind optionale Integrations-Secrets; falls gesetzt, starke 32-Zeichen-Zufallswerte verwenden.
+- In Produktion `AIMETER_SERVER_PROTOCOL=https` setzen, um strengere Transport-Sicherheitsheader zu aktivieren.

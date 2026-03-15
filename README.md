@@ -22,25 +22,25 @@ AIMeter is a self-hosted dashboard for tracking AI provider usage, quota, and hi
 
 <div align="center">
 
-[**English**](README.md) | [简体中文](doc/readme/README-zh-CN.md) | [繁體中文](doc/readme/README-zh-TW.md) | [日本語](doc/readme/README-ja.md) | [Français](doc/readme/README-fr.md) | [Deutsch](doc/readme/README-de.md) | [Español](doc/readme/README-es.md) | [Português](doc/readme/README-pt.md) | [Русский](doc/readme/README-ru.md) | [한국어](doc/readme/README-ko.md)
+[**English**](README.md) | [简体中文](docs/readme/README-zh-CN.md) | [繁體中文](docs/readme/README-zh-TW.md) | [日本語](docs/readme/README-ja.md) | [Français](docs/readme/README-fr.md) | [Deutsch](docs/readme/README-de.md) | [Español](docs/readme/README-es.md) | [Português](docs/readme/README-pt.md) | [Русский](docs/readme/README-ru.md) | [한국어](docs/readme/README-ko.md)
 
 </div>
 
 <div align="center">
-  <img src="doc/img/dashboard.png" alt="AIMeter dashboard" width="100%" />
+  <img src="docs/img/dashboard.png" alt="AIMeter dashboard" width="100%" />
 </div>
 
 <div align="center">
   <table>
     <tr>
       <td align="center" width="33.33%">
-        <img src="doc/img/history.png" alt="AIMeter usage history" width="100%" />
+        <img src="docs/img/history.png" alt="AIMeter usage history" width="100%" />
       </td>
       <td align="center" width="33.33%">
-        <img src="doc/img/endpoint.png" alt="AIMeter endpoint" width="100%" />
+        <img src="docs/img/endpoint.png" alt="AIMeter endpoint" width="100%" />
       </td>
       <td align="center" width="33.33%">
-        <img src="doc/img/settings.png" alt="AIMeter settings" width="100%" />
+        <img src="docs/img/settings.png" alt="AIMeter settings" width="100%" />
       </td>
     </tr>
   </table>
@@ -120,7 +120,7 @@ AIMeter is a self-hosted dashboard for tracking AI provider usage, quota, and hi
 </table>
 </div>
 
-Provider-specific examples and integration notes: [doc/providers](doc/providers)
+Provider-specific examples and integration notes: [docs/providers](docs/providers)
 
 ## Tech Stack
 
@@ -135,7 +135,7 @@ Provider-specific examples and integration notes: [doc/providers](doc/providers)
 ├─ src/                  # Frontend app
 ├─ server/               # Backend API, auth, jobs, storage
 ├─ deploy/               # Deployment guides by platform
-├─ doc/                  # API docs, provider examples, translations, config docs
+├─ docs/                  # API docs, provider examples, translations, config docs
 ├─ config.all.yaml       # Full config template
 ├─ config.yaml           # Active local config (create by copy)
 └─ .env.all              # Full env template
@@ -226,7 +226,7 @@ Important:
 
 Detailed field mapping and explanations:
 
-- [doc/conf/README.md](doc/conf/README.md)
+- [docs/conf/README.md](docs/conf/README.md)
 
 ## Deployment
 
@@ -239,7 +239,7 @@ Supported deployment modes and links:
 
 ## API Documentation
 
-- [doc/api/README.md](doc/api/README.md)
+- [docs/api/README.md](docs/api/README.md)
 
 ## Security Notes
 

@@ -203,4 +203,4 @@ User provides Ollama browser cookie
 |------|----------------|
 | `src/adapters/OllamaAdapter.ts` | Core adapter: HTML fetch, regex-based parsing, session detection |
 | `src/adapters/utils.ts` | `fetchWithTimeout`, `roundPercentage` utilities |
-| `doc/providers/ollama/demo.html` | Sample settings page HTML for testing parsers |
+| `docs/providers/ollama/demo.html` | Sample settings page HTML for testing parsers |

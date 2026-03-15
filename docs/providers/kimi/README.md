@@ -243,5 +243,5 @@ User provides kimi-auth JWT (via cookie, JWT, or API key)
 |------|----------------|
 | `src/adapters/KimiAdapter.ts` | Core adapter: JWT decode, parallel fetch, scope parsing |
 | `src/adapters/utils.ts` | `fetchWithTimeout`, `roundPercentage`, `formatWindowDurationFromMinutes` |
-| `doc/providers/kimi/demo.usage.json` | Sample GetUsages response |
-| `doc/providers/kimi/demo.subscription.json` | Sample GetSubscription response |
+| `docs/providers/kimi/demo.usage.json` | Sample GetUsages response |
+| `docs/providers/kimi/demo.subscription.json` | Sample GetSubscription response |

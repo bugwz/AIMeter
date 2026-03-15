@@ -248,4 +248,4 @@ User provides Cookie or API Key + region config
 |------|----------------|
 | `src/adapters/MiniMaxAdapter.ts` | Core adapter: region routing, parallel fetch, token/count parsing |
 | `src/adapters/utils.ts` | `fetchWithTimeout`, `roundPercentage`, `formatWindowDurationFromMinutes` |
-| `doc/providers/minimax/demo.json` | Sample coding plan remains API response |
+| `docs/providers/minimax/demo.json` | Sample coding plan remains API response |

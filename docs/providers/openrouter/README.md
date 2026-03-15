@@ -226,5 +226,5 @@ User provides OpenRouter API key
 |------|----------------|
 | `src/adapters/OpenRouterAdapter.ts` | Core adapter: key extraction, parallel fetch, credit parsing |
 | `src/adapters/utils.ts` | `fetchWithTimeout`, `roundPercentage` utilities |
-| `doc/providers/openrouter/demo.credits.json` | Sample `/credits` API response |
-| `doc/providers/openrouter/demo.key.json` | Sample `/key` API response with daily limit |
+| `docs/providers/openrouter/demo.credits.json` | Sample `/credits` API response |
+| `docs/providers/openrouter/demo.key.json` | Sample `/key` API response with daily limit |

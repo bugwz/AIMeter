@@ -461,5 +461,5 @@ generateAuthUrl() → user authorizes in browser
 | `server/routes/providers.ts` | REST routes: `/providers/claude/oauth/*`, `/providers/:id/refresh` |
 | `src/types/provider.ts` | `ProviderConfig`, `Credential`, `AuthType` type definitions |
 | `src/types/usage.ts` | `UsageSnapshot`, `ProgressItem`, `ProviderCostSnapshot` types |
-| `doc/providers/claude/demo.1.json` | Sample OAuth usage API response (seven_day populated) |
-| `doc/providers/claude/demo.2.json` | Sample OAuth usage API response (with resets_at) |
+| `docs/providers/claude/demo.1.json` | Sample OAuth usage API response (seven_day populated) |
+| `docs/providers/claude/demo.2.json` | Sample OAuth usage API response (with resets_at) |

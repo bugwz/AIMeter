@@ -4,17 +4,17 @@
 
 # AIMeter
 
-AIMeter est un tableau de bord self-hosted pour suivre l'utilisation, les quotas et les tendances historiques des fournisseurs IA.
+AIMeter 是一个可自托管仪表盘，用于跟踪 AI 服务商的用量、额度与历史趋势。
 
 </div>
 
 <div align="center">
 
-[![React](https://img.shields.io/badge/React-Frontend-61dafb?logo=react&logoColor=white)](#stack-technique)
-[![Express](https://img.shields.io/badge/Express-API-000000?logo=express)](#stack-technique)
-[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?logo=typescript&logoColor=white)](#stack-technique)
-[![Runtime](https://img.shields.io/badge/Runtime-Node%20%7C%20Serverless-22c55e)](#modes-dexécution)
-[![Providers](https://img.shields.io/badge/Providers-Multi-0ea5e9)](#fournisseurs-pris-en-charge)
+[![React](https://img.shields.io/badge/React-Frontend-61dafb?logo=react&logoColor=white)](#技术栈)
+[![Express](https://img.shields.io/badge/Express-API-000000?logo=express)](#技术栈)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?logo=typescript&logoColor=white)](#技术栈)
+[![Runtime](https://img.shields.io/badge/Runtime-Node%20%7C%20Serverless-22c55e)](#运行模式)
+[![Providers](https://img.shields.io/badge/Providers-Multi-0ea5e9)](#支持的服务商)
 [![Deploy](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel)](../../deploy/vercel/README.md)
 [![Deploy](https://img.shields.io/badge/Deploy-Cloudflare-f38020?logo=cloudflare&logoColor=white)](../../deploy/cloudflare/README.md)
 
@@ -22,7 +22,7 @@ AIMeter est un tableau de bord self-hosted pour suivre l'utilisation, les quotas
 
 <div align="center">
 
-[English](../../README.md) | [简体中文](README-zh-CN.md) | [繁體中文](README-zh-TW.md) | [日本語](README-ja.md) | [**Français**](README-fr.md) | [Deutsch](README-de.md) | [Español](README-es.md) | [Português](README-pt.md) | [Русский](README-ru.md) | [한국어](README-ko.md)
+[English](../../README.md) | [**简体中文**](README-zh-CN.md) | [繁體中文](README-zh-TW.md) | [日本語](README-ja.md) | [Français](README-fr.md) | [Deutsch](README-de.md) | [Español](README-es.md) | [Português](README-pt.md) | [Русский](README-ru.md) | [한국어](README-ko.md)
 
 </div>
 
@@ -46,22 +46,21 @@ AIMeter est un tableau de bord self-hosted pour suivre l'utilisation, les quotas
   </table>
 </div>
 
-## Fonctionnalités
+## 功能特性
 
-- Dashboard frontend React
-- API backend Express
-- Architecture d'adaptateurs multi-fournisseurs
-- Modes runtime : `node` et `serverless`
-- Stockage adossé à une base de données et flux de bootstrap
-- Dashboard unifié pour plusieurs fournisseurs IA
-- Gestion des identifiants fournisseurs et affichage des quotas
-- Historique d'usage et pages de graphiques
-- Pages API liées aux endpoints/proxy
-- Flux d'initialisation bootstrap + route admin
-- Moteurs DB : `sqlite`, `d1`, `postgres`, `mysql`
+- React 前端仪表盘
+- Express 后端 API
+- 多服务商适配器架构
+- 运行模式：`node` 与 `serverless`
+- 基于数据库的存储与 bootstrap 流程
+- 多个 AI 服务商统一看板
+- 服务商凭证管理与额度展示
+- 用量历史与图表页面
+- Endpoint / 代理相关 API 页面
+- Bootstrap + 管理员路由初始化流程
+- 多种数据库引擎：`sqlite`、`d1`、`postgres`、`mysql`
 
-## Fournisseurs pris en charge
-
+## 支持的服务商
 
 <div align="center">
 <table>
@@ -119,32 +118,33 @@ AIMeter est un tableau de bord self-hosted pour suivre l'utilisation, les quotas
   </tr>
 </table>
 </div>
-Exemples spécifiques aux fournisseurs et notes d'intégration : [doc/providers](../providers)
 
-## Stack technique
+服务商示例与接入说明： [docs/providers](../providers)
 
-- Frontend : React 18, TypeScript, Vite, Tailwind CSS
-- Backend : Node.js, Express, TypeScript
-- Stockage : SQLite / Cloudflare D1 / PostgreSQL / MySQL
+## 技术栈
 
-## Structure du projet
+- 前端：React 18、TypeScript、Vite、Tailwind CSS
+- 后端：Node.js、Express、TypeScript
+- 存储：SQLite / Cloudflare D1 / PostgreSQL / MySQL
+
+## 项目结构
 
 ```text
 .
-├─ src/                  # Application frontend
-├─ server/               # API backend, auth, jobs, stockage
-├─ deploy/               # Guides de déploiement par plateforme
-├─ doc/                  # Docs API, exemples fournisseurs, traductions, docs config
-├─ config.all.yaml       # Modèle de configuration complet
-├─ config.yaml           # Configuration locale active (copie du modèle)
-└─ .env.all              # Modèle complet des variables d'environnement
+├─ src/                  # 前端应用
+├─ server/               # 后端 API、鉴权、任务、存储
+├─ deploy/               # 各平台部署指南
+├─ docs/                  # API 文档、服务商示例、翻译、配置文档
+├─ config.all.yaml       # 完整配置模板
+├─ config.yaml           # 当前本地配置（由模板复制）
+└─ .env.all              # 完整环境变量模板
 ```
 
-## Démarrage rapide
+## 快速开始
 
-### Option 1 : Conteneur (Docker)
+### 方式一：容器（Docker）
 
-Déploiement mono-conteneur nginx + Node.js. Les données sont persistées via un volume monté.
+单容器部署，nginx + Node.js，数据通过挂载卷持久化。
 
 ```bash
 mkdir -p ~/aimeter/db ~/aimeter/log
@@ -160,88 +160,88 @@ docker run -d --name aimeter \
   bugwz/aimeter:latest
 ```
 
-Accéder à : `http://localhost:3000`
+访问：`http://localhost:3000`
 
-Docker Compose, HTTPS, MySQL/PostgreSQL et builds multi-arch : [deploy/container/README.md](../../deploy/container/README.md)
+Docker Compose、HTTPS、MySQL/PostgreSQL 及多架构构建：[deploy/container/README.md](../../deploy/container/README.md)
 
-### Option 2 : Vercel
+### 方式二：Vercel
 
-Déploiement serverless. Nécessite une base de données MySQL ou PostgreSQL externe.
+Serverless 部署，需要外部 MySQL 或 PostgreSQL 数据库。
 
-| Base de données | Déployer |
+| 数据库 | 部署 |
 |---|---|
 | MySQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22mysql%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22mysql%3A%2F%2FUSER%3APASSWORD%40HOST%3A3306%2FDATABASE%22%7D&envDescription=AIMeter+Vercel+%2B+MySQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
 | PostgreSQL | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter&env=AIMETER_RUNTIME_MODE%2CAIMETER_SERVER_PROTOCOL%2CAIMETER_DATABASE_ENGINE%2CAIMETER_DATABASE_CONNECTION&envDefaults=%7B%22AIMETER_RUNTIME_MODE%22%3A%22serverless%22%2C%22AIMETER_SERVER_PROTOCOL%22%3A%22https%22%2C%22AIMETER_DATABASE_ENGINE%22%3A%22postgres%22%2C%22AIMETER_DATABASE_CONNECTION%22%3A%22postgresql%3A%2F%2FUSER%3APASSWORD%40HOST%3A5432%2FDATABASE%3Fsslmode%3Drequire%22%7D&envDescription=AIMeter+Vercel+%2B+PostgreSQL&envLink=https%3A%2F%2Fgithub.com%2Fbugwz%2FAIMeter%2Fblob%2Fmain%2Fdeploy%2Fvercel%2FREADME.md) |
 
-Définissez les variables d'environnement, terminez le bootstrap, puis configurez un service cron externe pour appeler `/api/system/jobs/refresh` toutes les 5 minutes.
+设置环境变量并完成 bootstrap 后，配置外部定时任务每 5 分钟调用 `/api/system/jobs/refresh`。
 
-Configuration cron et guide complet : [deploy/vercel/README.md](../../deploy/vercel/README.md)
+Cron 配置与完整说明：[deploy/vercel/README.md](../../deploy/vercel/README.md)
 
-### Option 3 : Cloudflare Workers
+### 方式三：Cloudflare Workers
 
-Déploiement serverless. Supporte Cloudflare D1, MySQL ou PostgreSQL.
+Serverless 部署，支持 Cloudflare D1、MySQL 或 PostgreSQL。
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bugwz/AIMeter)
 
-Après déploiement, définissez les variables d'environnement selon le mode de base de données :
+部署后按数据库模式设置环境变量：
 
-| Mode | Variables requises |
+| 模式 | 必填环境变量 |
 |---|---|
 | D1 | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=d1`<br>`AIMETER_DATABASE_CONNECTION=DB` |
 | MySQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=mysql`<br>`AIMETER_DATABASE_CONNECTION=mysql://USER:PASSWORD@HOST:3306/DATABASE` |
 | PostgreSQL | `AIMETER_RUNTIME_MODE=serverless`<br>`AIMETER_SERVER_PROTOCOL=https`<br>`AIMETER_DATABASE_ENGINE=postgres`<br>`AIMETER_DATABASE_CONNECTION=postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require` |
 
-Les Cron Triggers sont intégrés — `wrangler.jsonc` planifie automatiquement un rafraîchissement toutes les 5 minutes.
+Cron Triggers 已内置，`wrangler.jsonc` 默认每 5 分钟自动触发刷新。
 
-Liaison D1, Hyperdrive et étapes de configuration complètes : [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
+D1 绑定、Hyperdrive 及完整配置步骤：[deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
 
-## Scripts
+## 脚本
 
 ```bash
-npm run dev            # frontend uniquement
-npm run start:server   # backend uniquement
-npm run dev:all        # frontend + backend
-npm run dev:mock:all   # frontend + backend (mode mock)
-npm run build          # vérification de types + build frontend
-npm run preview        # prévisualiser le build frontend
-npm run cf:dev         # dev local Cloudflare Workers
-npm run cf:deploy      # déployer vers Cloudflare Workers
+npm run dev            # 仅前端
+npm run start:server   # 仅后端
+npm run dev:all        # 前端 + 后端
+npm run dev:mock:all   # 前端 + 后端（Mock 模式）
+npm run build          # 类型检查并构建前端
+npm run preview        # 预览前端构建
+npm run cf:dev         # 本地 Cloudflare Workers 开发（Wrangler）
+npm run cf:deploy      # 部署到 Cloudflare Workers
 ```
 
-## Configuration
+## 配置
 
-Sources de configuration et priorité actuelle :
+当前实现中的配置来源与优先级：
 
-1. `config.yaml` (ou chemin via `AIMETER_CONFIG_FILE`)
-2. Variables d'environnement
-3. Valeurs par défaut intégrées
+1. `config.yaml`（或 `AIMETER_CONFIG_FILE` 指定路径）
+2. 环境变量
+3. 内置默认值
 
-Important :
+重点说明：
 
-- `database.engine` / `AIMETER_DATABASE_ENGINE` est requis.
-- `database.connection` / `AIMETER_DATABASE_CONNECTION` est requis.
-- En mode `serverless`, le scheduler est désactivé.
-- En mode `node`, le scheduler in-process démarre automatiquement.
+- `database.engine` / `AIMETER_DATABASE_ENGINE` 必填。
+- `database.connection` / `AIMETER_DATABASE_CONNECTION` 必填。
+- `serverless` 模式下，调度器禁用。
+- `node` 模式下，会自动启动进程内调度器。
 
-Mappage détaillé des champs et explications :
+字段映射与详细说明：
 
-- [doc/conf/README.md](../conf/README.md)
+- [docs/conf/README.md](../conf/README.md)
 
-## Déploiement
+## 部署
 
-Modes de déploiement pris en charge :
+支持的部署模式与文档：
 
 - [deploy/README.md](../../deploy/README.md)
 - [deploy/container/README.md](../../deploy/container/README.md)
 - [deploy/cloudflare/README.md](../../deploy/cloudflare/README.md)
 - [deploy/vercel/README.md](../../deploy/vercel/README.md)
 
-## Documentation API
+## API 文档
 
-- [doc/api/README.md](../api/README.md)
+- [docs/api/README.md](../api/README.md)
 
-## Notes de sécurité
+## 安全说明
 
-- Le secret de session et les paramètres liés au chiffrement sont initialisés et persistés par le stockage système lors du bootstrap en mode base de données.
-- `AIMETER_CRON_SECRET` et `AIMETER_ENDPOINT_SECRET` sont des secrets d'intégration optionnels ; utilisez des valeurs aléatoires fortes de 32 caractères.
-- En production, définissez `AIMETER_SERVER_PROTOCOL=https` pour activer des en-têtes de sécurité transport plus stricts.
+- 数据库模式下，会话密钥与加密相关设置会在 bootstrap 阶段由系统存储初始化并持久化。
+- `AIMETER_CRON_SECRET` 与 `AIMETER_ENDPOINT_SECRET` 为可选集成密钥，建议使用 32 位高强度随机值。
+- 生产环境请设置 `AIMETER_SERVER_PROTOCOL=https`，启用更严格的传输安全响应头。

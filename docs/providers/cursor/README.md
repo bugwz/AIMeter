@@ -231,6 +231,6 @@ User provides WorkosCursorSessionToken cookie
 |------|----------------|
 | `src/adapters/CursorAdapter.ts` | Core adapter: cookie normalization, parallel fetch, parsing |
 | `src/adapters/utils.ts` | `fetchWithTimeout`, `roundPercentage` utilities |
-| `doc/providers/cursor/demo.user.free.json` | Sample response for free-tier user |
-| `doc/providers/cursor/demo.team.json` | Sample response for enterprise/team user |
-| `doc/providers/cursor/demo.auth.json` | Sample `/auth/me` response |
+| `docs/providers/cursor/demo.user.free.json` | Sample response for free-tier user |
+| `docs/providers/cursor/demo.team.json` | Sample response for enterprise/team user |
+| `docs/providers/cursor/demo.auth.json` | Sample `/auth/me` response |

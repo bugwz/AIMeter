@@ -317,5 +317,5 @@ User provides browser Cookie
 |------|----------------|
 | `src/adapters/AliyunAdapter.ts` | Core adapter: cookie normalization, sec_token resolution, gateway call, parsing |
 | `src/adapters/utils.ts` | `fetchWithTimeout`, `roundPercentage` utilities |
-| `doc/providers/aliyun/demo.gateway.json` | Sample full gateway API response |
-| `doc/providers/aliyun/demo.instance.json` | Sample extracted instance object |
+| `docs/providers/aliyun/demo.gateway.json` | Sample full gateway API response |
+| `docs/providers/aliyun/demo.instance.json` | Sample extracted instance object |
