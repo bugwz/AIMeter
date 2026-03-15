@@ -21,6 +21,7 @@
     <nav class="hdr-nav">
       <a href="#screenshots">Screenshots</a>
       <a href="#install">Install</a>
+      <a href="#tools">Tools</a>
       <a href="https://github.com/bugwz/AIMeter" target="_blank" rel="noopener" class="hdr-gh">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.605-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
@@ -247,7 +248,7 @@
           <div class="cblock">
             <div class="cbar">
               <span class="clang">sh</span>
-              <button class="cpbtn" onclick="doCopy('cd-docker', this)">copy</button>
+              <button class="cpbtn" onclick="doCopy('cd-docker', this)">Copy</button>
             </div>
             <pre id="cd-docker"><span class="cm"># run with persistent SQLite volume</span>
 docker run -d \
@@ -263,7 +264,7 @@ docker run -d \
           <div class="cblock">
             <div class="cbar">
               <span class="clang">sh</span>
-              <button class="cpbtn" onclick="doCopy('cd-podman', this)">copy</button>
+              <button class="cpbtn" onclick="doCopy('cd-podman', this)">Copy</button>
             </div>
             <pre id="cd-podman"><span class="cm"># run with persistent SQLite volume (Podman)</span>
 podman run -d \
@@ -275,6 +276,177 @@ podman run -d \
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── TOOLS ───────────────────────────────────────────── -->
+<section class="tools-sec" id="tools">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-n">05</span>
+      <span class="sec-label">Tools</span>
+    </div>
+    <div class="tools-layout">
+
+      <div class="vtabs tools-vtabs" id="tools-vtabs">
+        <div class="vtab on" data-t="keygen"><span class="vtab-n">01</span>Setup Keys</div>
+      </div>
+
+      <div class="tools-panels" id="tools-panels">
+        <div class="tools-panel on" data-t="keygen">
+          <div class="kgen">
+
+            <!-- Secret Key Generator -->
+            <div class="kgen-head">
+              <div class="kgen-head-text">
+                <h3 class="kgen-title">Secret Key Generator</h3>
+                <p class="kgen-desc">Generate cryptographically secure secrets for your deployment. All generation happens locally in your browser.</p>
+              </div>
+              <button class="kgen-all" onclick="kgenAll()">Generate All</button>
+            </div>
+            <div class="kgen-rows">
+              <div class="kgen-row">
+                <div class="kgen-info">
+                  <span class="kgen-name">AIMETER_ADMIN_ROUTE_PATH</span>
+                  <span class="kgen-hint">DB key: <code>admin_route_path</code></span>
+                </div>
+                <div class="kgen-ctrl">
+                  <input class="kgen-val" id="kv-route" readonly placeholder="— click Generate All —" />
+                  <button class="kgen-regen" onclick="kgenRoute()">Regenerate</button>
+                  <button class="kgen-cpbtn" onclick="kgenCopy('kv-route', this)">Copy</button>
+                </div>
+              </div>
+              <div class="kgen-row">
+                <div class="kgen-info">
+                  <span class="kgen-name">AIMETER_CRON_SECRET</span>
+                  <span class="kgen-hint">DB key: <code>cron_secret</code></span>
+                </div>
+                <div class="kgen-ctrl">
+                  <input class="kgen-val" id="kv-cron" readonly placeholder="— click Generate All —" />
+                  <button class="kgen-regen" onclick="kgenOne('kv-cron', 16)">Regenerate</button>
+                  <button class="kgen-cpbtn" onclick="kgenCopy('kv-cron', this)">Copy</button>
+                </div>
+              </div>
+              <div class="kgen-row">
+                <div class="kgen-info">
+                  <span class="kgen-name">AIMETER_ENDPOINT_SECRET</span>
+                  <span class="kgen-hint">DB key: <code>endpoint_secret</code></span>
+                </div>
+                <div class="kgen-ctrl">
+                  <input class="kgen-val" id="kv-endpoint" readonly placeholder="— click Generate All —" />
+                  <button class="kgen-regen" onclick="kgenOne('kv-endpoint', 16)">Regenerate</button>
+                  <button class="kgen-cpbtn" onclick="kgenCopy('kv-endpoint', this)">Copy</button>
+                </div>
+              </div>
+              <div class="kgen-row">
+                <div class="kgen-info">
+                  <span class="kgen-name">AIMETER_AUTH_SESSION_SECRET</span>
+                  <span class="kgen-hint">DB key: <code>session_secret</code></span>
+                </div>
+                <div class="kgen-ctrl">
+                  <input class="kgen-val" id="kv-session" readonly placeholder="— click Generate All —" />
+                  <button class="kgen-regen" onclick="kgenOne('kv-session', 32)">Regenerate</button>
+                  <button class="kgen-cpbtn" onclick="kgenCopy('kv-session', this)">Copy</button>
+                </div>
+              </div>
+              <div class="kgen-row">
+                <div class="kgen-info">
+                  <span class="kgen-name">AIMETER_ENCRYPTION_KEY</span>
+                  <span class="kgen-hint">DB key: <code>encryption_key</code></span>
+                </div>
+                <div class="kgen-ctrl">
+                  <input class="kgen-val" id="kv-encrypt" readonly placeholder="— click Generate All —" />
+                  <button class="kgen-regen" onclick="kgenOne('kv-encrypt', 32)">Regenerate</button>
+                  <button class="kgen-cpbtn" onclick="kgenCopy('kv-encrypt', this)">Copy</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Password Hash Generator -->
+            <div class="kgen-head kgen-head-sub">
+              <div class="kgen-head-text">
+                <h3 class="kgen-title">Password Hash Generator</h3>
+                <p class="kgen-desc">Enter a password to generate its PBKDF2-SHA256 hash (100,000 iterations). The generator mixes in AIMETER_ENCRYPTION_KEY from above. Paste the result into your database to reset a lost password. All computation is local.</p>
+                <p class="kgen-desc phash-dep-tip">Requires <code>AIMETER_ENCRYPTION_KEY</code> to be non-empty.</p>
+              </div>
+            </div>
+            <div class="kgen-rows">
+
+              <!-- NORMAL_PASSWORD_HASH -->
+              <div class="kgen-row phash-row">
+                <div class="phash-stack">
+                  <div class="phash-pair">
+                    <div class="kgen-info">
+                      <span class="kgen-name">NORMAL_PASSWORD</span>
+                      <span class="kgen-hint">No corresponding environment variable.</span>
+                    </div>
+                    <div class="kgen-ctrl">
+                      <input type="text" class="kgen-val phash-pw" id="ph-normal-pw" placeholder="Enter normal password…" autocomplete="off" oninput="phValidate('normal')" />
+                      <div class="phash-side phash-reqs" id="ph-normal-reqs">
+                        <span class="phash-req" data-r="len">≥ 12 chars</span>
+                        <span class="phash-req" data-r="letter">letter</span>
+                        <span class="phash-req" data-r="digit">digit</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="phash-pair">
+                    <div class="kgen-info">
+                      <span class="kgen-name">NORMAL_PASSWORD_HASH</span>
+                      <span class="kgen-hint">DB key: <code>normal_password_hash</code></span>
+                    </div>
+                    <div class="kgen-ctrl">
+                      <input class="kgen-val phash-hash" id="ph-normal-hash" readonly placeholder="PBKDF2 hash will appear here" />
+                      <div class="phash-side phash-actions">
+                        <button class="kgen-regen" id="ph-normal-gen" onclick="phGenerate('normal')">Generate</button>
+                        <button class="kgen-cpbtn" id="ph-normal-cpbtn" onclick="phCopy('ph-normal-hash', this)" disabled>Copy</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="phash-error" id="ph-normal-error"></div>
+              </div>
+
+              <!-- ADMIN_PASSWORD_HASH -->
+              <div class="kgen-row phash-row">
+                <div class="phash-stack">
+                  <div class="phash-pair">
+                    <div class="kgen-info">
+                      <span class="kgen-name">ADMIN_PASSWORD</span>
+                      <span class="kgen-hint">No corresponding environment variable.</span>
+                    </div>
+                    <div class="kgen-ctrl">
+                      <input type="text" class="kgen-val phash-pw" id="ph-admin-pw" placeholder="Enter admin password…" autocomplete="off" oninput="phValidate('admin')" />
+                      <div class="phash-side phash-reqs" id="ph-admin-reqs">
+                        <span class="phash-req" data-r="len">≥ 12 chars</span>
+                        <span class="phash-req" data-r="letter">letter</span>
+                        <span class="phash-req" data-r="digit">digit</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="phash-pair">
+                    <div class="kgen-info">
+                      <span class="kgen-name">ADMIN_PASSWORD_HASH</span>
+                      <span class="kgen-hint">DB key: <code>admin_password_hash</code></span>
+                    </div>
+                    <div class="kgen-ctrl">
+                      <input class="kgen-val phash-hash" id="ph-admin-hash" readonly placeholder="PBKDF2 hash will appear here" />
+                      <div class="phash-side phash-actions">
+                        <button class="kgen-regen" id="ph-admin-gen" onclick="phGenerate('admin')">Generate</button>
+                        <button class="kgen-cpbtn" id="ph-admin-cpbtn" onclick="phCopy('ph-admin-hash', this)" disabled>Copy</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="phash-error" id="ph-admin-error"></div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>

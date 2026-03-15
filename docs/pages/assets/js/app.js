@@ -152,9 +152,176 @@ if (ctabsEl) {
 }
 
 // ── Copy ──────────────────────────────────────────────────
+function _copyFeedback(btn, original) {
+  btn.textContent = 'Copied!';
+  setTimeout(() => { btn.textContent = original; }, 1500);
+}
+function _writeClipboard(text, btn, original) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => _copyFeedback(btn, original)).catch(() => _execCopy(text, btn, original));
+  } else {
+    _execCopy(text, btn, original);
+  }
+}
+function _execCopy(text, btn, original) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch (_) {}
+  document.body.removeChild(ta);
+  _copyFeedback(btn, original);
+}
 function doCopy(id, btn) {
-  navigator.clipboard.writeText(document.getElementById(id).innerText).then(() => {
-    btn.textContent = 'copied!';
-    setTimeout(() => btn.textContent = 'copy', 1500);
+  _writeClipboard(document.getElementById(id).innerText, btn, 'Copy');
+}
+
+// ── Tools tabs ────────────────────────────────────────────
+const toolsVtabsEl  = document.getElementById('tools-vtabs');
+const toolsPanelsEl = document.getElementById('tools-panels');
+if (toolsVtabsEl && toolsPanelsEl) {
+  toolsVtabsEl.addEventListener('click', e => {
+    const t = e.target.closest('.vtab');
+    if (!t) return;
+    const key = t.dataset.t;
+    toolsVtabsEl.querySelectorAll('.vtab').forEach(v => v.classList.toggle('on', v.dataset.t === key));
+    toolsPanelsEl.querySelectorAll('.tools-panel').forEach(p => p.classList.toggle('on', p.dataset.t === key));
   });
+}
+
+// ── Key Generator ─────────────────────────────────────────
+function kgenRand(bytes) {
+  const arr = new Uint8Array(bytes);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
+}
+function kgenOne(inputId, bytes) {
+  const el = document.getElementById(inputId);
+  if (el) el.value = kgenRand(bytes);
+}
+function kgenRoute() {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const arr = new Uint8Array(128);
+  let result = '';
+  while (result.length < 32) {
+    crypto.getRandomValues(arr);
+    for (let i = 0; i < arr.length && result.length < 32; i++) {
+      if (arr[i] < 248) result += chars[arr[i] % 62]; // unbiased rejection sampling
+    }
+  }
+  const el = document.getElementById('kv-route');
+  if (el) el.value = result;
+}
+function kgenAll() {
+  kgenOne('kv-cron',     16);
+  kgenOne('kv-endpoint', 16);
+  kgenOne('kv-encrypt',  32);
+  kgenOne('kv-session',  32);
+  kgenRoute();
+}
+function kgenCopy(inputId, btn) {
+  const val = document.getElementById(inputId)?.value;
+  if (!val) return;
+  _writeClipboard(val, btn, 'Copy');
+}
+
+// ── Password Hash Generator ────────────────────────────────
+async function phHashPassword(password, encryptionKey) {
+  const enc = new TextEncoder();
+  const randomSaltSeed = crypto.getRandomValues(new Uint8Array(16));
+  const keyBytes = enc.encode(encryptionKey);
+  const mixed = new Uint8Array(randomSaltSeed.length + keyBytes.length);
+  mixed.set(randomSaltSeed, 0);
+  mixed.set(keyBytes, randomSaltSeed.length);
+  const derived = await crypto.subtle.digest('SHA-256', mixed);
+  const saltRaw = new Uint8Array(derived).slice(0, 16);
+  // Encode salt as base64url string — Node passes this string's UTF-8 bytes to PBKDF2
+  const salt = btoa(String.fromCharCode(...saltRaw))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: enc.encode(salt), iterations: 100000, hash: 'SHA-256' },
+    key, 256
+  );
+  const digest = btoa(String.fromCharCode(...new Uint8Array(bits)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `pbkdf2_sha256$100000$${salt}$${digest}`;
+}
+function phValidate(role) {
+  const pwEl  = document.getElementById(`ph-${role}-pw`);
+  const reqs  = document.querySelectorAll(`#ph-${role}-reqs .phash-req`);
+  const errorEl = document.getElementById(`ph-${role}-error`);
+  const pw = pwEl?.value ?? '';
+  pwEl?.classList.remove('phash-pw-error');
+  if (errorEl) errorEl.textContent = '';
+  const rules = [
+    { r: 'len',    ok: pw.length >= 12 },
+    { r: 'letter', ok: /[a-zA-Z]/.test(pw) },
+    { r: 'digit',  ok: /[0-9]/.test(pw) },
+  ];
+  reqs.forEach(el => {
+    const rule = rules.find(r => r.r === el.dataset.r);
+    if (!rule) return;
+    el.classList.toggle('ok',   rule.ok);
+    el.classList.toggle('fail', pw.length > 0 && !rule.ok);
+  });
+}
+function phSetHashActions(role, enabled) {
+  const copyBtn = document.getElementById(`ph-${role}-cpbtn`);
+  if (copyBtn) copyBtn.disabled = !enabled;
+}
+async function phGenerate(role) {
+  const pwEl    = document.getElementById(`ph-${role}-pw`);
+  const hashEl  = document.getElementById(`ph-${role}-hash`);
+  const errorEl = document.getElementById(`ph-${role}-error`);
+  const genBtn  = document.getElementById(`ph-${role}-gen`);
+  const encryptKey = document.getElementById('kv-encrypt')?.value?.trim() ?? '';
+  const pw = pwEl?.value ?? '';
+
+  // Clear previous error state
+  if (errorEl) errorEl.textContent = '';
+  pwEl?.classList.remove('phash-pw-error');
+
+  if (!encryptKey) {
+    if (errorEl) errorEl.textContent = 'AIMETER_ENCRYPTION_KEY is required';
+    phSetHashActions(role, false);
+    return;
+  }
+
+  // Validate
+  if (!pw) {
+    if (errorEl) errorEl.textContent = 'Password is required';
+    pwEl?.classList.add('phash-pw-error');
+    return;
+  }
+  if (pw.length < 12) {
+    if (errorEl) errorEl.textContent = 'Password must be at least 12 characters';
+    pwEl?.classList.add('phash-pw-error');
+    return;
+  }
+  if (!/[a-zA-Z]/.test(pw)) {
+    if (errorEl) errorEl.textContent = 'Password must contain at least one letter';
+    pwEl?.classList.add('phash-pw-error');
+    return;
+  }
+  if (!/[0-9]/.test(pw)) {
+    if (errorEl) errorEl.textContent = 'Password must contain at least one digit';
+    pwEl?.classList.add('phash-pw-error');
+    return;
+  }
+
+  if (genBtn) { genBtn.textContent = 'Generating…'; genBtn.disabled = true; }
+  try {
+    const hash = await phHashPassword(pw, encryptKey);
+    if (hashEl)  hashEl.value  = hash;
+    phSetHashActions(role, true);
+  } finally {
+    if (genBtn) { genBtn.textContent = 'Generate'; genBtn.disabled = false; }
+  }
+}
+function phCopy(inputId, btn) {
+  const val = document.getElementById(inputId)?.value;
+  if (!val) return;
+  _writeClipboard(val, btn, 'Copy');
 }
