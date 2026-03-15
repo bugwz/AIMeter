@@ -6,9 +6,6 @@
   <title>AIMeter — AI Usage Monitor</title>
   <meta name="description" content="Self-hosted dashboard to monitor quota usage across Claude, Copilot, Cursor, OpenRouter, and more." />
   <link rel="icon" type="image/svg+xml" href="./assets/img/logo-light.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./assets/css/styles.css" />
 </head>
 <body>
@@ -22,8 +19,8 @@
       AIMeter
     </a>
     <nav class="hdr-nav">
-      <a href="#screenshots">screenshots</a>
-      <a href="#install">install</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="#install">Install</a>
       <a href="https://github.com/bugwz/AIMeter" target="_blank" rel="noopener" class="hdr-gh">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.605-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
@@ -53,7 +50,7 @@
           </svg>
           View on GitHub
         </a>
-        <a href="#install" class="btn-ghost">quick install ↓</a>
+        <a href="#install" class="btn-ghost">Quick Install ↓</a>
       </div>
       <button class="hero-preview-toggle" id="hero-preview-toggle" type="button" aria-expanded="false">
         show dashboard preview
@@ -79,7 +76,7 @@
   <div class="strip-inner">
     <span><strong>SQLite · Postgres · MySQL · D1</strong></span>
     <span><strong>Docker · Vercel · Cloudflare Workers</strong></span>
-    <span>no telemetry &nbsp;·&nbsp; credentials stay local</span>
+    <span>No Telemetry &nbsp;·&nbsp; Credentials Stay Local</span>
   </div>
 </div>
 
@@ -92,28 +89,28 @@
     </div>
     <div class="spec-table">
       <div class="spec-row">
-        <span class="spec-key">quota tracking</span>
+        <span class="spec-key">Quota Tracking</span>
         <span class="spec-val">
           Live progress bars per provider. Marks <strong>overquota</strong> when you've exceeded
           your limit. Shows a stale-data warning if the last fetch failed or is older than 3 minutes.
         </span>
       </div>
       <div class="spec-row">
-        <span class="spec-key">usage history</span>
+        <span class="spec-key">Usage History</span>
         <span class="spec-val">
           Stores usage snapshots to your database over time. Charts plot consumption
           across the active billing window so you can see how fast you burn through quota.
         </span>
       </div>
       <div class="spec-row">
-        <span class="spec-key">self-hosted</span>
+        <span class="spec-key">Self-Hosted</span>
         <span class="spec-val">
           No third-party services, no accounts, no telemetry. Credentials stay in your
           environment variables or encrypted in your own database. Deploy once and forget.
         </span>
       </div>
       <div class="spec-row">
-        <span class="spec-key">multi-account</span>
+        <span class="spec-key">Multi-Account</span>
         <span class="spec-val">
           Add multiple credential sets per provider. Cards are drag-reorderable.
           Useful if you have personal and work accounts on the same service.
@@ -127,7 +124,7 @@
         </span>
       </div>
       <div class="spec-row">
-        <span class="spec-key">database</span>
+        <span class="spec-key">Database</span>
         <span class="spec-val">
           <strong>SQLite</strong> for zero-config local use.
           <strong>Postgres</strong> or <strong>MySQL</strong> for production deployments.
@@ -216,30 +213,34 @@
 <!-- ─── INSTALL ──────────────────────────────────────────── -->
 <section class="inst-sec" id="install">
   <div class="wrap">
-    <div class="sec-head" style="margin-bottom:28px">
+    <div class="sec-head inst-head">
       <span class="sec-n">04</span>
       <span class="sec-label">Install</span>
     </div>
 
     <div class="inst-layout">
       <div class="inst-meta">
-        <h2>Get running</h2>
-        <p>Serves on <code style="color:var(--accent)">:3000</code> by default.
-           No build step required if you use Docker.</p>
+        <h2>Quick start</h2>
+        <p>
+          Boots on <code class="inst-code-inline">http://localhost:3000</code> by default.
+          Docker starts immediately with no extra build step.
+        </p>
         <ul class="inst-list">
-          <li>Docker — recommended</li>
-          <li>Vercel — serverless</li>
-          <li>Cloudflare Workers — edge</li>
+          <li><span class="inst-item-key">Docker</span><span class="inst-item-val">recommended for most setups</span></li>
+          <li><span class="inst-item-key">Vercel</span><span class="inst-item-val">serverless deployment</span></li>
+          <li><span class="inst-item-key">Cloudflare Workers</span><span class="inst-item-val">edge runtime</span></li>
         </ul>
         <a href="https://github.com/bugwz/AIMeter/tree/main/docs"
            target="_blank" rel="noopener" class="inst-docs">
-          full documentation →
+          Full Documentation →
         </a>
+        <p class="inst-hint">Need environment variables? See docs for provider keys and database setup.</p>
       </div>
 
       <div>
         <div class="code-tabs" id="ctabs">
-          <button class="ctab on" data-p="docker">docker</button>
+          <button class="ctab on" data-p="docker">Docker</button>
+          <button class="ctab" data-p="podman">Podman</button>
         </div>
 
         <div class="cpanel on" id="cp-docker">
@@ -253,7 +254,24 @@ docker run -d \
   --name aimeter \
   -p 3000:3000 \
   -v aimeter-data:/app/data \
-  ghcr.io/bugwz/aimeter:latest</pre>
+  ghcr.io/bugwz/aimeter:latest
+<span class="cm"># then open http://localhost:3000</span></pre>
+          </div>
+        </div>
+
+        <div class="cpanel" id="cp-podman">
+          <div class="cblock">
+            <div class="cbar">
+              <span class="clang">sh</span>
+              <button class="cpbtn" onclick="doCopy('cd-podman', this)">copy</button>
+            </div>
+            <pre id="cd-podman"><span class="cm"># run with persistent SQLite volume (Podman)</span>
+podman run -d \
+  --name aimeter \
+  -p 3000:3000 \
+  -v aimeter-data:/app/data \
+  ghcr.io/bugwz/aimeter:latest
+<span class="cm"># then open http://localhost:3000</span></pre>
           </div>
         </div>
       </div>

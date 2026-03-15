@@ -16,6 +16,13 @@
       --radius-sm:   6px;
       --radius-md:   10px;
       --radius-lg:   14px;
+      --font-sans:   -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+                     'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans',
+                     'Noto Sans CJK SC', 'Source Han Sans SC', 'Helvetica Neue',
+                     Arial, 'Liberation Sans', 'DejaVu Sans', sans-serif;
+      --font-mono:   ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+                     'Cascadia Mono', 'Ubuntu Mono', 'Liberation Mono',
+                     'DejaVu Sans Mono', 'Source Code Pro', monospace;
     }
 
     html {
@@ -25,13 +32,21 @@
     }
 
     body {
-      font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+      font-family: var(--font-sans);
       font-size: 14px;
       line-height: 1.62;
       background: var(--bg);
       color: var(--txt);
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
+    }
+
+    code,
+    pre,
+    .ctab,
+    .clang,
+    .cpbtn {
+      font-family: var(--font-mono);
     }
 
 
@@ -436,37 +451,69 @@
 
     /* ── Install ── */
     .inst-sec { padding: 56px 0; }
+    .inst-head { margin-bottom: 28px; }
     .inst-layout {
       display: grid;
-      grid-template-columns: 200px 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 40px;
+      align-items: start;
     }
     .inst-layout > * { min-width: 0; }
     .inst-meta h2 {
-      font-size: 14px;
+      font-size: clamp(14px, 1.3vw, 17px);
       font-weight: 600;
       color: #fff;
       margin-bottom: 10px;
       letter-spacing: -.01em;
     }
-    .inst-meta p  { font-size: 12px; color: var(--txt-dim); line-height: 1.7; }
-    .inst-list    { list-style: none; margin-top: 14px; }
+    .inst-meta p  {
+      font-size: clamp(12px, 1vw, 13px);
+      color: var(--txt-dim);
+      line-height: 1.74;
+    }
+    .inst-code-inline {
+      color: var(--accent);
+      font-size: .96em;
+    }
+    .inst-list    {
+      list-style: none;
+      margin-top: 15px;
+      display: grid;
+      gap: 6px;
+    }
     .inst-list li {
-      font-size: 12px;
+      font-size: clamp(12px, 1vw, 13px);
       color: var(--txt-faint);
       padding: 2px 0;
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: baseline;
+      column-gap: 8px;
+      row-gap: 1px;
     }
-    .inst-list li::before { content: '→  '; color: var(--txt-faint); }
+    .inst-list li::before {
+      content: '→';
+      color: var(--txt-faint);
+      flex: 0 0 auto;
+    }
+    .inst-item-key { color: var(--txt); white-space: nowrap; }
+    .inst-item-val { color: var(--txt-dim); flex: 1 1 auto; min-width: 0; }
     .inst-docs {
-      display: inline-block;
+      display: inline-flex;
       margin-top: 14px;
-      font-size: 12px;
+      font-size: clamp(12px, 1vw, 13px);
       color: var(--accent);
       border-bottom: 1px solid var(--accent-lo);
       padding-bottom: 1px;
       transition: border-color .15s;
     }
     .inst-docs:hover { border-color: var(--accent); }
+    .inst-hint {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--txt-faint);
+      line-height: 1.7;
+    }
 
     .code-tabs {
       display: flex;
@@ -517,11 +564,12 @@
     .cpbtn:hover { color: var(--txt); }
     pre {
       padding: 16px;
-      font-size: 12px;
+      font-size: clamp(11.5px, .92vw, 12.5px);
       color: var(--txt);
-      line-height: 1.7;
+      line-height: 1.76;
       overflow-x: auto;
       tab-size: 2;
+      white-space: pre;
     }
     pre .cm { color: var(--txt-faint); }
 
@@ -548,7 +596,7 @@
       .hero-inner      { gap: 36px; grid-template-columns: minmax(0, 1fr) minmax(320px, 360px); }
       .hdr-nav         { gap: 18px; }
       .shots-layout    { grid-template-columns: 132px 1fr; gap: 22px; }
-      .inst-layout     { grid-template-columns: 180px 1fr; gap: 30px; }
+      .inst-layout     { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
     }
 
     /* ── Tablet portrait & below (≤ 820px) ── */
@@ -647,7 +695,9 @@
       .prov-sec        { padding: 32px 0; }
       .shots-sec       { padding: 40px 0; }
       .inst-sec        { padding: 40px 0; }
-      .inst-layout     { gap: 28px; }
+      .inst-layout     { gap: 24px; }
+      .inst-meta p,
+      .inst-list       { max-width: 100%; }
       .code-tabs       { overflow-x: auto; white-space: nowrap; }
       .ctab            { flex: 0 0 auto; }
       .cpbtn           { min-height: 32px; min-width: 56px; }
@@ -683,6 +733,7 @@
           "track track";
       }
       .inst-layout     { grid-template-columns: 1fr; }
+      .inst-meta       { max-width: 64ch; }
       .prov-chips      { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .sec-head        { flex-wrap: wrap; row-gap: 4px; }
       #screenshots .sec-head span[style*="margin-left:auto"] { display: none; }
@@ -724,11 +775,15 @@
 
       .inst-sec        { padding: 32px 0; }
       .inst-layout     { gap: 24px; }
-      .inst-meta h2    { font-size: 13px; }
-      .inst-meta p     { font-size: 12.5px; }
-      .inst-list li    { font-size: 12.5px; }
+      .inst-meta h2    { font-size: 14px; margin-bottom: 8px; }
+      .inst-meta p     { font-size: 12.5px; line-height: 1.72; }
+      .inst-list       { margin-top: 12px; gap: 5px; }
+      .inst-list li    { font-size: 12.5px; column-gap: 7px; flex-wrap: wrap; }
+      .inst-item-val   { display: inline; }
+      .inst-docs       { margin-top: 12px; font-size: 12.5px; }
+      .inst-hint       { margin-top: 10px; font-size: 11px; }
       .ctab            { font-size: 12px; padding: 9px 12px; min-height: 38px; }
-      pre              { font-size: 12px; padding: 13px 14px;
+      pre              { font-size: 11.5px; padding: 13px 14px;
                          -webkit-overflow-scrolling: touch; }
 
       footer           { flex-direction: column; align-items: flex-start;
@@ -748,7 +803,11 @@
       .prov-chips      { grid-template-columns: 1fr; }
       .pchip           { padding: 6px 10px; font-size: 12px; gap: 7px; }
       .pchip img       { width: 16px; height: 16px; }
-      pre              { font-size: 10.5px; }
+      .inst-meta p     { font-size: 12px; }
+      .inst-list li    { row-gap: 2px; }
+      .inst-list li::before { margin-top: 1px; }
+      .inst-item-val   { font-size: 11.5px; }
+      pre              { font-size: 11px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -759,92 +818,188 @@
       }
     }
 
+    /* ── Desktop (1280px - 1439px) ── */
+    @media (min-width: 1280px) and (max-width: 1439px) {
+      body { font-size: 15px; line-height: 1.68; }
+      .hdr-inner { height: 52px; }
+      .logo { font-size: 14px; }
+      .hdr-nav { font-size: 13px; }
+      .hero-eyebrow { font-size: 12px; }
+      .hero-desc { font-size: 15px; }
+      .btn, .btn-ghost { font-size: 13px; }
+      .sec-n, .sec-label { font-size: 12px; }
+      .spec-key, .spec-val { font-size: 14px; }
+      .spec-val { line-height: 1.78; }
+      .pchip { font-size: 15px; }
+      .vtab { font-size: 14px; }
+      .scap { font-size: 14px; }
+      .inst-meta h2 { font-size: 18px; }
+      .inst-meta p,
+      .inst-list li,
+      .inst-docs,
+      .ctab { font-size: 14px; }
+      .inst-hint,
+      .clang,
+      .cpbtn { font-size: 12px; }
+      pre { font-size: 13px; }
+      .ft-l, .ft-r a { font-size: 13px; }
+    }
+
     /* ── Large desktop (≥ 1440px) ── */
     @media (min-width: 1440px) {
       :root { --content-max: 1240px; }
-      body { font-size: 14px; }
+      body { font-size: 16px; line-height: 1.68; }
       .hero-inner { grid-template-columns: minmax(0, 1fr) minmax(420px, 460px); gap: 60px; }
-      .hdr-inner { height: 48px; }
+      .hdr-inner { height: 62px; }
+      .logo { font-size: 14px; }
+      .hdr-nav { font-size: 13px; }
+      .hero-eyebrow { font-size: 12px; }
+      .hero-desc { font-size: 16px; }
+      .btn, .btn-ghost { font-size: 13px; }
+      .sec-n, .sec-label { font-size: 12px; }
+      .spec-key, .spec-val { font-size: 15px; }
+      .spec-val { line-height: 1.78; }
+      .vtab { font-size: 14px; }
+      .scap { font-size: 14px; }
+      .inst-meta h2 { font-size: 18px; }
+      .inst-meta p,
+      .inst-list li,
+      .inst-docs,
+      .ctab { font-size: 15px; }
+      .inst-hint,
+      .clang,
+      .cpbtn { font-size: 12px; }
+      pre { font-size: 14px; }
+      .ft-l, .ft-r a { font-size: 13px; }
     }
 
     /* ── Wide desktop (≥ 1920px) ── */
     @media (min-width: 1920px) {
       :root { --content-max: 1420px; }
-      body { font-size: 15px; }
+      body { font-size: 17px; line-height: 1.7; }
       .wrap, .hdr-inner, .strip-inner, footer { padding-left: 36px; padding-right: 36px; }
+      .hdr-inner { height: 64px; }
       .hero-inner {
         padding-top: 68px;
         gap: 72px;
         grid-template-columns: minmax(0, 1fr) minmax(460px, 520px);
       }
       .hero-desc { max-width: 520px; }
-      .hdr-nav { font-size: 13px; }
-      .strip-inner { font-size: 12px; }
+      .logo { font-size: 15px; }
+      .hdr-nav { font-size: 14px; }
+      .hero-eyebrow { font-size: 12.5px; }
+      .hero-desc { font-size: 16px; }
+      .btn, .btn-ghost { font-size: 13.5px; }
+      .strip-inner { font-size: 13px; }
+      .sec-n, .sec-label { font-size: 13px; }
+      .spec-key, .spec-val { font-size: 15px; }
+      .spec-val { line-height: 1.8; }
+      .pchip { font-size: 15px; }
+      .vtab { font-size: 14.5px; }
+      .scap { font-size: 14.5px; }
+      .inst-meta h2 { font-size: 18px; }
+      .inst-meta p,
+      .inst-list li,
+      .inst-docs,
+      .ctab { font-size: 14.5px; }
+      .inst-hint,
+      .clang,
+      .cpbtn { font-size: 12px; }
+      pre { font-size: 13.5px; }
+      .ft-l, .ft-r a { font-size: 13px; }
     }
 
     /* ── 2K screens (≥ 2560px) ── */
     @media (min-width: 2560px) {
       :root { --content-max: 1680px; }
-      body { font-size: 16px; }
+      body { font-size: 18px; line-height: 1.72; }
       .wrap, .hdr-inner, .strip-inner, footer { padding-left: 56px; padding-right: 56px; }
-      .hdr-inner { height: 58px; }
-      .logo { font-size: 15px; }
+      .hdr-inner { height: 72px; }
+      .logo { font-size: 16px; }
       .logo img { height: 20px; }
-      .hdr-nav { gap: 28px; font-size: 14px; }
+      .hdr-nav { gap: 28px; font-size: 15px; }
       .hero-inner {
         padding-top: 76px;
         gap: 86px;
         grid-template-columns: minmax(0, 1fr) minmax(560px, 620px);
       }
       h1 { font-size: clamp(40px, 2.3vw, 56px); }
-      .hero-eyebrow { font-size: 12px; }
-      .hero-desc { font-size: 15px; max-width: 620px; margin-bottom: 34px; }
+      .hero-eyebrow { font-size: 13px; }
+      .hero-desc { font-size: 17px; max-width: 620px; margin-bottom: 34px; }
       .hero-ctas { padding-bottom: 72px; }
-      .btn, .btn-ghost { font-size: 13px; }
+      .btn, .btn-ghost { font-size: 14px; }
       .mock-row {
         grid-template-columns: 212px 1fr 64px 96px;
         padding: 13px 20px;
       }
-      .strip-inner { font-size: 13px; gap: 8px 34px; padding-top: 13px; padding-bottom: 13px; }
+      .strip-inner { font-size: 15px; gap: 8px 34px; padding-top: 13px; padding-bottom: 13px; }
+      .sec-n, .sec-label { font-size: 14px; }
+      .spec-key, .spec-val { font-size: 16px; }
+      .spec-val { line-height: 1.82; }
+      .pchip { font-size: 16px; }
+      .vtab { font-size: 15px; }
+      .scap { font-size: 15px; }
       .spec-row { grid-template-columns: 220px 1fr; }
       .shots-layout { grid-template-columns: 186px 1fr; gap: 36px; }
-      .inst-layout { grid-template-columns: 240px 1fr; gap: 52px; }
-      pre { font-size: 13px; }
+      .inst-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 52px; }
+      .inst-meta h2 { font-size: 19px; }
+      .inst-meta p,
+      .inst-list li,
+      .inst-docs,
+      .ctab { font-size: 15px; }
+      .inst-hint,
+      .clang,
+      .cpbtn { font-size: 12.5px; }
+      pre { font-size: 14px; }
+      .ft-l, .ft-r a { font-size: 14px; }
     }
 
     /* ── 4K screens (≥ 3840px) ── */
     @media (min-width: 3840px) {
       :root { --content-max: 2080px; }
-      body { font-size: 17px; }
+      body { font-size: 19px; line-height: 1.74; }
       .wrap, .hdr-inner, .strip-inner, footer { padding-left: 72px; padding-right: 72px; }
-      .hdr-inner { height: 66px; }
-      .logo { font-size: 16px; }
+      .hdr-inner { height: 82px; }
+      .logo { font-size: 17px; }
       .logo img { height: 22px; }
-      .hdr-nav { gap: 34px; font-size: 15px; }
+      .hdr-nav { gap: 34px; font-size: 16px; }
       .hero-inner {
         padding-top: 90px;
         gap: 108px;
         grid-template-columns: minmax(0, 1fr) minmax(700px, 760px);
       }
       h1 { font-size: clamp(46px, 2vw, 64px); }
-      .hero-eyebrow { font-size: 13px; }
-      .hero-desc { font-size: 16px; max-width: 760px; margin-bottom: 38px; }
+      .hero-eyebrow { font-size: 14px; }
+      .hero-desc { font-size: 18px; max-width: 760px; margin-bottom: 38px; }
       .hero-ctas { padding-bottom: 84px; }
-      .btn, .btn-ghost { font-size: 14px; }
+      .btn, .btn-ghost { font-size: 15px; }
       .mock-row {
         grid-template-columns: 250px 1fr 72px 108px;
         padding: 15px 24px;
-        font-size: 14px;
+        font-size: 15px;
       }
       .mock-name span,
       .mock-pct,
+      .sec-n,
+      .sec-label,
       .spec-key,
       .spec-val,
       .inst-meta p,
       .inst-list li,
       .ctab,
-      pre { font-size: 14px; }
+      pre { font-size: 15px; }
+      .pchip { font-size: 17px; }
+      .vtab { font-size: 16px; }
+      .scap { font-size: 16px; }
+      .inst-meta h2 { font-size: 20px; }
+      .inst-docs { font-size: 16px; }
+      .inst-hint,
+      .clang,
+      .cpbtn,
+      .ft-l,
+      .ft-r a { font-size: 14px; }
+      .spec-val { line-height: 1.84; }
       .spec-row { grid-template-columns: 260px 1fr; }
       .shots-layout { grid-template-columns: 210px 1fr; gap: 44px; }
-      .inst-layout { grid-template-columns: 260px 1fr; gap: 62px; }
+      .inst-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 62px; }
     }
