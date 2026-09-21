@@ -1,0 +1,71 @@
+{
+  "whoami": {
+    "success": true,
+    "user": {
+      "id": "<redacted>",
+      "name": "<redacted>",
+      "email": "<redacted>",
+      "userName": "<redacted>"
+    },
+    "org": null
+  },
+  "credits": {
+    "credits": {
+      "belowThreshold": false,
+      "creditThreshold": 0,
+      "monthlyCredits": 62.130607798,
+      "purchasedCredits": 0,
+      "freeCredits": 0
+    },
+    "windowLimits": {
+      "limited": true,
+      "exceeded": null,
+      "fiveHour": {
+        "used": 0.349249187,
+        "cap": 14,
+        "exceeded": false,
+        "resetAt": 1790004492475
+      },
+      "weekly": {
+        "used": 7.869392202,
+        "cap": 35,
+        "exceeded": false,
+        "resetAt": 1790352668025
+      }
+    }
+  },
+  "subs": {
+    "success": true,
+    "data": {
+      "status": "active",
+      "orgId": null,
+      "createdAt": "2026-08-18T09:30:47.000Z",
+      "quantity": 1,
+      "cancelAtPeriodEnd": false,
+      "currentPeriodStart": "2026-09-18T09:30:47.000Z",
+      "currentPeriodEnd": "2026-10-18T09:30:47.000Z",
+      "endedAt": null,
+      "cancelAt": null,
+      "canceledAt": null,
+      "planId": "individual-goat",
+      "pendingPhase": null
+    }
+  },
+  "usage": {
+    "totalCount": 3008,
+    "totalCost": 7.734534934,
+    "averageCost": 0.0025713214541223405,
+    "successRate": 100,
+    "completedCount": 3008,
+    "failedCount": 0,
+    "totalTokensIn": 379798851,
+    "totalTokensOut": 4718163,
+    "totalTokens": 384517014,
+    "totalCredits": 7.734534934,
+    "totalFreeCredits": 0,
+    "totalMonthlyCredits": 7.734534934,
+    "totalPurchasedCredits": 0,
+    "periodBasis": "billing-period"
+  },
+  "_source": "Captured from the live CommandCode /alpha API (2026-09-21); identifiers redacted. Field names and types are unmodified."
+}
