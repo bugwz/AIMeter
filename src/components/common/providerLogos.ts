@@ -13,4 +13,5 @@ export const providerLogos: Partial<Record<UsageProvider, string>> = {
   [UsageProvider.OLLAMA]: '/providers/ollama.svg',
   [UsageProvider.OPENCODE]: '/providers/opencode.svg',
   [UsageProvider.CURSOR]: '/providers/cursor.svg',
+  [UsageProvider.COMMANDCODE]: '/providers/commandcode.svg',
 };

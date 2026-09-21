@@ -13,6 +13,7 @@ const DEFAULT_PROVIDER_LINKS: Record<UsageProvider, string> = {
   [UsageProvider.OLLAMA]: 'https://ollama.com/',
   [UsageProvider.OPENCODE]: 'https://opencode.ai/',
   [UsageProvider.CURSOR]: 'https://cursor.com/',
+  [UsageProvider.COMMANDCODE]: 'https://commandcode.ai/',
 };
 
 const REGION_LINKS: Partial<Record<UsageProvider, Record<string, string>>> = {

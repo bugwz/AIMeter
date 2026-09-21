@@ -1,0 +1,36 @@
+{
+  "_comment": "CommandCode /alpha response shapes. Placeholders only, no real credential. The routes answer flat OR wrapped once in `data`; both are represented here.",
+  "whoami": {
+    "user": { "name": "Example User", "userName": "example", "email": "user@example.com" },
+    "org": { "id": "org_example", "name": "Example Org" }
+  },
+  "billing.credits": {
+    "credits": {
+      "planId": "individual-go",
+      "monthlyCredits": 4.25
+    },
+    "windowLimits": {
+      "fiveHour": { "used": 3.5, "cap": 5, "resetAt": "2026-09-21T18:00:00Z" },
+      "weekly": { "used": 11, "cap": 30, "resetAt": "2026-09-28T00:00:00Z" }
+    }
+  },
+  "billing.subscriptions": {
+    "data": {
+      "planId": "individual-go",
+      "currentPeriodEnd": "2026-10-07T12:41:16.518Z"
+    }
+  },
+  "usage.summary": {
+    "data": {
+      "totalCount": 812,
+      "totalCredits": 5.75,
+      "totalTokensIn": 12840000,
+      "totalTokensOut": 910000,
+      "successRate": 99.2
+    }
+  },
+  "_monthly_note": "The monthly percentage needs BOTH monthlyCredits (remaining) and usage/summary.totalCredits (spent). With this fixture: spent 5.75, remaining 4.25, cap 10 -> 57.5% used.",
+  "_wrapped_variant": {
+    "note": "The same payload wrapped in `data` must parse identically. The adapter checks the direct key first and only then `data`, so an empty envelope cannot shadow a real top-level value."
+  }
+}

@@ -12,6 +12,7 @@ import { cursorAdapter } from './CursorAdapter.js';
 import { openCodeAdapter } from './OpenCodeAdapter.js';
 import { zaiAdapter } from './ZaiAdapter.js';
 import { antigravityAdapter } from './AntigravityAdapter.js';
+import { commandCodeAdapter } from './CommandCodeAdapter.js';
 
 // Register all adapters
 providerRegistry.registerAdapter(aliyunAdapter);
@@ -26,6 +27,7 @@ providerRegistry.registerAdapter(cursorAdapter);
 providerRegistry.registerAdapter(openCodeAdapter);
 providerRegistry.registerAdapter(zaiAdapter);
 providerRegistry.registerAdapter(antigravityAdapter);
+providerRegistry.registerAdapter(commandCodeAdapter);
 
 // Export all adapters
 export * from './interface.js';
@@ -42,3 +44,4 @@ export { cursorAdapter } from './CursorAdapter.js';
 export { openCodeAdapter } from './OpenCodeAdapter.js';
 export { zaiAdapter } from './ZaiAdapter.js';
 export { antigravityAdapter } from './AntigravityAdapter.js';
+export { commandCodeAdapter } from './CommandCodeAdapter.js';
