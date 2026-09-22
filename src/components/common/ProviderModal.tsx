@@ -1706,6 +1706,9 @@ function getCredentialLabel(authType: AuthType, provider?: UsageProvider): strin
       }
       return 'Cookie Value';
     case AuthType.API_KEY:
+      if (provider === UsageProvider.COMMANDCODE) {
+        return 'CLI Session Key';
+      }
       return 'API Key';
     case AuthType.OAUTH:
       return 'Access Token';
@@ -1742,6 +1745,9 @@ function getCredentialPlaceholder(authType: AuthType, provider?: UsageProvider):
       }
       if (provider === UsageProvider.ZAI) {
         return 'sk-...';
+      }
+      if (provider === UsageProvider.COMMANDCODE) {
+        return 'user_...';
       }
       return 'sk-or-v1-xxx...';
     case AuthType.OAUTH:
@@ -1858,6 +1864,32 @@ function getCredentialHelp(provider: UsageProvider, authType: AuthType, region?:
               </a>
             </li>
             <li>Copy the API key and paste it here.</li>
+          </ol>
+        </div>
+      );
+    }
+    if (provider === UsageProvider.COMMANDCODE) {
+      return (
+        <div className="space-y-1">
+          <div>CommandCode needs the CLI session key, not a provider API key:</div>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Install the official command-code CLI and sign in once.</li>
+            <li>
+              Open
+              {' '}
+              <a
+                href="https://commandcode.ai"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[#1d4ed8] hover:text-[#1e40af] underline decoration-[#1d4ed8]/60 underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d4ed8]/40 rounded-sm"
+              >
+                commandcode.ai
+              </a>
+              {' '}
+              for setup instructions.
+            </li>
+            <li>Copy the apiKey value from ~/.commandcode/auth.json (it starts with user_).</li>
+            <li>The CLI rotates this key, so re-enter it here when it changes.</li>
           </ol>
         </div>
       );

@@ -86,6 +86,23 @@ const CC_META: ProviderMeta = {
   docsUrl: 'https://commandcode.ai',
 };
 
+/**
+ * A 401/403 from /alpha means the CLI session key is invalid or revoked, which needs a
+ * different user action than a transient failure: the key must be replaced, not retried.
+ * Carrying the status in a typed error lets the secondary requests rethrow it instead of
+ * degrading it to "no data", and lets the server mark the provider as needing auth.
+ */
+export class CommandCodeAuthError extends Error {
+  readonly code = 'AUTH_ERROR';
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'CommandCodeAuthError';
+    this.status = status;
+  }
+}
+
 export class CommandCodeAdapter implements IProviderAdapter {
   readonly id = UsageProvider.COMMANDCODE;
   readonly meta = CC_META;
@@ -157,14 +174,11 @@ export class CommandCodeAdapter implements IProviderAdapter {
     const orgId = this.unwrap<CcWhoami['org']>(whoami, 'org')?.id;
     const query = orgId ? `?orgId=${encodeURIComponent(orgId)}` : '';
 
-    const credits = await this.getJson<CcCreditsRoot>(`${this.apiBase}/alpha/billing/credits${query}`, headers)
-      .catch(() => null);
-    const subscription = await this.getJson<CcSubscription>(`${this.apiBase}/alpha/billing/subscriptions${query}`, headers)
-      .catch(() => null);
+    const credits = await this.getJsonOptional<CcCreditsRoot>(`${this.apiBase}/alpha/billing/credits${query}`, headers);
+    const subscription = await this.getJsonOptional<CcSubscription>(`${this.apiBase}/alpha/billing/subscriptions${query}`, headers);
     // The spend is the only source of a monthly denominator; its absence degrades the
     // monthly card to a countdown-only row rather than failing the whole provider.
-    const usage = await this.getJson<CcUsageSummary>(`${this.apiBase}/alpha/usage/summary${query}`, headers)
-      .catch(() => null);
+    const usage = await this.getJsonOptional<CcUsageSummary>(`${this.apiBase}/alpha/usage/summary${query}`, headers);
 
     if (!credits && !subscription) {
       throw new Error('CommandCode returned no billing data');
@@ -284,6 +298,11 @@ export class CommandCodeAdapter implements IProviderAdapter {
   private async getJson<T>(url: string, headers: Record<string, string>): Promise<T | null> {
     const response = await fetchWithTimeout(url, { method: 'GET', headers });
     if (!response.ok) {
+      // An auth failure must stay distinguishable from every other failure: the callers
+      // below degrade on transient errors but must not swallow a revoked key.
+      if (response.status === 401 || response.status === 403) {
+        throw new CommandCodeAuthError(response.status, `CommandCode API error: HTTP ${response.status}`);
+      }
       throw new Error(`CommandCode API error: HTTP ${response.status}`);
     }
     const body = await response.text();
@@ -294,6 +313,25 @@ export class CommandCodeAdapter implements IProviderAdapter {
       return JSON.parse(body) as T;
     } catch {
       throw new Error('Invalid CommandCode JSON response');
+    }
+  }
+
+  /**
+   * Best-effort variant for the secondary routes. A transient failure there costs one
+   * window, but an auth failure invalidates the whole credential: swallowing it turns a
+   * revoked key into an unhelpful "no billing data" and hides the one message that tells
+   * the user what to do. Only non-auth errors degrade to null.
+   */
+  private async getJsonOptional<T>(url: string, headers: Record<string, string>): Promise<T | null> {
+    try {
+      return await this.getJson<T>(url, headers);
+    } catch (error) {
+      // Matched by shape, not instanceof: the error crosses a module boundary and can lose
+      // its class identity, while `code` survives serialization.
+      if (error instanceof CommandCodeAuthError || (error as { code?: unknown } | null)?.code === 'AUTH_ERROR') {
+        throw error;
+      }
+      return null;
     }
   }
 

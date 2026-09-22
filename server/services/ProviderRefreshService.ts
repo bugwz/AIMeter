@@ -66,6 +66,11 @@ function isOAuthAuthError(error: unknown): boolean {
 }
 
 function isProviderAuthError(provider: UsageProvider, error: unknown): boolean {
+  if (provider === UsageProvider.COMMANDCODE) {
+    // CommandCode authenticates with a CLI session key rather than OAuth, so it does not
+    // share isOAuthAuthError's vocabulary: the adapter tags a 401/403 as AUTH_ERROR.
+    return isCommandCodeAuthError(error);
+  }
   if (
     provider !== UsageProvider.CLAUDE
     && provider !== UsageProvider.CODEX
@@ -74,6 +79,15 @@ function isProviderAuthError(provider: UsageProvider, error: unknown): boolean {
     return false;
   }
   return isOAuthAuthError(error);
+}
+
+function isCommandCodeAuthError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  if ((error as { code?: unknown }).code === 'AUTH_ERROR') return true;
+  const lower = error.message.toLowerCase();
+  return lower.includes('invalid or revoked commandcode')
+    || lower.includes('commandcode api error: http 401')
+    || lower.includes('commandcode api error: http 403');
 }
 
 async function patchFetchStateSafe(providerId: string, patch: Record<string, unknown>): Promise<void> {

@@ -38,6 +38,9 @@ export function createMockProvider(provider: UsageProvider, providerConfig?: Pic
       return new ClaudeMockProvider(options);
     case UsageProvider.CLAUDE:
     case UsageProvider.ANTIGRAVITY:
+    // CommandCode reports the same rolling 5 h / weekly / monthly window set, so the
+    // generic multi-window mock is the correct shape for it.
+    case UsageProvider.COMMANDCODE:
       return new ClaudeMockProvider(options);
     case UsageProvider.COPILOT:
       return new CopilotMockProvider(options);
