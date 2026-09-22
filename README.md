@@ -116,6 +116,10 @@ AIMeter is a self-hosted dashboard for tracking AI provider usage, quota, and hi
       <img src="public/providers/cursor.svg" alt="Cursor" width="40" height="40" style="object-fit: contain;" /><br />
       Cursor
     </td>
+    <td align="center" valign="middle" width="140" height="110">
+      <img src="public/providers/commandcode.svg" alt="CommandCode" width="40" height="40" style="object-fit: contain;" /><br />
+      CommandCode
+    </td>
   </tr>
 </table>
 </div>

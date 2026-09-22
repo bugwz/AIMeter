@@ -13,6 +13,7 @@ Each provider document covers authentication modes, API endpoints, data structur
 | [Antigravity](#antigravity) | OAuth | — | [→](./antigravity/README.md) |
 | [Claude](#claude) | Cookie, OAuth | — | [→](./claude/README.md) |
 | [Codex](#codex) | OAuth | — | [→](./codex/README.md) |
+| [CommandCode](#commandcode) | CLI session key | — | [→](./commandcode/README.md) |
 | [Copilot](#copilot) | OAuth, API Key | — | [→](./copliot/README.md) |
 | [Cursor](#cursor) | Cookie | — | [→](./cursor/README.md) |
 | [Kimi](#kimi) | Cookie, JWT, API Key | — | [→](./kimi/README.md) |

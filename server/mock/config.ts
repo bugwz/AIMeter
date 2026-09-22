@@ -132,6 +132,16 @@ export const MOCK_PROVIDER_CONFIGS: Record<UsageProvider, MockProviderConfig> = 
     consumptionUnit: 'tokens',
     resetDay: 1,
   },
+  [UsageProvider.COMMANDCODE]: {
+    provider: UsageProvider.COMMANDCODE,
+    name: 'CommandCode',
+    initialUsage: 8,
+    limit: 70,
+    periodType: 'monthly',
+    consumptionRate: 0.02,
+    consumptionUnit: 'credits',
+    resetDay: 1,
+  },
 };
 
 export const MOCK_PORT = 3002;

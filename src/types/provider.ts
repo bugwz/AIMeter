@@ -12,6 +12,7 @@ export enum UsageProvider {
   OLLAMA = 'ollama',
   OPENCODE = 'opencode',
   CURSOR = 'cursor',
+  COMMANDCODE = 'commandcode',
 }
 
 // Provider metadata
@@ -142,6 +143,7 @@ export const PROVIDER_NAMES: Record<UsageProvider, string> = {
   [UsageProvider.OLLAMA]: 'Ollama',
   [UsageProvider.OPENCODE]: 'OpenCode',
   [UsageProvider.CURSOR]: 'Cursor',
+  [UsageProvider.COMMANDCODE]: 'CommandCode',
 };
 
 // Provider color map
@@ -158,4 +160,5 @@ export const PROVIDER_COLORS: Record<UsageProvider, string> = {
   [UsageProvider.OLLAMA]: '#000000',
   [UsageProvider.OPENCODE]: '#000000',
   [UsageProvider.CURSOR]: '#000000',
+  [UsageProvider.COMMANDCODE]: '#111827',
 };

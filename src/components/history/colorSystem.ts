@@ -13,6 +13,7 @@ export const PROVIDER_BASE_COLORS: Record<UsageProvider, string> = {
   [UsageProvider.OLLAMA]: '#334155',
   [UsageProvider.OPENCODE]: '#22C55E',
   [UsageProvider.CURSOR]: '#0F172A',
+  [UsageProvider.COMMANDCODE]: '#111827',
 };
 
 const FALLBACK_COLOR = '#3b82f6';
