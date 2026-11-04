@@ -333,9 +333,21 @@ export class CodexAdapter implements IProviderAdapter {
 
   async fetchUsage(credentials: Credential): Promise<UsageSnapshot> {
     if (credentials.type === AuthType.OAUTH) {
-      return this.fetchOAuthUsage(credentials.accessToken);
+      try {
+        return await this.fetchOAuthUsage(credentials.accessToken);
+      } catch (error) {
+        if (!(error instanceof Error && error.message === 'Codex OAuth token expired') || !credentials.refreshToken) {
+          throw error;
+        }
+        // Access tokens last ~10 days; renew in place so ProviderUsageService persists the new tokens.
+        const refreshed = await this.refreshToken(credentials.refreshToken, credentials.clientId);
+        credentials.accessToken = refreshed.accessToken;
+        credentials.refreshToken = refreshed.refreshToken;
+        credentials.expiresAt = refreshed.expiresAt;
+        return this.fetchOAuthUsage(credentials.accessToken);
+      }
     }
-    
+
     if (credentials.type === AuthType.COOKIE) {
       return this.fetchCookieUsage(credentials.value);
     }
